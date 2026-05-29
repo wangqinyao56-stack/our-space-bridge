@@ -1,0 +1,15 @@
+{
+  "name": "our-space-bridge",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Bridge server for 我们的天地 Android app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/ws-client.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "uuid": "^9.0.0"
+  }
+}
