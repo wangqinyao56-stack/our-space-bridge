@@ -271,7 +271,7 @@ wss.on("connection", (ws, req) => {
       try {
         const wavBuf = Buffer.from(msg.audio, "base64");
         const { text, reply: fullReply } = await handleVoiceMessage(wavBuf);
-        // Check for [语音] tag
+        // Voice messages always get TTS (user is speaking → reply with voice)
         const voiceTag = fullReply.startsWith("[语音]");
         const reply = voiceTag ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
         // Send text reply immediately
@@ -281,17 +281,15 @@ wss.on("connection", (ws, req) => {
           content: reply,
           transcribed: text,
         }));
-        // Queue TTS only when [语音] tag present
-        if (voiceTag) {
-          const jobId = uuid();
-          ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
-          ws.send(JSON.stringify({
-            type: "audio_queued",
-            job_id: jobId,
-            reply_to: msg.id,
-            text: reply.slice(0, 40),
-          }));
-        }
+        // Always queue TTS for voice messages
+        const jobId = uuid();
+        ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
+        ws.send(JSON.stringify({
+          type: "audio_queued",
+          job_id: jobId,
+          reply_to: msg.id,
+          text: reply.slice(0, 40),
+        }));
       } catch (err) {
         console.error("[ws] Voice error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
