@@ -240,21 +240,25 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "text") {
       if (!msg.content?.trim()) return;
       try {
-        const reply = await handleTextMessage(msg.content);
+        const fullReply = await handleTextMessage(msg.content);
+        // Check for [语音] tag — only generate TTS when AI requests it
+        const voiceTag = fullReply.startsWith("[语音]");
+        const reply = voiceTag ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
         ws.send(JSON.stringify({
           type: "text_reply",
           reply_to: msg.id,
           content: reply,
         }));
-        // Auto-queue TTS
-        const jobId = uuid();
-        ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
-        ws.send(JSON.stringify({
-          type: "audio_queued",
-          job_id: jobId,
-          reply_to: msg.id,
-          text: reply.slice(0, 40),
-        }));
+        if (voiceTag) {
+          const jobId = uuid();
+          ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
+          ws.send(JSON.stringify({
+            type: "audio_queued",
+            job_id: jobId,
+            reply_to: msg.id,
+            text: reply.slice(0, 40),
+          }));
+        }
       } catch (err) {
         console.error("[ws] Text error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
@@ -266,7 +270,10 @@ wss.on("connection", (ws, req) => {
       if (!msg.audio) return;
       try {
         const wavBuf = Buffer.from(msg.audio, "base64");
-        const { text, reply } = await handleVoiceMessage(wavBuf);
+        const { text, reply: fullReply } = await handleVoiceMessage(wavBuf);
+        // Check for [语音] tag
+        const voiceTag = fullReply.startsWith("[语音]");
+        const reply = voiceTag ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
         // Send text reply immediately
         ws.send(JSON.stringify({
           type: "text_reply",
@@ -274,15 +281,17 @@ wss.on("connection", (ws, req) => {
           content: reply,
           transcribed: text,
         }));
-        // Queue TTS
-        const jobId = uuid();
-        ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
-        ws.send(JSON.stringify({
-          type: "audio_queued",
-          job_id: jobId,
-          reply_to: msg.id,
-          text: reply.slice(0, 40),
-        }));
+        // Queue TTS only when [语音] tag present
+        if (voiceTag) {
+          const jobId = uuid();
+          ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
+          ws.send(JSON.stringify({
+            type: "audio_queued",
+            job_id: jobId,
+            reply_to: msg.id,
+            text: reply.slice(0, 40),
+          }));
+        }
       } catch (err) {
         console.error("[ws] Voice error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
