@@ -606,3 +606,4 @@ server.listen(config.PORT, config.HOST, () => {
   console.log(`[our-space] WebSocket on ws://${config.HOST}:${config.PORT}`);
   console.log(`[our-space] Shared secret: ${config.SHARED_SECRET === "our-space-default-secret-change-me" ? "⚠ USING DEFAULT (change via OUR_SPACE_SECRET env)" : "✓ configured"}`);
 });
+// force redeploy 1780136312
