@@ -19,6 +19,7 @@ import {
   addDiaryPost,
   addDiaryReply,
   generateAIReply,
+  startProactiveDiary,
 } from "./lib/diary.js";
 import { getPetState, interact as petInteract, setName as petSetName, getProactiveReminder } from "./lib/pet.js";
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder } from "./lib/todo.js";
@@ -61,6 +62,16 @@ ttsQueue.on("failed", (result) => {
 
 ttsQueue.on("rejected", (job) => {
   console.log(`[tts-queue] Queue full, rejected: ${job.jobId}`);
+});
+
+// ── Proactive diary (夏彦主动写日记) ──
+startProactiveDiary((date) => {
+  const diaryData = JSON.stringify({
+    type: "diary_proactive",
+    date,
+    message: "夏彦在日记里写了新的内容~",
+  });
+  broadcast(diaryData);
 });
 
 // ── Connected clients ──
