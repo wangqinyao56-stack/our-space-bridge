@@ -25,6 +25,7 @@ import { getPetState, interact as petInteract, setName as petSetName, getProacti
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
+import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, startProactiveDiscover, generateDiscoverMoment } from "./lib/discover.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -74,6 +75,16 @@ startProactiveDiary((date) => {
     message: "夏彦在日记里写了新的内容~",
   });
   broadcast(diaryData);
+});
+
+// ── Proactive discover (夏彦自主发现) ──
+startProactiveDiscover((moment) => {
+  const data = JSON.stringify({
+    type: "discover_new",
+    moment,
+    message: "夏彦发现了一条有趣的内容~",
+  });
+  broadcast(data);
 });
 
 // ── Connected clients ──
@@ -478,6 +489,48 @@ wss.on("connection", (ws, req) => {
       if (!msg.id) return;
       deletePhoto(msg.id);
       ws.send(JSON.stringify({ type: "album_list", photos: getPhotos() }));
+      return;
+    }
+
+    // ── Discover / Moments ──
+    if (msg.type === "discover_list") {
+      const moments = getMoments();
+      // Send without image data (client fetches on demand)
+      const lightMoments = moments.map((m) => ({ ...m, _hasImage: !!m.image }));
+      ws.send(JSON.stringify({ type: "discover_list", moments: lightMoments }));
+      return;
+    }
+
+    if (msg.type === "discover_get_image") {
+      if (!msg.id) return;
+      const moments = getMoments();
+      const moment = moments.find((m) => m.id === msg.id);
+      if (!moment?.image) return;
+      const base64 = getMomentImage(moment.image);
+      if (base64) {
+        ws.send(JSON.stringify({ type: "discover_image", id: msg.id, imageBase64: base64, mime: moment.imageMime }));
+      }
+      return;
+    }
+
+    if (msg.type === "discover_post") {
+      if (!msg.content?.trim()) return;
+      const moment = addMoment(msg.author || "me", msg.content, msg.imageBase64, msg.imageMime, msg.title || "");
+      ws.send(JSON.stringify({ type: "discover_new", moment }));
+      return;
+    }
+
+    if (msg.type === "discover_like") {
+      if (!msg.id) return;
+      const moment = likeMoment(msg.id, msg.user || "me");
+      if (moment) ws.send(JSON.stringify({ type: "discover_updated", moment }));
+      return;
+    }
+
+    if (msg.type === "discover_comment") {
+      if (!msg.id || !msg.content?.trim()) return;
+      const moment = addMomentComment(msg.id, msg.author || "me", msg.content);
+      if (moment) ws.send(JSON.stringify({ type: "discover_updated", moment }));
       return;
     }
 
