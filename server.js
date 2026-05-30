@@ -296,7 +296,7 @@ wss.on("connection", (ws, req) => {
       if (!msg.audio) return;
       try {
         const wavBuf = Buffer.from(msg.audio, "base64");
-        const { text, reply: fullReply } = await handleVoiceMessage(wavBuf);
+        const { text, reply: fullReply } = await handleVoiceMessage(wavBuf, msg.mime || "audio/mp4");
         // Voice messages always get TTS (user is speaking → reply with voice)
         const voiceTag = fullReply.startsWith("[语音]");
         const reply = voiceTag ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
