@@ -8,6 +8,7 @@ import { TTSQueue } from "./lib/tts-queue.js";
 import {
   loadSystemPrompt,
   handleTextMessage,
+  handleIntimateMessage,
   handleVoiceMessage,
   getChatHistory,
   getChatHistoryMessages,
@@ -295,6 +296,22 @@ wss.on("connection", (ws, req) => {
         }
       } catch (err) {
         console.error("[ws] Text error:", err.message);
+        ws.send(JSON.stringify({ type: "error", message: err.message }));
+      }
+      return;
+    }
+
+    if (msg.type === "intimate_text") {
+      if (!msg.content?.trim()) return;
+      try {
+        const reply = await handleIntimateMessage(msg.content);
+        ws.send(JSON.stringify({
+          type: "intimate_reply",
+          reply_to: msg.id,
+          content: reply,
+        }));
+      } catch (err) {
+        console.error("[ws] Intimate text error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
       }
       return;
