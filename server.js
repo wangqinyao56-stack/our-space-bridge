@@ -24,6 +24,7 @@ import {
 import { getPetState, interact as petInteract, setName as petSetName, getProactiveReminder } from "./lib/pet.js";
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod } from "./lib/period.js";
+import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -336,6 +337,8 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "image") {
       if (!msg.base64 || !msg.mime) return;
       try {
+        // Auto-save to album
+        const photo = addPhoto(msg.base64, msg.mime, "me");
         // Forward to AI with image context
         const reply = await handleTextMessage(
           `[华生发来了一张图片]`,
@@ -347,6 +350,8 @@ wss.on("connection", (ws, req) => {
           reply_to: msg.id,
           content: reply,
         }));
+        // Notify album update
+        ws.send(JSON.stringify({ type: "album_updated", photo }));
         // Check for voice tag
         if (reply.startsWith("[语音]")) {
           const cleanReply = reply.replace(/^\[语音\]\s*/, "");
@@ -435,6 +440,44 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "period_status") {
       const state = getPeriodState();
       ws.send(JSON.stringify({ type: "period_state", ...state }));
+      return;
+    }
+
+    // ── Album ──
+    if (msg.type === "album_list") {
+      const photos = getPhotos();
+      ws.send(JSON.stringify({ type: "album_list", photos }));
+      return;
+    }
+
+    if (msg.type === "album_get") {
+      if (!msg.id) return;
+      const photo = getPhoto(msg.id);
+      const file = getPhotoFile(msg.id);
+      if (!photo || !file) {
+        ws.send(JSON.stringify({ type: "error", message: "Photo not found" }));
+        return;
+      }
+      const imageBase64 = fs.readFileSync(file.path).toString("base64");
+      ws.send(JSON.stringify({ type: "album_photo", photo, imageBase64, mime: file.mime }));
+      return;
+    }
+
+    if (msg.type === "album_comment") {
+      if (!msg.id || !msg.content?.trim()) return;
+      const result = addComment(msg.id, msg.author || "me", msg.content);
+      if (!result) {
+        ws.send(JSON.stringify({ type: "error", message: "Photo not found" }));
+        return;
+      }
+      ws.send(JSON.stringify({ type: "album_photo", photo: result.photo, imageBase64: result.imageBase64, mime: result.photo.mime }));
+      return;
+    }
+
+    if (msg.type === "album_delete") {
+      if (!msg.id) return;
+      deletePhoto(msg.id);
+      ws.send(JSON.stringify({ type: "album_list", photos: getPhotos() }));
       return;
     }
 
