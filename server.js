@@ -12,6 +12,7 @@ import {
   getChatHistory,
   getChatHistoryMessages,
   clearChatHistory,
+  sttDebugLog,
 } from "./lib/message-router.js";
 import {
   loadDiary,
@@ -114,7 +115,14 @@ const server = http.createServer(async (req, res) => {
   // Health check
   if (req.method === "GET" && req.url === "/api/ping") {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, clients: clients.size, tts_queue: ttsQueue.length }));
+    res.end(JSON.stringify({ ok: true, clients: clients.size, tts_queue: ttsQueue.length, version: "2026-05-30-v4" }));
+    return;
+  }
+
+  // STT debug log (no auth needed)
+  if (req.method === "GET" && req.url === "/api/debug/stt") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ log: sttDebugLog }, null, 2));
     return;
   }
 
