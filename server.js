@@ -27,7 +27,7 @@ import { getPetState, interact as petInteract, setName as petSetName, getProacti
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
-import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, startProactiveDiscover, generateDiscoverMoment } from "./lib/discover.js";
+import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment } from "./lib/discover.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -555,7 +555,17 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "discover_comment") {
       if (!msg.id || !msg.content?.trim()) return;
       const moment = addMomentComment(msg.id, msg.author || "me", msg.content);
-      if (moment) ws.send(JSON.stringify({ type: "discover_updated", moment }));
+      if (moment) {
+        ws.send(JSON.stringify({ type: "discover_updated", moment }));
+        // If the comment is from the user (not 夏彦), 夏彦 auto-replies
+        if ((msg.author || "me") === "me") {
+          xiayanReplyToComment(msg.id, msg.content).then((updatedMoment) => {
+            if (updatedMoment) ws.send(JSON.stringify({ type: "discover_updated", moment: updatedMoment }));
+          }).catch((err) => {
+            console.error("[discover] 夏彦 comment reply error:", err.message);
+          });
+        }
+      }
       return;
     }
 

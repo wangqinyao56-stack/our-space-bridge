@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@playwright/mcp": "^0.0.75",
+    "https-proxy-agent": "^9.0.0",
     "uuid": "^9.0.0",
     "ws": "^8.16.0"
   }
