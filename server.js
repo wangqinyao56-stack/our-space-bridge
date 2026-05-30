@@ -23,6 +23,7 @@ import {
 } from "./lib/diary.js";
 import { getPetState, interact as petInteract, setName as petSetName, getProactiveReminder } from "./lib/pet.js";
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder } from "./lib/todo.js";
+import { getPeriodState, getPeriodContext, startPeriod, endPeriod } from "./lib/period.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -415,6 +416,25 @@ wss.on("connection", (ws, req) => {
       if (!msg.id) return;
       deleteTodo(msg.id);
       ws.send(JSON.stringify({ type: "todo_updated", todo: null, todos: getTodos() }));
+      return;
+    }
+
+    // ── Period tracking ──
+    if (msg.type === "period_start") {
+      const state = startPeriod(msg.date);
+      ws.send(JSON.stringify({ type: "period_state", ...state }));
+      return;
+    }
+
+    if (msg.type === "period_end") {
+      const state = endPeriod(msg.date);
+      ws.send(JSON.stringify({ type: "period_state", ...state }));
+      return;
+    }
+
+    if (msg.type === "period_status") {
+      const state = getPeriodState();
+      ws.send(JSON.stringify({ type: "period_state", ...state }));
       return;
     }
 
