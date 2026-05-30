@@ -20,6 +20,8 @@ import {
   addDiaryReply,
   generateAIReply,
 } from "./lib/diary.js";
+import { getPetState, interact as petInteract, setName as petSetName, getProactiveReminder } from "./lib/pet.js";
+import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder } from "./lib/todo.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -315,6 +317,93 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "clear_history") {
       clearChatHistory();
       ws.send(JSON.stringify({ type: "history_cleared" }));
+      return;
+    }
+
+    // ── Image message (base64 encoded) ──
+    if (msg.type === "image") {
+      if (!msg.base64 || !msg.mime) return;
+      try {
+        // Forward to AI with image context
+        const reply = await handleTextMessage(
+          `[华生发来了一张图片]`,
+          false,
+          { imageBase64: msg.base64, imageMime: msg.mime }
+        );
+        ws.send(JSON.stringify({
+          type: "text_reply",
+          reply_to: msg.id,
+          content: reply,
+        }));
+        // Check for voice tag
+        if (reply.startsWith("[语音]")) {
+          const cleanReply = reply.replace(/^\[语音\]\s*/, "");
+          const jobId = uuid();
+          ttsQueue.enqueue({ jobId, text: cleanReply, replyTo: msg.id });
+          ws.send(JSON.stringify({ type: "audio_queued", job_id: jobId, reply_to: msg.id, text: cleanReply.slice(0, 40) }));
+        }
+      } catch (err) {
+        console.error("[ws] Image error:", err.message);
+        ws.send(JSON.stringify({ type: "error", message: err.message }));
+      }
+      return;
+    }
+
+    // ── Pet ──
+    if (msg.type === "pet_get") {
+      const state = getPetState();
+      ws.send(JSON.stringify({ type: "pet_state", pet: state }));
+      return;
+    }
+
+    if (msg.type === "pet_interact") {
+      if (!msg.action) return;
+      const result = petInteract(msg.action);
+      ws.send(JSON.stringify({ type: "pet_state", pet: result, reaction: result.reaction }));
+      // Also send as a chat message from 夏彦 about the pet
+      ws.send(JSON.stringify({
+        type: "text_reply",
+        reply_to: msg.id || "",
+        content: `[宠物] ${result.reaction}`,
+        skip_tts: true,
+      }));
+      return;
+    }
+
+    if (msg.type === "pet_name") {
+      if (!msg.name?.trim()) return;
+      const updated = petSetName(msg.name);
+      ws.send(JSON.stringify({ type: "pet_state", pet: updated }));
+      return;
+    }
+
+    // ── Todo ──
+    if (msg.type === "todo_list") {
+      const list = getTodos();
+      ws.send(JSON.stringify({ type: "todo_list", todos: list }));
+      return;
+    }
+
+    if (msg.type === "todo_add") {
+      if (!msg.text?.trim()) return;
+      const todo = addTodo(msg.text, msg.addedBy || "me");
+      ws.send(JSON.stringify({ type: "todo_updated", todo, todos: getTodos() }));
+      return;
+    }
+
+    if (msg.type === "todo_done") {
+      if (!msg.id) return;
+      const todo = doneTodo(msg.id);
+      if (todo) {
+        ws.send(JSON.stringify({ type: "todo_updated", todo, todos: getTodos() }));
+      }
+      return;
+    }
+
+    if (msg.type === "todo_delete") {
+      if (!msg.id) return;
+      deleteTodo(msg.id);
+      ws.send(JSON.stringify({ type: "todo_updated", todo: null, todos: getTodos() }));
       return;
     }
 
