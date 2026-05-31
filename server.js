@@ -24,7 +24,7 @@ import {
   startProactiveDiary,
 } from "./lib/diary.js";
 import { getPetState, interact as petInteract, setName as petSetName, getProactiveReminder } from "./lib/pet.js";
-import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder } from "./lib/todo.js";
+import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment } from "./lib/discover.js";
@@ -497,6 +497,7 @@ wss.on("connection", (ws, req) => {
       const todo = doneTodo(msg.id);
       if (todo) {
         ws.send(JSON.stringify({ type: "todo_updated", todo, todos: getTodos() }));
+        notifyDone(todo.text, todo.addedBy);
       }
       return;
     }
