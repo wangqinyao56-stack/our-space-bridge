@@ -715,6 +715,31 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    if (msg.type === "sticker") {
+      if (!msg.sticker_id) return;
+      // Broadcast sticker to partner
+      ws.send(JSON.stringify({
+        type: "sticker",
+        id: msg.id,
+        sticker_id: msg.sticker_id,
+        sticker_name: msg.sticker_name || "",
+        reply_to: msg.id,
+      }));
+      // Broadcast to other connected clients too
+      for (const [otherWs, otherState] of clients) {
+        if (otherWs !== ws && otherState?.authenticated) {
+          otherWs.send(JSON.stringify({
+            type: "sticker",
+            id: msg.id,
+            sticker_id: msg.sticker_id,
+            sticker_name: msg.sticker_name || "",
+            reply_to: msg.id,
+          }));
+        }
+      }
+      return;
+    }
+
     ws.send(JSON.stringify({ type: "error", message: `Unknown message type: ${msg.type}` }));
   });
 
