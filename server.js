@@ -27,7 +27,7 @@ import { getPetState, interact as petInteract, setName as petSetName, getProacti
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
-import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment } from "./lib/discover.js";
+import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment } from "./lib/discover.js";
 import { tryTriggerGift } from "./lib/gift.js";
 import { tryTriggerScenery } from "./lib/scenery.js";
 
@@ -668,6 +668,13 @@ wss.on("connection", (ws, req) => {
           });
         }
       }
+      return;
+    }
+
+    if (msg.type === "discover_delete_comment") {
+      if (!msg.id || !msg.commentId) return;
+      const moment = deleteMomentComment(msg.id, msg.commentId);
+      if (moment) ws.send(JSON.stringify({ type: "discover_updated", moment }));
       return;
     }
 
