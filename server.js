@@ -89,6 +89,54 @@ startProactiveDiscover((moment) => {
   broadcast(data);
 });
 
+// ── 分段发送：把长回复拆成自然短句，像真人发微信 ──
+function splitIntoMessages(text) {
+  if (!text || text.length <= 60) return [text]; // 已经很短了，不拆
+
+  // 先按段落拆
+  const paragraphs = text.split(/\n{2,}/).filter(Boolean);
+  if (paragraphs.length > 1) {
+    // 有多个段落，每个段落作为一条消息
+    return paragraphs.map((p) => p.trim()).filter(Boolean);
+  }
+
+  // 单段落但很长，按句子边界拆
+  const sentences = text.split(/(?<=[。！？!?\n])\s*/).filter(Boolean);
+  if (sentences.length <= 1) return [text];
+
+  // 把短句合并，避免过于碎片化（每段至少15字，最多80字）
+  const segments = [];
+  let current = "";
+  for (const s of sentences) {
+    if (current && (current.length + s.length > 80 || current.length >= 40)) {
+      segments.push(current.trim());
+      current = s;
+    } else {
+      current += s;
+    }
+  }
+  if (current.trim()) segments.push(current.trim());
+
+  return segments.length > 0 ? segments : [text];
+}
+
+function sendSegments(ws, replyTo, segments, delayMs = 800) {
+  segments.forEach((seg, i) => {
+    const timer = setTimeout(() => {
+      if (ws.readyState === 1) {
+        ws.send(JSON.stringify({
+          type: "text_reply",
+          reply_to: replyTo,
+          content: seg,
+        }));
+      }
+    }, i * delayMs);
+    // Allow the timer to be cleaned up if ws closes
+    ws._segmentTimers = ws._segmentTimers || [];
+    ws._segmentTimers.push(timer);
+  });
+}
+
 // ── Connected clients ──
 const clients = new Map(); // ws → { authenticated: bool }
 
@@ -279,11 +327,11 @@ wss.on("connection", (ws, req) => {
         // Check for [语音] tag — only generate TTS when AI requests it
         const voiceTag = fullReply.startsWith("[语音]");
         const reply = voiceTag ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
-        ws.send(JSON.stringify({
-          type: "text_reply",
-          reply_to: msg.id,
-          content: reply,
-        }));
+
+        // 分段发送，像真人发微信一样自然断句
+        const segments = splitIntoMessages(reply);
+        sendSegments(ws, msg.id, segments);
+
         if (voiceTag) {
           const jobId = uuid();
           ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
