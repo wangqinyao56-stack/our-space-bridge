@@ -8,6 +8,7 @@ export default {
   SHARED_SECRET: process.env.OUR_SPACE_SECRET || "our-space-default-secret-change-me",
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || "",
   GROQ_API_KEY: process.env.GROQ_API_KEY || "",
+  BFL_API_KEY: process.env.BFL_API_KEY || "",
   SYSTEM_PROMPT_PATH: join(__dirname, "system-prompt.md"),
   DAILY_PROMPT_PATH: join(__dirname, "system-prompt-daily.md"),
   INTIMATE_PROMPT_PATH: join(__dirname, "system-prompt-intimate.md"),

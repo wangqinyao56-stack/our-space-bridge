@@ -28,6 +28,8 @@ import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRan
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment } from "./lib/discover.js";
+import { tryTriggerGift } from "./lib/gift.js";
+import { tryTriggerScenery } from "./lib/scenery.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -135,6 +137,51 @@ function sendSegments(ws, replyTo, segments, delayMs = 800) {
     ws._segmentTimers = ws._segmentTimers || [];
     ws._segmentTimers.push(timer);
   });
+}
+
+// Trigger gift and scenery events (non-blocking, fires once per message batch)
+let _multimediaCooldown = 0;
+async function triggerMultimediaEvents(ws, replyTo) {
+  // Cooldown: only check once per 30 seconds to avoid spamming
+  const now = Date.now();
+  if (now - _multimediaCooldown < 30000) return;
+  _multimediaCooldown = now;
+
+  try {
+    // Try scenery first (only if in travel mode)
+    const scenery = await tryTriggerScenery(0.15);
+    if (scenery) {
+      ws.send(JSON.stringify({
+        type: "scenery_photo",
+        caption: scenery.caption,
+        destination: scenery.destination,
+        image_base64: scenery.imageBase64,
+        reply_to: replyTo,
+      }));
+      console.log(`[scenery] Sent: ${scenery.caption}`);
+    }
+  } catch (err) {
+    console.error("[scenery] Trigger error:", err.message);
+  }
+
+  try {
+    // Try gift (low random chance)
+    const gift = await tryTriggerGift(0.05);
+    if (gift) {
+      ws.send(JSON.stringify({
+        type: "gift_event",
+        name: gift.name,
+        message: gift.message,
+        category: gift.category,
+        image_base64: gift.imageBase64,
+        is_special: gift.isSpecial,
+        reply_to: replyTo,
+      }));
+      console.log(`[gift] Sent: ${gift.name}${gift.isSpecial ? " (SPECIAL DATE!)" : ""}`);
+    }
+  } catch (err) {
+    console.error("[gift] Trigger error:", err.message);
+  }
 }
 
 // ── Connected clients ──
@@ -342,6 +389,9 @@ wss.on("connection", (ws, req) => {
             text: reply.slice(0, 40),
           }));
         }
+
+        // Trigger gift/scenery as side effects (non-blocking)
+        triggerMultimediaEvents(ws, msg.id);
       } catch (err) {
         console.error("[ws] Text error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
@@ -358,6 +408,9 @@ wss.on("connection", (ws, req) => {
           reply_to: msg.id,
           content: reply,
         }));
+
+        // Trigger gift/scenery for intimate space too
+        triggerMultimediaEvents(ws, msg.id);
       } catch (err) {
         console.error("[ws] Intimate text error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
