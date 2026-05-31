@@ -487,7 +487,7 @@ wss.on("connection", (ws, req) => {
 
     if (msg.type === "todo_add") {
       if (!msg.text?.trim()) return;
-      const todo = addTodo(msg.text, msg.addedBy || "me");
+      const todo = addTodo(msg.text, msg.addedBy || "me", msg.deadline || "");
       ws.send(JSON.stringify({ type: "todo_updated", todo, todos: getTodos() }));
       return;
     }
