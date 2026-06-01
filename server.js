@@ -455,26 +455,31 @@ wss.on("connection", (ws, req) => {
       try {
         const wavBuf = Buffer.from(msg.audio, "base64");
         const { text, reply: fullReply } = await handleVoiceMessage(wavBuf, msg.mime || "audio/mp4");
-        // Voice messages always get TTS (user is speaking → reply with voice)
-        const voiceTag = fullReply.startsWith("[语音]");
-        const reply = voiceTag ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
+        // 夏彦 chooses: [语音] tag = send voice bubble, no tag = text only
+        const wantsVoice = fullReply.startsWith("[语音]");
+        const reply = wantsVoice ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
 
-        // Split into segments like text messages
+        // Split and send text segments
         const segments = splitIntoMessages(reply);
-        const mainReply = segments.join("\n\n");
-
-        // Send text reply as segments
         sendSegments(ws, msg.id, segments);
 
-        // Always queue TTS for voice messages (use full reply for audio)
-        const jobId = uuid();
-        ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
+        // Only queue TTS if 夏彦 explicitly wants to send voice
+        if (wantsVoice) {
+          const jobId = uuid();
+          ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
+          ws.send(JSON.stringify({
+            type: "audio_queued",
+            job_id: jobId,
+            reply_to: msg.id,
+            text: reply.slice(0, 40),
+          }));
+        }
+
+        // Always include transcribed text
         ws.send(JSON.stringify({
-          type: "audio_queued",
-          job_id: jobId,
+          type: "voice_transcribed",
           reply_to: msg.id,
-          text: reply.slice(0, 40),
-          transcribed: text,
+          text: text,
         }));
       } catch (err) {
         console.error("[ws] Voice error:", err.message);
