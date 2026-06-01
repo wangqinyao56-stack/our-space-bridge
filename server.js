@@ -121,7 +121,7 @@ function splitIntoMessages(text) {
   return segments.length > 0 ? segments : [text];
 }
 
-function sendSegments(ws, replyTo, segments, baseDelayMs = 1500) {
+function sendSegments(ws, replyTo, segments, baseDelayMs = 3000) {
   let cumulative = 0;
   segments.forEach((seg, i) => {
     // Delay scales with message length (shorter = less wait, longer = more)
