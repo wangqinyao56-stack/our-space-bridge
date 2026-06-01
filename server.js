@@ -30,6 +30,9 @@ import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } 
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment } from "./lib/discover.js";
 import { tryTriggerGift } from "./lib/gift.js";
 import { tryTriggerScenery } from "./lib/scenery.js";
+import { startProactiveChat, notifyUserActivity } from "./lib/proactive-chat.js";
+import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
+import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -89,6 +92,31 @@ startProactiveDiscover((moment) => {
     message: "夏彦发现了一条有趣的内容~",
   });
   broadcast(data);
+});
+
+// ── Proactive chat (夏彦主动给华生发消息) ──
+startProactiveChat((message) => {
+  const segments = splitIntoMessages(message);
+  const replyTo = `proactive_${Date.now()}`;
+  // Send segments to all connected clients
+  for (const [ws, wsState] of clients) {
+    if (wsState.authenticated && ws.readyState === 1) {
+      for (let i = 0; i < segments.length; i++) {
+        const delay = i * (1800 + Math.random() * 1200);
+        setTimeout(() => {
+          if (ws.readyState === 1) {
+            ws.send(JSON.stringify({
+              type: "text_reply",
+              reply_to: `${replyTo}_${i}`,
+              content: segments[i],
+              proactive: true,
+            }));
+          }
+        }, delay);
+      }
+    }
+  }
+  console.log(`[proactive] Broadcast: "${message.slice(0, 60)}..."`);
 });
 
 // ── 分段发送：把长回复拆成自然短句，像真人发微信 ──
@@ -402,6 +430,7 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "text") {
       if (!msg.content?.trim()) return;
       try {
+        notifyUserActivity();
         const fullReply = await handleTextMessage(msg.content);
         // Check for [语音] tag — only generate TTS when AI requests it
         const voiceTag = fullReply.startsWith("[语音]");
@@ -423,8 +452,18 @@ wss.on("connection", (ws, req) => {
           sendSegments(ws, msg.id, segments);
         }
 
-        // Trigger gift/scenery as side effects (non-blocking)
+        // Trigger gift/scenery/decor as side effects (non-blocking)
         triggerMultimediaEvents(ws, msg.id);
+        tryRedecorate().then((result) => {
+          if (result) {
+            broadcast(JSON.stringify({
+              type: "decor_update",
+              currentTheme: result.theme.id,
+              theme: result.theme,
+              allThemes: getAllThemes(),
+            }));
+          }
+        }).catch(() => {});
       } catch (err) {
         console.error("[ws] Text error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
@@ -435,6 +474,7 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "intimate_text") {
       if (!msg.content?.trim()) return;
       try {
+        notifyUserActivity();
         const reply = await handleIntimateMessage(msg.content);
         ws.send(JSON.stringify({
           type: "intimate_reply",
@@ -454,6 +494,7 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "voice") {
       if (!msg.audio) return;
       try {
+        notifyUserActivity();
         const wavBuf = Buffer.from(msg.audio, "base64");
         const { text, reply: fullReply } = await handleVoiceMessage(wavBuf, msg.mime || "audio/mp4");
         const wantsVoice = fullReply.startsWith("[语音]");
@@ -827,6 +868,48 @@ wss.on("connection", (ws, req) => {
       } catch (err) {
         console.error("[ws] Sticker AI error:", err.message);
       }
+      return;
+    }
+
+    if (msg.type === "device_data") {
+      // App sends step count data
+      if (msg.steps != null) {
+        updateSteps(msg.steps, msg.date || null);
+        ws.send(JSON.stringify({ type: "device_data_ack", ok: true }));
+        console.log(`[ws] Device data received: ${msg.steps} steps`);
+      }
+      return;
+    }
+
+    if (msg.type === "get_decor_state") {
+      // App requests current decor/theme state
+      const theme = getCurrentTheme();
+      ws.send(JSON.stringify({
+        type: "decor_state",
+        currentTheme: theme.id,
+        theme,
+        allThemes: getAllThemes(),
+      }));
+      // Also check if 夏彦 wants to redecorate right now
+      tryRedecorate().then((result) => {
+        if (result) {
+          const update = JSON.stringify({
+            type: "decor_update",
+            currentTheme: result.theme.id,
+            theme: result.theme,
+            allThemes: getAllThemes(),
+          });
+          broadcast(update);
+        }
+      }).catch(() => {});
+      return;
+    }
+
+    if (msg.type === "get_device_data") {
+      ws.send(JSON.stringify({
+        type: "device_state",
+        ...getDeviceState(),
+      }));
       return;
     }
 
