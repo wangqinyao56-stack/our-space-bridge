@@ -25,7 +25,7 @@ import {
 } from "./lib/diary.js";
 import { getPetState, interact as petInteract, setName as petSetName, getProactiveReminder } from "./lib/pet.js";
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
-import { getPeriodState, getPeriodContext, startPeriod, endPeriod } from "./lib/period.js";
+import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment } from "./lib/discover.js";
 import { tryTriggerGift } from "./lib/gift.js";
@@ -407,19 +407,20 @@ wss.on("connection", (ws, req) => {
         const voiceTag = fullReply.startsWith("[语音]");
         const reply = voiceTag ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
 
-        // 分段发送，像真人发微信一样自然断句
-        const segments = splitIntoMessages(reply);
-        sendSegments(ws, msg.id, segments);
-
         if (voiceTag) {
+          // Voice bubble: skip text segments, send voice_reply instead
           const jobId = uuid();
-          ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
           ws.send(JSON.stringify({
-            type: "audio_queued",
-            job_id: jobId,
+            type: "voice_reply",
             reply_to: msg.id,
-            text: reply.slice(0, 40),
+            job_id: jobId,
+            text: reply,
           }));
+          ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
+        } else {
+          // 分段发送，像真人发微信一样自然断句
+          const segments = splitIntoMessages(reply);
+          sendSegments(ws, msg.id, segments);
         }
 
         // Trigger gift/scenery as side effects (non-blocking)
@@ -455,27 +456,24 @@ wss.on("connection", (ws, req) => {
       try {
         const wavBuf = Buffer.from(msg.audio, "base64");
         const { text, reply: fullReply } = await handleVoiceMessage(wavBuf, msg.mime || "audio/mp4");
-        // 夏彦 chooses: [语音] tag = send voice bubble, no tag = text only
         const wantsVoice = fullReply.startsWith("[语音]");
         const reply = wantsVoice ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
 
-        // Split and send text segments
-        const segments = splitIntoMessages(reply);
-        sendSegments(ws, msg.id, segments);
-
-        // Only queue TTS if 夏彦 explicitly wants to send voice
         if (wantsVoice) {
+          // Voice bubble: skip text segments, send voice_reply instead
           const jobId = uuid();
-          ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
           ws.send(JSON.stringify({
-            type: "audio_queued",
-            job_id: jobId,
+            type: "voice_reply",
             reply_to: msg.id,
-            text: reply.slice(0, 40),
+            job_id: jobId,
+            text: reply,
           }));
+          ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
+        } else {
+          const segments = splitIntoMessages(reply);
+          sendSegments(ws, msg.id, segments);
         }
 
-        // Always include transcribed text
         ws.send(JSON.stringify({
           type: "voice_transcribed",
           reply_to: msg.id,
@@ -521,17 +519,22 @@ wss.on("connection", (ws, req) => {
           false,
           { imageBase64: msg.base64, imageMime: msg.mime }
         );
-        // Split and send as segments
-        const segments = splitIntoMessages(reply);
-        sendSegments(ws, msg.id, segments);
         // Notify album update
         ws.send(JSON.stringify({ type: "album_updated", photo }));
         // Check for voice tag
         if (reply.startsWith("[语音]")) {
           const cleanReply = reply.replace(/^\[语音\]\s*/, "");
           const jobId = uuid();
+          ws.send(JSON.stringify({
+            type: "voice_reply",
+            reply_to: msg.id,
+            job_id: jobId,
+            text: cleanReply,
+          }));
           ttsQueue.enqueue({ jobId, text: cleanReply, replyTo: msg.id });
-          ws.send(JSON.stringify({ type: "audio_queued", job_id: jobId, reply_to: msg.id, text: cleanReply.slice(0, 40) }));
+        } else {
+          const segments = splitIntoMessages(reply);
+          sendSegments(ws, msg.id, segments);
         }
       } catch (err) {
         console.error("[ws] Image error:", err.message);
@@ -615,6 +618,36 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "period_status") {
       const state = getPeriodState();
       ws.send(JSON.stringify({ type: "period_state", ...state }));
+      return;
+    }
+
+    if (msg.type === "period_calendar") {
+      const data = getCalendarData(msg.year, msg.month);
+      ws.send(JSON.stringify({ type: "period_calendar", ...data }));
+      return;
+    }
+
+    if (msg.type === "period_symptom") {
+      if (!msg.date) return;
+      const result = recordSymptom(msg.date, {
+        cramps: msg.cramps,
+        mood: msg.mood,
+        otherSymptoms: msg.otherSymptoms,
+        note: msg.note,
+      });
+      ws.send(JSON.stringify({ type: "period_symptom_saved", ...result }));
+      return;
+    }
+
+    if (msg.type === "period_symptom_get") {
+      const symptoms = getSymptomsForDate(msg.date);
+      ws.send(JSON.stringify({ type: "period_symptom_data", date: msg.date, symptoms }));
+      return;
+    }
+
+    if (msg.type === "period_history") {
+      const history = getPeriodHistory();
+      ws.send(JSON.stringify({ type: "period_history", history }));
       return;
     }
 
@@ -704,7 +737,6 @@ wss.on("connection", (ws, req) => {
       if (!msg.id || !msg.content?.trim()) return;
       const moment = addMomentComment(msg.id, msg.author || "me", msg.content);
       if (moment) {
-        broadcast(JSON.stringify({ type: "discover_updated", moment }));
         // If the comment is from the user (not 夏彦), 夏彦 auto-replies
         if ((msg.author || "me") === "me") {
           xiayanReplyToComment(msg.id, msg.content).then((updatedMoment) => {
@@ -712,6 +744,8 @@ wss.on("connection", (ws, req) => {
           }).catch((err) => {
             console.error("[discover] 夏彦 comment reply error:", err.message);
           });
+        } else {
+          broadcast(JSON.stringify({ type: "discover_updated", moment }));
         }
       }
       return;
