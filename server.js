@@ -121,8 +121,15 @@ function splitIntoMessages(text) {
   return segments.length > 0 ? segments : [text];
 }
 
-function sendSegments(ws, replyTo, segments, delayMs = 500) {
+function sendSegments(ws, replyTo, segments, baseDelayMs = 1500) {
+  let cumulative = 0;
   segments.forEach((seg, i) => {
+    // Delay scales with message length (shorter = less wait, longer = more)
+    // Plus random jitter ±30% so it doesn't feel robotic
+    const jitter = 1 + (Math.random() - 0.5) * 0.6;
+    const lengthFactor = Math.min(seg.length / 30, 1.5);
+    const thisDelay = baseDelayMs * lengthFactor * jitter;
+    cumulative += i === 0 ? 0 : thisDelay;
     const timer = setTimeout(() => {
       if (ws.readyState === 1) {
         ws.send(JSON.stringify({
@@ -131,7 +138,7 @@ function sendSegments(ws, replyTo, segments, delayMs = 500) {
           content: seg,
         }));
       }
-    }, i * delayMs);
+    }, cumulative);
     // Allow the timer to be cleaned up if ws closes
     ws._segmentTimers = ws._segmentTimers || [];
     ws._segmentTimers.push(timer);
