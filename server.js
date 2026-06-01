@@ -147,6 +147,32 @@ async function triggerMultimediaEvents(ws, replyTo) {
   if (now - _multimediaCooldown < 30000) return;
   _multimediaCooldown = now;
 
+  // Sticker: 8% chance, separate from scenery/gift
+  if (Math.random() < 0.08) {
+    const stickers = [
+      { id: "cute", name: "可爱" },
+      { id: "yes", name: "肯定" },
+      { id: "silly", name: "搞怪" },
+      { id: "shocked", name: "惊愕" },
+      { id: "happy", name: "开心" },
+      { id: "drink", name: "喝水" },
+      { id: "invite", name: "邀请" },
+      { id: "hug", name: "抱抱" },
+      { id: "shy", name: "害羞" },
+      { id: "perfect", name: "满分" },
+      { id: "waiting", name: "等待" },
+    ];
+    const s = stickers[Math.floor(Math.random() * stickers.length)];
+    setTimeout(() => {
+      ws.send(JSON.stringify({
+        type: "sticker",
+        sticker_id: s.id,
+        sticker_name: s.name,
+        reply_to: replyTo,
+      }));
+    }, 1500 + Math.random() * 2000);
+  }
+
   try {
     // Try scenery first (only if in travel mode)
     const scenery = await tryTriggerScenery(0.15);
@@ -642,15 +668,24 @@ wss.on("connection", (ws, req) => {
 
     if (msg.type === "discover_post") {
       if (!msg.content?.trim()) return;
+      const isMe = (msg.author || "me") === "me";
       const moment = addMoment(msg.author || "me", msg.content, msg.imageBase64, msg.imageMime, msg.title || "");
-      ws.send(JSON.stringify({ type: "discover_new", moment }));
+      broadcast(JSON.stringify({ type: "discover_new", moment }));
+      // 夏彦 automatically replies to 华生's posts
+      if (isMe) {
+        xiayanReplyToComment(moment.id, msg.content).then((updatedMoment) => {
+          if (updatedMoment) broadcast(JSON.stringify({ type: "discover_updated", moment: updatedMoment }));
+        }).catch((err) => {
+          console.error("[discover] 夏彦 auto-reply error:", err.message);
+        });
+      }
       return;
     }
 
     if (msg.type === "discover_like") {
       if (!msg.id) return;
       const moment = likeMoment(msg.id, msg.user || "me");
-      if (moment) ws.send(JSON.stringify({ type: "discover_updated", moment }));
+      if (moment) broadcast(JSON.stringify({ type: "discover_updated", moment }));
       return;
     }
 
@@ -658,11 +693,11 @@ wss.on("connection", (ws, req) => {
       if (!msg.id || !msg.content?.trim()) return;
       const moment = addMomentComment(msg.id, msg.author || "me", msg.content);
       if (moment) {
-        ws.send(JSON.stringify({ type: "discover_updated", moment }));
+        broadcast(JSON.stringify({ type: "discover_updated", moment }));
         // If the comment is from the user (not 夏彦), 夏彦 auto-replies
         if ((msg.author || "me") === "me") {
           xiayanReplyToComment(msg.id, msg.content).then((updatedMoment) => {
-            if (updatedMoment) ws.send(JSON.stringify({ type: "discover_updated", moment: updatedMoment }));
+            if (updatedMoment) broadcast(JSON.stringify({ type: "discover_updated", moment: updatedMoment }));
           }).catch((err) => {
             console.error("[discover] 夏彦 comment reply error:", err.message);
           });
@@ -674,7 +709,7 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "discover_delete_comment") {
       if (!msg.id || !msg.commentId) return;
       const moment = deleteMomentComment(msg.id, msg.commentId);
-      if (moment) ws.send(JSON.stringify({ type: "discover_updated", moment }));
+      if (moment) broadcast(JSON.stringify({ type: "discover_updated", moment }));
       return;
     }
 
