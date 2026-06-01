@@ -93,12 +93,11 @@ startProactiveDiscover((moment) => {
 
 // ── 分段发送：把长回复拆成自然短句，像真人发微信 ──
 function splitIntoMessages(text) {
-  if (!text || text.length <= 60) return [text]; // 已经很短了，不拆
+  if (!text || text.length <= 40) return [text]; // 已经很短了，不拆
 
-  // 先按段落拆
+  // 先按段落拆（AI 用空行表示"分开发送"）
   const paragraphs = text.split(/\n{2,}/).filter(Boolean);
   if (paragraphs.length > 1) {
-    // 有多个段落，每个段落作为一条消息
     return paragraphs.map((p) => p.trim()).filter(Boolean);
   }
 
@@ -106,11 +105,11 @@ function splitIntoMessages(text) {
   const sentences = text.split(/(?<=[。！？!?\n])\s*/).filter(Boolean);
   if (sentences.length <= 1) return [text];
 
-  // 把短句合并，避免过于碎片化（每段至少15字，最多80字）
+  // 每段1-2句，模拟真人发微信的节奏
   const segments = [];
   let current = "";
   for (const s of sentences) {
-    if (current && (current.length + s.length > 80 || current.length >= 40)) {
+    if (current && (current.length + s.length > 60 || current.length >= 35)) {
       segments.push(current.trim());
       current = s;
     } else {
@@ -122,7 +121,7 @@ function splitIntoMessages(text) {
   return segments.length > 0 ? segments : [text];
 }
 
-function sendSegments(ws, replyTo, segments, delayMs = 800) {
+function sendSegments(ws, replyTo, segments, delayMs = 500) {
   segments.forEach((seg, i) => {
     const timer = setTimeout(() => {
       if (ws.readyState === 1) {
@@ -452,14 +451,15 @@ wss.on("connection", (ws, req) => {
         // Voice messages always get TTS (user is speaking → reply with voice)
         const voiceTag = fullReply.startsWith("[语音]");
         const reply = voiceTag ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
-        // Send text reply immediately
-        ws.send(JSON.stringify({
-          type: "text_reply",
-          reply_to: msg.id,
-          content: reply,
-          transcribed: text,
-        }));
-        // Always queue TTS for voice messages
+
+        // Split into segments like text messages
+        const segments = splitIntoMessages(reply);
+        const mainReply = segments.join("\n\n");
+
+        // Send text reply as segments
+        sendSegments(ws, msg.id, segments);
+
+        // Always queue TTS for voice messages (use full reply for audio)
         const jobId = uuid();
         ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
         ws.send(JSON.stringify({
@@ -467,6 +467,7 @@ wss.on("connection", (ws, req) => {
           job_id: jobId,
           reply_to: msg.id,
           text: reply.slice(0, 40),
+          transcribed: text,
         }));
       } catch (err) {
         console.error("[ws] Voice error:", err.message);
@@ -508,11 +509,9 @@ wss.on("connection", (ws, req) => {
           false,
           { imageBase64: msg.base64, imageMime: msg.mime }
         );
-        ws.send(JSON.stringify({
-          type: "text_reply",
-          reply_to: msg.id,
-          content: reply,
-        }));
+        // Split and send as segments
+        const segments = splitIntoMessages(reply);
+        sendSegments(ws, msg.id, segments);
         // Notify album update
         ws.send(JSON.stringify({ type: "album_updated", photo }));
         // Check for voice tag
