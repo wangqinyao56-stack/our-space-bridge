@@ -25,7 +25,7 @@ import {
   generateAIReply,
   startProactiveDiary,
 } from "./lib/diary.js";
-import { getPetState, interact as petInteract, setName as petSetName, getProactiveReminder } from "./lib/pet.js";
+import { getPetState, getPetTalkContext, petTalk, interact as petInteract, setName as petSetName, getProactiveReminder } from "./lib/pet.js";
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
@@ -750,6 +750,22 @@ wss.on("connection", (ws, req) => {
       if (!msg.name?.trim()) return;
       const updated = petSetName(msg.name);
       ws.send(JSON.stringify({ type: "pet_state", pet: updated }));
+      return;
+    }
+
+    if (msg.type === "pet_talk") {
+      if (!msg.content?.trim()) return;
+      const result = await petTalk(msg.content);
+      ws.send(JSON.stringify({ type: "pet_state", pet: result, reaction: result.reaction }));
+      ws.send(JSON.stringify({
+        type: "pet_log",
+        id: `log_${Date.now()}`,
+        actor: "me",
+        action: "talk",
+        actionLabel: "对花生说",
+        reaction: result.reaction,
+        timestamp: Date.now(),
+      }));
       return;
     }
 
