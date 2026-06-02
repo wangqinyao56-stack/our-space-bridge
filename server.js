@@ -863,7 +863,7 @@ wss.on("connection", (ws, req) => {
 
     if (msg.type === "sticker") {
       if (!msg.sticker_id) return;
-      // Broadcast sticker to partner
+      // Broadcast sticker to partner only (NOT back to sender)
       const stickerMsg = JSON.stringify({
         type: "sticker",
         id: msg.id,
@@ -871,15 +871,14 @@ wss.on("connection", (ws, req) => {
         sticker_name: msg.sticker_name || "",
         reply_to: msg.id,
       });
-      ws.send(stickerMsg);
       for (const [otherWs, otherState] of clients) {
         if (otherWs !== ws && otherState?.authenticated) {
           otherWs.send(stickerMsg);
         }
       }
-      // Also let 夏彦 see the sticker in context so he can react naturally
+      // Let 夏彦 see the sticker so he can react naturally with text, not echo sticker back
       try {
-        const stickerContext = `华生发了一个表情包：${msg.sticker_name || msg.sticker_id}。你可以根据上下文自然回应——不用发同样的表情包回来，用文字回应就好。`;
+        const stickerContext = `华生发了一个表情包：${msg.sticker_name || msg.sticker_id}。不要发同样的表情包！用文字自然回应就好，把贴纸当成她表达的情绪来回应。`;
         const reply = await handleTextMessage(stickerContext);
         const segments = splitIntoMessages(reply);
         sendSegments(ws, msg.id, segments);
