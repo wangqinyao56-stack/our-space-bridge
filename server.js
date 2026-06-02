@@ -15,6 +15,7 @@ import {
   clearChatHistory,
   setWeatherCity,
   sttDebugLog,
+  detectSceneImage,
 } from "./lib/message-router.js";
 import {
   loadDiary,
@@ -28,7 +29,7 @@ import { getPetState, interact as petInteract, setName as petSetName, getProacti
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
-import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment } from "./lib/discover.js";
+import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift } from "./lib/gift.js";
 import { tryTriggerScenery } from "./lib/scenery.js";
 import { startProactiveChat, notifyUserActivity } from "./lib/proactive-chat.js";
@@ -41,6 +42,23 @@ process.env.GROQ_API_KEY = config.GROQ_API_KEY;
 // ── Load system prompt at startup ──
 loadSystemPrompt();
 console.log("[our-space] System prompt loaded");
+
+// ── Scene image helper for chat ──
+async function tryGetSceneImage(reply) {
+  const hint = detectSceneImage(reply);
+  if (!hint) return null;
+  try {
+    // Only use Unsplash for chat (fast), skip Flux (too slow for chat)
+    const img = await getImageForTopic(hint.imageKeyword);
+    if (img) {
+      console.log(`[scene-image] Got image for: ${hint.matchedKeyword}`);
+      return { base64: img.base64, mime: img.mime, keyword: hint.matchedKeyword };
+    }
+  } catch (e) {
+    console.log(`[scene-image] Failed: ${e.message}`);
+  }
+  return null;
+}
 
 // ── TTS Queue ──
 const ttsQueue = new TTSQueue(config.TTS.MAX_QUEUE_DEPTH);
@@ -534,6 +552,20 @@ wss.on("connection", (ws, req) => {
             }));
           }
         }).catch(() => {});
+
+        // Scene image: detect and send a relevant illustration (non-blocking)
+        tryGetSceneImage(reply).then((img) => {
+          if (img && ws.readyState === 1) {
+            ws.send(JSON.stringify({
+              type: "scene_image",
+              reply_to: msg.id,
+              base64: img.base64,
+              mime: img.mime,
+              keyword: img.keyword,
+            }));
+            console.log(`[scene-image] Sent image for: ${img.keyword}`);
+          }
+        }).catch(() => {});
       } catch (err) {
         console.error("[ws] Text error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
@@ -943,6 +975,11 @@ wss.on("connection", (ws, req) => {
         const reply = await handleTextMessage(stickerContext);
         const segments = splitIntoMessages(reply);
         sendSegments(ws, msg.id, segments);
+        tryGetSceneImage(reply).then((img) => {
+          if (img && ws.readyState === 1) {
+            ws.send(JSON.stringify({ type: "scene_image", reply_to: msg.id, base64: img.base64, mime: img.mime, keyword: img.keyword }));
+          }
+        }).catch(() => {});
       } catch (err) {
         console.error("[ws] Sticker AI error:", err.message);
       }
