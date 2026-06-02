@@ -1,0 +1,12 @@
+{
+  "date": "2026-06-02",
+  "dailyCount": 0,
+  "lastCheckTime": 0,
+  "lastProactiveTime": 0,
+  "followUp": {
+    "active": false,
+    "rounds": 0,
+    "maxRounds": 3,
+    "lastSent": 0
+  }
+}
