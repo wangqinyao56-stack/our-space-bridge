@@ -303,6 +303,67 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Admin: export/import using shared secret ──
+  function checkAdminAuth(req) {
+    const auth = req.headers.authorization || "";
+    return auth === `Bearer ${config.SHARED_SECRET}`;
+  }
+
+  if (req.method === "GET" && req.url === "/api/admin/export") {
+    if (!checkAdminAuth(req)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Unauthorized" }));
+      return;
+    }
+    try {
+      const { getRecentHistoryMessages } = await import("./lib/memory.js");
+      const { getIntimateHistory } = await import("./lib/intimate-memory.js");
+      const chatMsgs = await getRecentHistoryMessages();
+      const intimateMsgs = await getIntimateHistory();
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        chat: chatMsgs,
+        intimate: intimateMsgs,
+        exported_at: new Date().toISOString(),
+      }));
+    } catch (err) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  if (req.method === "POST" && req.url === "/api/admin/import") {
+    if (!checkAdminAuth(req)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Unauthorized" }));
+      return;
+    }
+    const body = await readBody(req);
+    try {
+      const data = JSON.parse(body);
+      const { recordUserMessage, recordBotReply } = await import("./lib/memory.js");
+      const { recordIntimateMessage } = await import("./lib/intimate-memory.js");
+      if (data.chat) {
+        for (const m of data.chat) {
+          if (m.role === "user") recordUserMessage(m.content);
+          else if (m.role === "assistant") recordBotReply(m.content);
+        }
+      }
+      if (data.intimate) {
+        for (const m of data.intimate) {
+          recordIntimateMessage(m.role, m.content);
+        }
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, imported: (data.chat?.length || 0) + (data.intimate?.length || 0) }));
+    } catch (err) {
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   // All other endpoints require auth
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
