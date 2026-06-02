@@ -923,16 +923,21 @@ wss.on("connection", (ws, req) => {
 
     if (msg.type === "discover_comment") {
       if (!msg.id || !msg.content?.trim()) return;
+      console.log("[discover] Comment from", msg.author || "me", "on", msg.id, ":", msg.content.slice(0, 40));
       const moment = addMomentComment(msg.id, msg.author || "me", msg.content);
       if (moment) {
         // Broadcast immediately so user sees their own comment
         ws.send(JSON.stringify({ type: "discover_updated", moment }));
         // If the comment is from the user, 夏彦 auto-replies asynchronously
         if ((msg.author || "me") === "me") {
+          console.log("[discover] Triggering 夏彦 comment reply...");
           xiayanReplyToComment(msg.id, msg.content).then((updatedMoment) => {
-            if (updatedMoment) broadcast(JSON.stringify({ type: "discover_updated", moment: updatedMoment }));
+            if (updatedMoment) {
+              console.log("[discover] 夏彦 reply done, broadcasting");
+              broadcast(JSON.stringify({ type: "discover_updated", moment: updatedMoment }));
+            }
           }).catch((err) => {
-            console.error("[discover] 夏彦 comment reply error:", err.message);
+            console.error("[discover] 夏彦 comment reply error:", err.message, err.stack);
           });
         }
       }
