@@ -31,7 +31,7 @@ import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift } from "./lib/gift.js";
-import { tryTriggerScenery } from "./lib/scenery.js";
+import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition } from "./lib/scenery.js";
 import { startProactiveChat, notifyUserActivity } from "./lib/proactive-chat.js";
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
@@ -402,6 +402,13 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(500);
       res.end(JSON.stringify({ error: err.message }));
     }
+    return;
+  }
+
+  // ── Travel status (no auth required) ──
+  if (req.method === "GET" && req.url === "/api/travel/status") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(getTravelState()));
     return;
   }
 
@@ -1066,6 +1073,23 @@ wss.on("connection", (ws, req) => {
 });
 
 // ── Start ──
+// ── Travel system periodic check ──
+// Check every 3 hours: maybe trigger new travel, handle day transitions
+function travelPeriodicCheck() {
+  checkDayTransition();
+  const triggered = maybeTriggerTravel();
+  if (triggered) {
+    console.log(`[travel] New travel triggered: ${triggered.reason} → ${triggered.destination}`);
+    // Broadcast travel state update to all connected clients
+    broadcast(JSON.stringify({
+      type: "travel_state",
+      travel: getTravelState(),
+    }));
+  }
+}
+travelPeriodicCheck(); // Run on startup
+setInterval(travelPeriodicCheck, 3 * 60 * 60 * 1000);
+
 server.listen(config.PORT, config.HOST, () => {
   console.log(`[our-space] Bridge server on http://${config.HOST}:${config.PORT}`);
   console.log(`[our-space] WebSocket on ws://${config.HOST}:${config.PORT}`);
