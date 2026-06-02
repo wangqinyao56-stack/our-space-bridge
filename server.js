@@ -25,7 +25,7 @@ import {
   generateAIReply,
   startProactiveDiary,
 } from "./lib/diary.js";
-import { getPetState, getPetTalkContext, petTalk, interact as petInteract, setName as petSetName, getProactiveReminder } from "./lib/pet.js";
+import { getPetState, interact as petInteract, setName as petSetName, getProactiveReminder, xiayanProactiveInteract, getLogs as getPetLogs, addLog as addPetLog } from "./lib/pet.js";
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
@@ -726,15 +726,15 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "pet_interact") {
       if (!msg.action) return;
       const result = petInteract(msg.action);
+      const log = addPetLog("me", msg.action, result.reaction);
       ws.send(JSON.stringify({ type: "pet_state", pet: result, reaction: result.reaction, action: msg.action }));
-      // Also send log entry for the app's interaction log
       ws.send(JSON.stringify({
         type: "pet_log",
-        id: `log_${Date.now()}`,
+        id: log.id,
         actor: "me",
         action: msg.action,
         reaction: result.reaction,
-        timestamp: Date.now(),
+        timestamp: log.timestamp,
       }));
       // Also send as a chat message from 夏彦 about the pet
       ws.send(JSON.stringify({
@@ -753,19 +753,9 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
-    if (msg.type === "pet_talk") {
-      if (!msg.content?.trim()) return;
-      const result = await petTalk(msg.content);
-      ws.send(JSON.stringify({ type: "pet_state", pet: result, reaction: result.reaction }));
-      ws.send(JSON.stringify({
-        type: "pet_log",
-        id: `log_${Date.now()}`,
-        actor: "me",
-        action: "talk",
-        actionLabel: "对花生说",
-        reaction: result.reaction,
-        timestamp: Date.now(),
-      }));
+    if (msg.type === "pet_get_logs") {
+      const logs = getPetLogs(100);
+      ws.send(JSON.stringify({ type: "pet_logs", logs }));
       return;
     }
 
@@ -1091,6 +1081,32 @@ wss.on("connection", (ws, req) => {
 // ── Start ──
 // ── Travel system periodic check ──
 // Check every 3 hours: maybe trigger new travel, handle day transitions
+// ── 夏彦 proactive pet care ──
+// Every 30-90 minutes, 夏彦 randomly interacts with 花生
+let xiayanPetTimer = null;
+
+function scheduleXiayanPetCare() {
+  if (xiayanPetTimer) clearTimeout(xiayanPetTimer);
+  // Random interval between 30-90 minutes
+  const delay = (30 + Math.random() * 60) * 60 * 1000;
+  xiayanPetTimer = setTimeout(() => {
+    try {
+      const result = xiayanProactiveInteract();
+      broadcast(JSON.stringify({ type: "pet_state", pet: result.pet, reaction: result.pet.reaction }));
+      broadcast(JSON.stringify({
+        type: "pet_log",
+        id: result.log.id,
+        actor: "xiayan",
+        action: result.log.action,
+        reaction: result.log.reaction,
+        timestamp: result.log.timestamp,
+      }));
+    } catch (e) { console.error("[pet] proactive care error:", e.message); }
+    scheduleXiayanPetCare(); // schedule next
+  }, delay);
+}
+scheduleXiayanPetCare();
+
 function travelPeriodicCheck() {
   checkDayTransition();
   const triggered = maybeTriggerTravel();
