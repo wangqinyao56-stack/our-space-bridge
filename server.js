@@ -13,6 +13,7 @@ import {
   getChatHistory,
   getChatHistoryMessages,
   clearChatHistory,
+  setWeatherCity,
   sttDebugLog,
 } from "./lib/message-router.js";
 import {
@@ -424,6 +425,14 @@ wss.on("connection", (ws, req) => {
 
     if (msg.type === "ping") {
       ws.send(JSON.stringify({ type: "pong" }));
+      return;
+    }
+
+    if (msg.type === "weather_city") {
+      if (msg.city) {
+        setWeatherCity(msg.city);
+        ws.send(JSON.stringify({ type: "weather_city_ok", city: msg.city }));
+      }
       return;
     }
 
