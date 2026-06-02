@@ -925,15 +925,15 @@ wss.on("connection", (ws, req) => {
       if (!msg.id || !msg.content?.trim()) return;
       const moment = addMomentComment(msg.id, msg.author || "me", msg.content);
       if (moment) {
-        // If the comment is from the user (not 夏彦), 夏彦 auto-replies
+        // Broadcast immediately so user sees their own comment
+        ws.send(JSON.stringify({ type: "discover_updated", moment }));
+        // If the comment is from the user, 夏彦 auto-replies asynchronously
         if ((msg.author || "me") === "me") {
           xiayanReplyToComment(msg.id, msg.content).then((updatedMoment) => {
             if (updatedMoment) broadcast(JSON.stringify({ type: "discover_updated", moment: updatedMoment }));
           }).catch((err) => {
             console.error("[discover] 夏彦 comment reply error:", err.message);
           });
-        } else {
-          broadcast(JSON.stringify({ type: "discover_updated", moment }));
         }
       }
       return;
