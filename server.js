@@ -140,23 +140,41 @@ startProactiveChat((message) => {
 
 // ── 分段发送：把长回复拆成自然短句，像真人发微信 ──
 function splitIntoMessages(text) {
-  if (!text || text.length <= 40) return [text]; // 已经很短了，不拆
+  if (!text || text.length <= 60) return [text]; // 短消息不拆
 
   // 先按段落拆（AI 用空行表示"分开发送"）
   const paragraphs = text.split(/\n{2,}/).filter(Boolean);
   if (paragraphs.length > 1) {
+    // 至少2段才拆，避免过度分割
+    if (paragraphs.length > 3) {
+      // 合并相邻短段
+      const merged = [];
+      let buf = "";
+      for (const p of paragraphs) {
+        const trimmed = p.trim();
+        if (!trimmed) continue;
+        if (buf && (buf.length + trimmed.length < 120)) {
+          buf += "\n" + trimmed;
+        } else {
+          if (buf) merged.push(buf);
+          buf = trimmed;
+        }
+      }
+      if (buf) merged.push(buf);
+      return merged.filter(Boolean);
+    }
     return paragraphs.map((p) => p.trim()).filter(Boolean);
   }
 
   // 单段落但很长，按句子边界拆
   const sentences = text.split(/(?<=[。！？!?\n])\s*/).filter(Boolean);
-  if (sentences.length <= 1) return [text];
+  if (sentences.length <= 2) return [text];
 
-  // 每段1-2句，模拟真人发微信的节奏
+  // 每段至少2-3句，模拟真人发微信的节奏
   const segments = [];
   let current = "";
   for (const s of sentences) {
-    if (current && (current.length + s.length > 60 || current.length >= 35)) {
+    if (current && (current.length + s.length > 100 || current.length >= 70)) {
       segments.push(current.trim());
       current = s;
     } else {
@@ -165,16 +183,21 @@ function splitIntoMessages(text) {
   }
   if (current.trim()) segments.push(current.trim());
 
+  // 最多3段，多了就合并最后几段
+  if (segments.length > 3) {
+    const last = segments.slice(2).join("");
+    return [segments[0], segments[1], last].filter(Boolean);
+  }
+
   return segments.length > 0 ? segments : [text];
 }
 
-function sendSegments(ws, replyTo, segments, baseDelayMs = 3000) {
+function sendSegments(ws, replyTo, segments, baseDelayMs = 5000) {
   let cumulative = 0;
   segments.forEach((seg, i) => {
-    // Delay scales with message length (shorter = less wait, longer = more)
-    // Plus random jitter ±30% so it doesn't feel robotic
-    const jitter = 1 + (Math.random() - 0.5) * 0.6;
-    const lengthFactor = Math.min(seg.length / 30, 1.5);
+    // Delay scales with message length + random jitter so it feels natural
+    const jitter = 1 + (Math.random() - 0.5) * 0.4;
+    const lengthFactor = Math.min(seg.length / 40, 1.6);
     const thisDelay = baseDelayMs * lengthFactor * jitter;
     cumulative += i === 0 ? 0 : thisDelay;
     const timer = setTimeout(() => {
