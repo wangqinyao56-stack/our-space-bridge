@@ -603,7 +603,16 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "pet_interact") {
       if (!msg.action) return;
       const result = petInteract(msg.action);
-      ws.send(JSON.stringify({ type: "pet_state", pet: result, reaction: result.reaction }));
+      ws.send(JSON.stringify({ type: "pet_state", pet: result, reaction: result.reaction, action: msg.action }));
+      // Also send log entry for the app's interaction log
+      ws.send(JSON.stringify({
+        type: "pet_log",
+        id: `log_${Date.now()}`,
+        actor: "me",
+        action: msg.action,
+        reaction: result.reaction,
+        timestamp: Date.now(),
+      }));
       // Also send as a chat message from 夏彦 about the pet
       ws.send(JSON.stringify({
         type: "text_reply",
