@@ -517,8 +517,17 @@ const wss = new WebSocketServer({ server });
 
 wss.on("connection", (ws, req) => {
   const ip = req.socket.remoteAddress;
-  console.log(`[ws] Connected: ${ip}`);
-  clients.set(ws, { authenticated: false });
+  const connId = Math.random().toString(36).slice(2, 6);
+  console.log(`[ws] Connected: ${ip} #${connId} (total: ${clients.size + 1})`);
+  clients.set(ws, { authenticated: false, connId, connectedAt: Date.now() });
+  recentMsgs.push({ ts: new Date().toISOString(), type: "__ws_connected", connId, total: clients.size });
+  if (recentMsgs.length > 30) recentMsgs.shift();
+
+  ws.on("close", () => {
+    console.log(`[ws] Disconnected: ${ip} #${connId}`);
+    recentMsgs.push({ ts: new Date().toISOString(), type: "__ws_disconnected", connId });
+    if (recentMsgs.length > 30) recentMsgs.shift();
+  });
 
   ws.on("message", async (data) => {
     let msg;
@@ -530,7 +539,7 @@ wss.on("connection", (ws, req) => {
     }
 
     // Log ALL messages before auth check
-    recentMsgs.push({ ts: new Date().toISOString(), type: msg.type, hasId: !!msg.id, auth: clients.get(ws)?.authenticated ?? false });
+    recentMsgs.push({ ts: new Date().toISOString(), type: msg.type, hasId: !!msg.id, auth: clients.get(ws)?.authenticated ?? false, conn: clients.get(ws)?.connId });
     if (recentMsgs.length > 30) recentMsgs.shift();
 
     // Auth must be first message
