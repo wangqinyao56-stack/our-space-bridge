@@ -1,0 +1,4 @@
+{
+  "start_command": "node server.js",
+  "cache_dependencies": true
+}
