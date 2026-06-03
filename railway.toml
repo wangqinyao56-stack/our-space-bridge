@@ -1,0 +1,14 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+numReplicas = 1
+
+[service]
+port = 3456
+
+# Persistent data volume — prevents data loss on redeploy
+# Mount this volume at /data and set DATA_DIR=/data in service env vars
+[volumes]
+name = "our-space-data"
+mountPath = "/data"
