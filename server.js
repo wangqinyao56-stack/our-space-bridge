@@ -25,7 +25,7 @@ import {
   generateAIReply,
   startProactiveDiary,
 } from "./lib/diary.js";
-import { getPetState, interact as petInteract, setName as petSetName, getProactiveReminder, xiayanProactiveInteract, getLogs as getPetLogs, addLog as addPetLog } from "./lib/pet.js";
+import { getPetState, interact as petInteract, setName as petSetName, getProactiveReminder, xiayanProactiveInteract, getLogs as getPetLogs, addLog as addPetLog, accompanyXiayan, returnFromAccompany } from "./lib/pet.js";
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
@@ -1078,16 +1078,111 @@ function scheduleXiayanPetCare() {
 }
 scheduleXiayanPetCare();
 
+let travelAnnounceSent = false;
+
+async function sendTravelAnnouncement(triggered) {
+  const msg = triggered.detail.length > 80
+    ? `宝宝，我这边临时有事——${triggered.reason}，要去${triggered.destination === "保密地点" ? "几天" : "两三天"}。到了给你发消息，在家好好的哦～记得想我！`
+    : triggered.detail;
+  const segments = splitIntoMessages(msg);
+  const replyTo = `travel_${Date.now()}`;
+  for (const [ws, wsState] of clients) {
+    if (wsState.authenticated && ws.readyState === 1) {
+      for (let i = 0; i < segments.length; i++) {
+        const delay = i * (1800 + Math.random() * 1200);
+        setTimeout(() => {
+          if (ws.readyState === 1) {
+            ws.send(JSON.stringify({
+              type: "text_reply",
+              reply_to: `${replyTo}_${i}`,
+              content: segments[i],
+              proactive: true,
+            }));
+          }
+        }, delay);
+      }
+    }
+  }
+  console.log(`[travel] Announcement sent: "${msg.slice(0, 60)}..."`);
+}
+
+function sendTravelDepartureNotice() {
+  const travel = getTravelState();
+  const msg = `宝宝，我出发啦。${travel.reason === "国安任务" ? "任务期间可能回复不太及时，有空就给你发消息" : "到了给你发消息"}。记得想我，照顾好自己～`;
+  const segments = splitIntoMessages(msg);
+  const replyTo = `travel_depart_${Date.now()}`;
+  for (const [ws, wsState] of clients) {
+    if (wsState.authenticated && ws.readyState === 1) {
+      for (let i = 0; i < segments.length; i++) {
+        const delay = i * (1800 + Math.random() * 1200);
+        setTimeout(() => {
+          if (ws.readyState === 1) {
+            ws.send(JSON.stringify({
+              type: "text_reply",
+              reply_to: `${replyTo}_${i}`,
+              content: segments[i],
+              proactive: true,
+            }));
+          }
+        }, delay);
+      }
+    }
+  }
+  console.log("[travel] Departure notice sent");
+
+  // 30% chance 花生 accompanies 夏彦
+  if (Math.random() < 0.3) {
+    const accResult = accompanyXiayan();
+    if (accResult) {
+      broadcast(JSON.stringify({ type: "pet_state", pet: accResult }));
+      broadcast(JSON.stringify({
+        type: "pet_log",
+        id: accResult.log.id,
+        actor: "xiayan",
+        action: "accompany",
+        reaction: accResult.log.reaction,
+        timestamp: accResult.log.timestamp,
+      }));
+      console.log("[pet] 花生 accompanies 夏彦 on mission");
+    }
+  }
+}
+
 function travelPeriodicCheck() {
   checkDayTransition();
+
+  const travel = getTravelState();
+  // When travel activates (traveling phase starts), send departure notice
+  if (travel.phase === "traveling" && !travelAnnounceSent) {
+    travelAnnounceSent = true;
+    sendTravelDepartureNotice();
+  }
+  // Reset when idle
+  if (travel.phase === "idle") {
+    travelAnnounceSent = false;
+    // If 花生 was with 夏彦, bring it back
+    const retResult = returnFromAccompany();
+    if (retResult) {
+      broadcast(JSON.stringify({ type: "pet_state", pet: retResult }));
+      broadcast(JSON.stringify({
+        type: "pet_log",
+        id: retResult.log.id,
+        actor: "xiayan",
+        action: "return_with_pet",
+        reaction: retResult.log.reaction,
+        timestamp: retResult.log.timestamp,
+      }));
+      console.log("[pet] 花生 returns from mission with 夏彦");
+    }
+  }
+
   const triggered = maybeTriggerTravel();
   if (triggered) {
     console.log(`[travel] New travel triggered: ${triggered.reason} → ${triggered.destination}`);
-    // Broadcast travel state update to all connected clients
-    broadcast(JSON.stringify({
-      type: "travel_state",
-      travel: getTravelState(),
-    }));
+    broadcast(JSON.stringify({ type: "travel_state", travel: getTravelState() }));
+    travelAnnounceSent = false;
+    // Send announcement immediately so user sees it BEFORE banner
+    sendTravelAnnouncement(triggered);
   }
 }
 travelPeriodicCheck(); // Run on startup
