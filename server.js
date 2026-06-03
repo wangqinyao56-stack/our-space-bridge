@@ -294,6 +294,7 @@ async function triggerMultimediaEvents(ws, replyTo) {
 
 // ── Connected clients ──
 const clients = new Map(); // ws → { authenticated: bool }
+const recentMsgs = []; // ring buffer: { ts, type, contentLen, success, err? }
 
 function broadcast(data) {
   for (const [ws, state] of clients) {
@@ -319,7 +320,7 @@ const server = http.createServer(async (req, res) => {
   // Health check
   if (req.method === "GET" && req.url === "/api/ping") {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, clients: clients.size, tts_queue: ttsQueue.length, version: "2026-05-30-v4" }));
+    res.end(JSON.stringify({ ok: true, clients: clients.size, tts_queue: ttsQueue.length, version: "2026-06-04-v6", recent: recentMsgs.slice(-10) }));
     return;
   }
 
@@ -546,6 +547,10 @@ wss.on("connection", (ws, req) => {
       ws.send(JSON.stringify({ type: "error", message: "Not authenticated" }));
       return;
     }
+
+    // Log all messages for debugging
+    recentMsgs.push({ ts: new Date().toISOString(), type: msg.type, hasId: !!msg.id });
+    if (recentMsgs.length > 30) recentMsgs.shift();
 
     if (msg.type === "ping") {
       ws.send(JSON.stringify({ type: "pong" }));
