@@ -34,6 +34,7 @@ import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } 
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery } from "./lib/scenery.js";
+import { isHuashengTraveling, getHuashengTravelState } from "./lib/huasheng-travel.js";
 import { startProactiveChat, notifyUserActivity } from "./lib/proactive-chat.js";
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
@@ -399,7 +400,10 @@ const server = http.createServer(async (req, res) => {
   // ── Travel status (no auth required) ──
   if (req.method === "GET" && req.url === "/api/travel/status") {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(getTravelState()));
+    res.end(JSON.stringify({
+      xiayan: getTravelState(),
+      huasheng: getHuashengTravelState(),
+    }));
     return;
   }
 
@@ -540,7 +544,12 @@ wss.on("connection", (ws, req) => {
       if (!msg.content?.trim()) return;
       try {
         notifyUserActivity();
+        const hsBefore = getHuashengTravelState().active;
         const fullReply = await handleTextMessage(msg.content);
+        const hsAfter = getHuashengTravelState().active;
+        if (hsBefore !== hsAfter) {
+          broadcast(JSON.stringify({ type: "travel_state", xiayan: getTravelState(), huasheng: getHuashengTravelState() }));
+        }
         // Check for [语音] tag — only generate TTS when AI requests it
         const voiceTag = fullReply.startsWith("[语音]");
         const reply = voiceTag ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
@@ -598,7 +607,12 @@ wss.on("connection", (ws, req) => {
       if (!msg.content?.trim()) return;
       try {
         notifyUserActivity();
+        const hsBefore = getHuashengTravelState().active;
         const reply = await handleIntimateMessage(msg.content);
+        const hsAfter = getHuashengTravelState().active;
+        if (hsBefore !== hsAfter) {
+          broadcast(JSON.stringify({ type: "travel_state", xiayan: getTravelState(), huasheng: getHuashengTravelState() }));
+        }
         ws.send(JSON.stringify({
           type: "intimate_reply",
           reply_to: msg.id,
@@ -1286,7 +1300,7 @@ function travelPeriodicCheck() {
 
   // Broadcast travel state when phase changes
   if (prevPhase !== newPhase) {
-    broadcast(JSON.stringify({ type: "travel_state", travel: getTravelState() }));
+    broadcast(JSON.stringify({ type: "travel_state", xiayan: getTravelState(), huasheng: getHuashengTravelState() }));
     console.log(`[travel] Phase transition: ${prevPhase} → ${newPhase}`);
   }
 
@@ -1318,7 +1332,7 @@ function travelPeriodicCheck() {
   const triggered = maybeTriggerTravel();
   if (triggered) {
     console.log(`[travel] New travel triggered: ${triggered.reason} → ${triggered.destination}`);
-    broadcast(JSON.stringify({ type: "travel_state", travel: getTravelState() }));
+    broadcast(JSON.stringify({ type: "travel_state", xiayan: getTravelState(), huasheng: getHuashengTravelState() }));
     travelAnnounceSent = false;
     // Send announcement immediately so user sees it BEFORE banner
     sendTravelAnnouncement(triggered);
