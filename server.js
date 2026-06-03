@@ -1354,9 +1354,21 @@ async function proactiveSceneryCheck() {
 // Start the proactive scenery loop after a short initial delay
 setTimeout(proactiveSceneryCheck, 5 * 60 * 1000);
 
+process.on("uncaughtException", (err) => {
+  console.error("[fatal] uncaughtException:", err.message, err.stack);
+  process.exit(1);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[fatal] unhandledRejection:", reason);
+});
+
+console.log("[our-space] Starting...");
+console.log("[our-space] PORT env:", process.env.PORT);
+console.log("[our-space] DATA_DIR env:", process.env.DATA_DIR);
+
 server.listen(config.PORT, config.HOST, () => {
   console.log(`[our-space] Bridge server on http://${config.HOST}:${config.PORT}`);
   console.log(`[our-space] WebSocket on ws://${config.HOST}:${config.PORT}`);
   console.log(`[our-space] Shared secret: ${config.SHARED_SECRET === "our-space-default-secret-change-me" ? "⚠ USING DEFAULT (change via OUR_SPACE_SECRET env)" : "✓ configured"}`);
 });
-// force redeploy 1780136313
+// force redeploy 1780136314
