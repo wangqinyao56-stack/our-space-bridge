@@ -17,6 +17,7 @@ import {
   clearIntimateHistory,
   setWeatherCity,
   sttDebugLog,
+  intimateDebugLog,
   detectSceneImage,
 } from "./lib/message-router.js";
 import {
@@ -328,6 +329,12 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ log: sttDebugLog }, null, 2));
     return;
   }
+  // Intimate processing debug log
+  if (req.method === "GET" && req.url === "/api/debug/intimate") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ log: intimateDebugLog }, null, 2));
+    return;
+  }
 
   // Auth
   if (req.method === "POST" && req.url === "/api/auth") {
@@ -636,6 +643,8 @@ wss.on("connection", (ws, req) => {
         triggerMultimediaEvents(ws, msg.id);
       } catch (err) {
         console.error("[ws] Intimate text error:", err.message);
+        intimateDebugLog.push({ timestamp: new Date().toISOString(), stage: "ws_error", error: err.message });
+        if (intimateDebugLog.length > 20) intimateDebugLog.shift();
         ws.send(JSON.stringify({ type: "error", message: err.message }));
       }
       return;
