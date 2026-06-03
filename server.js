@@ -124,7 +124,7 @@ startProactiveChat((message) => {
   for (const [ws, wsState] of clients) {
     if (wsState.authenticated && ws.readyState === 1) {
       for (let i = 0; i < segments.length; i++) {
-        const delay = i * (1800 + Math.random() * 1200);
+        const delay = i * (3000 + Math.random() * 4000);
         setTimeout(() => {
           if (ws.readyState === 1) {
             ws.send(JSON.stringify({
@@ -177,12 +177,12 @@ async function generateInspirationComment(note) {
   }
 }
 
-function sendSegments(ws, replyTo, segments, baseDelayMs = 5000) {
+function sendSegments(ws, replyTo, segments, baseDelayMs = 8000 + Math.random() * 6000) {
   let cumulative = 0;
   segments.forEach((seg, i) => {
     // Delay scales with message length + random jitter so it feels natural
-    const jitter = 1 + (Math.random() - 0.5) * 0.4;
-    const lengthFactor = Math.min(seg.length / 40, 1.6);
+    const jitter = 1 + (Math.random() - 0.5) * 0.3;
+    const lengthFactor = Math.min(seg.length / 50, 1.5);
     const thisDelay = baseDelayMs * lengthFactor * jitter;
     cumulative += i === 0 ? 0 : thisDelay;
     const timer = setTimeout(() => {
@@ -1110,8 +1110,7 @@ wss.on("connection", (ws, req) => {
       }
       // Let 夏彦 see the sticker so he can react naturally with text, not echo sticker back
       try {
-        const stickerContext = `华生发了一个表情包：${msg.sticker_name || msg.sticker_id}。不要发同样的表情包！用文字自然回应就好，把贴纸当成她表达的情绪来回应。`;
-        const reply = await handleTextMessage(stickerContext);
+        const reply = await handleTextMessage(`华生发了一个表情包。不要评价这个表情包本身——不要说你发了个xx表情、这个表情好可爱之类的话。就当没看到表情包，继续聊之前的话题或者自然地开启新话题。`);
         const segments = splitIntoMessages(reply);
         sendSegments(ws, msg.id, segments);
         tryGetSceneImage(reply).then((img) => {
@@ -1221,7 +1220,7 @@ async function sendTravelAnnouncement(triggered) {
   for (const [ws, wsState] of clients) {
     if (wsState.authenticated && ws.readyState === 1) {
       for (let i = 0; i < segments.length; i++) {
-        const delay = i * (1800 + Math.random() * 1200);
+        const delay = i * (3000 + Math.random() * 4000);
         setTimeout(() => {
           if (ws.readyState === 1) {
             ws.send(JSON.stringify({
@@ -1246,7 +1245,7 @@ function sendTravelDepartureNotice() {
   for (const [ws, wsState] of clients) {
     if (wsState.authenticated && ws.readyState === 1) {
       for (let i = 0; i < segments.length; i++) {
-        const delay = i * (1800 + Math.random() * 1200);
+        const delay = i * (3000 + Math.random() * 4000);
         setTimeout(() => {
           if (ws.readyState === 1) {
             ws.send(JSON.stringify({
