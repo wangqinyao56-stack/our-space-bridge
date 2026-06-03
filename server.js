@@ -463,6 +463,29 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Intimate text via HTTP (fallback for WebSocket issues)
+  if (req.method === "POST" && req.url === "/api/messages/intimate_text") {
+    const body = await readBody(req);
+    try {
+      const { text } = JSON.parse(body);
+      if (!text?.trim()) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: "Missing text" }));
+        return;
+      }
+      const reply = await handleIntimateMessage(text);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ reply }));
+    } catch (err) {
+      console.error("[api] Intimate text error:", err.message);
+      intimateDebugLog.push({ timestamp: new Date().toISOString(), stage: "http_error", error: err.message });
+      if (intimateDebugLog.length > 20) intimateDebugLog.shift();
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   // Send voice message
   if (req.method === "POST" && req.url === "/api/messages/voice") {
     try {
