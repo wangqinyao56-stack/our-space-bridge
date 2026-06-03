@@ -30,7 +30,7 @@ import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRan
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
-import { tryTriggerGift } from "./lib/gift.js";
+import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery } from "./lib/scenery.js";
 import { startProactiveChat, notifyUserActivity } from "./lib/proactive-chat.js";
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
@@ -258,8 +258,10 @@ async function triggerMultimediaEvents(ws, replyTo) {
       if (gift) {
         ws.send(JSON.stringify({
           type: "gift_event",
+          gift_id: gift.id,
           name: gift.name,
           message: gift.message,
+          description: gift.description,
           category: gift.category,
           image_base64: gift.imageBase64,
           is_special: gift.isSpecial,
@@ -922,6 +924,44 @@ wss.on("connection", (ws, req) => {
       if (!msg.id) return;
       deletePhoto(msg.id);
       ws.send(JSON.stringify({ type: "album_list", photos: getPhotos() }));
+      return;
+    }
+
+    // ── Gift ──
+    if (msg.type === "gift_get") {
+      if (!msg.gift_id) return;
+      const gift = getGift(msg.gift_id);
+      if (!gift) { ws.send(JSON.stringify({ type: "error", message: "Gift not found" })); return; }
+      const image = getGiftImage(msg.gift_id);
+      ws.send(JSON.stringify({
+        type: "gift_detail",
+        gift,
+        imageBase64: image?.base64 || null,
+        mime: image?.mime || null,
+      }));
+      return;
+    }
+
+    if (msg.type === "gift_comment") {
+      if (!msg.gift_id || !msg.content?.trim()) return;
+      const gift = addGiftComment(msg.gift_id, msg.author || "me", msg.content);
+      if (!gift) { ws.send(JSON.stringify({ type: "error", message: "Gift not found" })); return; }
+      broadcast(JSON.stringify({ type: "gift_updated", gift }));
+      if ((msg.author || "me") === "me") {
+        generateXiaYanGiftReply(msg.gift_id, msg.content).then((updated) => {
+          if (updated) broadcast(JSON.stringify({ type: "gift_updated", gift: updated }));
+        }).catch(() => {});
+      }
+      return;
+    }
+
+    if (msg.type === "gift_delete_comment") {
+      if (!msg.gift_id || !msg.comment_id) return;
+      const ok = deleteGiftComment(msg.gift_id, msg.comment_id);
+      if (ok) {
+        const gift = getGift(msg.gift_id);
+        if (gift) broadcast(JSON.stringify({ type: "gift_updated", gift }));
+      }
       return;
     }
 
