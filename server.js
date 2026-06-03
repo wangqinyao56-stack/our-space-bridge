@@ -163,7 +163,17 @@ function splitIntoMessages(text) {
 }
 
 // ── 夏彦评论灵感笔记 ──
+const FALLBACK_COMMENTS = [
+  "哇～这个想法好棒！我已经能想象到画面了。",
+  "这个有意思！你画的时候我在旁边给你泡茶～",
+  "嘿嘿，这个灵感让我想到我们上次一起看的那个展。",
+  "哦～这个方向不错诶，华生厉害！",
+  "这个主意好！画完了第一个给我看哦。",
+  "嗯～我觉得这个画出来一定特别美。",
+];
+
 async function generateInspirationComment(note) {
+  // Try AI first
   try {
     const prompt = `你是夏彦，你看到华生在App里写了一条绘画灵感笔记。笔记内容是："${note.text}"。用夏彦的口吻留一条简短的评论——可以是对灵感的看法、鼓励、或者联想到的趣事。1-2句话即可，自然口语化，不要评价画功。`;
     const reply = await askDeepSeek({
@@ -172,10 +182,12 @@ async function generateInspirationComment(note) {
       history: [],
       maxTokens: 100,
     });
-    return reply?.trim() || null;
-  } catch {
-    return null;
+    if (reply?.trim()) return reply.trim();
+  } catch (e) {
+    console.error("[inspiration] DeepSeek failed:", e.message || e);
   }
+  // Fallback
+  return FALLBACK_COMMENTS[Math.floor(Math.random() * FALLBACK_COMMENTS.length)];
 }
 
 function sendSegments(ws, replyTo, segments, baseDelayMs = 8000 + Math.random() * 6000) {
@@ -814,22 +826,35 @@ wss.on("connection", (ws, req) => {
       if (!msg.text?.trim()) return;
       const note = inspirationCreate(msg.text);
       ws.send(JSON.stringify({ type: "inspiration_updated", note, notes: inspirationGetAll() }));
-      // 夏彦 may comment on new inspiration
-      setTimeout(async () => {
-        try {
-          console.log("[inspiration] Generating xiayan comment for note:", note.id);
-          const comment = await generateInspirationComment(note);
-          console.log("[inspiration] Comment generated:", comment);
+      // 夏彦 comments on new inspiration (background, no delay)
+      const creatorWs = ws;
+      generateInspirationComment(note)
+        .then((comment) => {
+          console.log("[inspiration] Got comment:", comment);
           if (comment) {
-            const saved = inspirationAddComment(note.id, "xiayan", comment);
-            console.log("[inspiration] Comment saved:", saved?.id);
-            broadcast(JSON.stringify({ type: "inspiration_updated", note: inspirationGet(note.id), notes: inspirationGetAll() }));
-            console.log("[inspiration] Broadcast sent");
+            inspirationAddComment(note.id, "xiayan", comment);
+            const payload = JSON.stringify({
+              type: "inspiration_updated",
+              note: inspirationGet(note.id),
+              notes: inspirationGetAll(),
+            });
+            // Send to creator first
+            if (creatorWs.readyState === 1) {
+              creatorWs.send(payload);
+              console.log("[inspiration] Sent to creator");
+            }
+            // Broadcast to others
+            for (const [other, s] of clients) {
+              if (other !== creatorWs && s.authenticated && other.readyState === 1) {
+                other.send(payload);
+              }
+            }
+            console.log("[inspiration] Update sent to", clients.size, "clients");
+          } else {
+            console.log("[inspiration] No comment generated");
           }
-        } catch (e) {
-          console.error("[inspiration] Comment generation failed:", e.message || e);
-        }
-      }, 8000 + Math.random() * 5000);
+        })
+        .catch((e) => console.error("[inspiration] Comment failed:", e.message || e));
       return;
     }
 
