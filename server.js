@@ -529,6 +529,10 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    // Log ALL messages before auth check
+    recentMsgs.push({ ts: new Date().toISOString(), type: msg.type, hasId: !!msg.id, auth: clients.get(ws)?.authenticated ?? false });
+    if (recentMsgs.length > 30) recentMsgs.shift();
+
     // Auth must be first message
     if (msg.type === "auth") {
       if (verifyAuth(msg.token)) {
@@ -547,10 +551,6 @@ wss.on("connection", (ws, req) => {
       ws.send(JSON.stringify({ type: "error", message: "Not authenticated" }));
       return;
     }
-
-    // Log all messages for debugging
-    recentMsgs.push({ ts: new Date().toISOString(), type: msg.type, hasId: !!msg.id });
-    if (recentMsgs.length > 30) recentMsgs.shift();
 
     if (msg.type === "ping") {
       ws.send(JSON.stringify({ type: "pong" }));
