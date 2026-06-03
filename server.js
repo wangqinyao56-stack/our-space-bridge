@@ -149,8 +149,8 @@ function splitIntoMessages(text) {
   const sentences = text.split(/(?<=[。！？!?\n])\s*/).filter(s => s.trim());
   if (sentences.length <= 1) return [text];
 
-  // 每句独立成段，最多5条
-  const segments = sentences.map(s => s.trim()).filter(Boolean);
+  // 每句独立成段，最多5条。去掉句号让语气更口语化
+  const segments = sentences.map(s => s.trim().replace(/[。]+$/, "")).filter(Boolean);
   if (segments.length > 5) {
     // 第5条之后全部合并到最后一条
     const first4 = segments.slice(0, 4);
