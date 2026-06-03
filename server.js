@@ -817,12 +817,18 @@ wss.on("connection", (ws, req) => {
       // 夏彦 may comment on new inspiration
       setTimeout(async () => {
         try {
+          console.log("[inspiration] Generating xiayan comment for note:", note.id);
           const comment = await generateInspirationComment(note);
+          console.log("[inspiration] Comment generated:", comment);
           if (comment) {
             const saved = inspirationAddComment(note.id, "xiayan", comment);
+            console.log("[inspiration] Comment saved:", saved?.id);
             broadcast(JSON.stringify({ type: "inspiration_updated", note: inspirationGet(note.id), notes: inspirationGetAll() }));
+            console.log("[inspiration] Broadcast sent");
           }
-        } catch {}
+        } catch (e) {
+          console.error("[inspiration] Comment generation failed:", e.message || e);
+        }
       }, 8000 + Math.random() * 5000);
       return;
     }
