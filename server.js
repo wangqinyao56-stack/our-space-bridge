@@ -1315,14 +1315,9 @@ function travelPeriodicCheck() {
     }
   }
 
-  const triggered = maybeTriggerTravel();
-  if (triggered) {
-    console.log(`[travel] New travel triggered: ${triggered.reason} → ${triggered.destination}`);
-    broadcast(JSON.stringify({ type: "travel_state", travel: getTravelState() }));
-    travelAnnounceSent = false;
-    // Send announcement immediately so user sees it BEFORE banner
-    sendTravelAnnouncement(triggered);
-  }
+  // 自动旅行已禁用 — 夏彦默认在家，只有华生主动提旅行/出差才触发
+  // const triggered = maybeTriggerTravel();
+  // if (triggered) { ... }
 }
 travelPeriodicCheck(); // Run on startup
 setInterval(travelPeriodicCheck, 3 * 60 * 60 * 1000);
