@@ -12,7 +12,9 @@ import {
   handleVoiceMessage,
   getChatHistory,
   getChatHistoryMessages,
+  getIntimateHistoryMessages,
   clearChatHistory,
+  clearIntimateHistory,
   setWeatherCity,
   sttDebugLog,
   detectSceneImage,
@@ -649,7 +651,10 @@ wss.on("connection", (ws, req) => {
     }
 
     if (msg.type === "get_history") {
-      const rawMessages = await getChatHistoryMessages();
+      const channel = msg.channel || "chat";
+      const rawMessages = channel === "intimate"
+        ? await getIntimateHistoryMessages()
+        : await getChatHistoryMessages();
       // Convert to app Message format
       const messages = rawMessages.map((m, i) => ({
         id: `h${i}_${Date.now()}`,
@@ -659,13 +664,18 @@ wss.on("connection", (ws, req) => {
         status: "delivered",
         timestamp: Date.now() - (rawMessages.length - i) * 1000,
       }));
-      ws.send(JSON.stringify({ type: "history", messages }));
+      ws.send(JSON.stringify({ type: "history", channel, messages }));
       return;
     }
 
     if (msg.type === "clear_history") {
-      clearChatHistory();
-      ws.send(JSON.stringify({ type: "history_cleared" }));
+      const channel = msg.channel || "chat";
+      if (channel === "intimate") {
+        await clearIntimateHistory();
+      } else {
+        clearChatHistory();
+      }
+      ws.send(JSON.stringify({ type: "history_cleared", channel }));
       return;
     }
 
