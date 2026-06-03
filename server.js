@@ -35,6 +35,7 @@ import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, che
 import { startProactiveChat, notifyUserActivity } from "./lib/proactive-chat.js";
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
+import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -156,6 +157,22 @@ function splitIntoMessages(text) {
   }
 
   return segments;
+}
+
+// ── 夏彦评论灵感笔记 ──
+async function generateInspirationComment(note) {
+  try {
+    const prompt = `你是夏彦，你看到华生在App里写了一条绘画灵感笔记。笔记内容是："${note.text}"。用夏彦的口吻留一条简短的评论——可以是对灵感的看法、鼓励、或者联想到的趣事。1-2句话即可，自然口语化，不要评价画功。`;
+    const reply = await askDeepSeek({
+      systemPrompt: "你是夏彦，国安部特工+私家侦探，对华生温柔撒娇。回复简短口语化，1-2句话。",
+      userContent: prompt,
+      history: [],
+      maxTokens: 100,
+    });
+    return reply?.trim() || null;
+  } catch {
+    return null;
+  }
 }
 
 function sendSegments(ws, replyTo, segments, baseDelayMs = 5000) {
@@ -753,6 +770,67 @@ wss.on("connection", (ws, req) => {
       if (!msg.id) return;
       deleteTodo(msg.id);
       ws.send(JSON.stringify({ type: "todo_updated", todo: null, todos: getTodos() }));
+      return;
+    }
+
+    // ── Inspiration notes ──
+    if (msg.type === "inspiration_list") {
+      const list = inspirationGetAll();
+      ws.send(JSON.stringify({ type: "inspiration_list", notes: list }));
+      return;
+    }
+
+    if (msg.type === "inspiration_create") {
+      if (!msg.text?.trim()) return;
+      const note = inspirationCreate(msg.text);
+      ws.send(JSON.stringify({ type: "inspiration_updated", note, notes: inspirationGetAll() }));
+      // 夏彦 may comment on new inspiration
+      setTimeout(async () => {
+        try {
+          const comment = await generateInspirationComment(note);
+          if (comment) {
+            const saved = inspirationAddComment(note.id, "xiayan", comment);
+            broadcast(JSON.stringify({ type: "inspiration_updated", note: inspirationGet(note.id), notes: inspirationGetAll() }));
+          }
+        } catch {}
+      }, 8000 + Math.random() * 5000);
+      return;
+    }
+
+    if (msg.type === "inspiration_update") {
+      if (!msg.id) return;
+      let note = null;
+      if (msg.status) note = inspirationUpdateStatus(msg.id, msg.status);
+      if (msg.text) note = inspirationUpdateText(msg.id, msg.text);
+      if (note) {
+        ws.send(JSON.stringify({ type: "inspiration_updated", note, notes: inspirationGetAll() }));
+        // 夏彦 reacts when note is completed
+        if (msg.status === "completed") {
+          setTimeout(async () => {
+            try {
+              const comment = `哇，这个灵感完成了！好厉害～快让我看看成品！`;
+              const saved = inspirationAddComment(note.id, "xiayan", comment);
+              broadcast(JSON.stringify({ type: "inspiration_updated", note: inspirationGet(note.id), notes: inspirationGetAll() }));
+            } catch {}
+          }, 5000 + Math.random() * 3000);
+        }
+      }
+      return;
+    }
+
+    if (msg.type === "inspiration_delete") {
+      if (!msg.id) return;
+      inspirationDelete(msg.id);
+      ws.send(JSON.stringify({ type: "inspiration_deleted", id: msg.id, notes: inspirationGetAll() }));
+      return;
+    }
+
+    if (msg.type === "inspiration_comment") {
+      if (!msg.id || !msg.text?.trim()) return;
+      const comment = inspirationAddComment(msg.id, "me", msg.text);
+      if (comment) {
+        ws.send(JSON.stringify({ type: "inspiration_updated", note: inspirationGet(msg.id), notes: inspirationGetAll() }));
+      }
       return;
     }
 
