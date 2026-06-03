@@ -9,3 +9,7 @@ port = 3456
 
 [variables]
 DATA_DIR = "/data"
+
+[volumes]
+  [volumes."our-space-data"]
+    mountPath = "/data"
