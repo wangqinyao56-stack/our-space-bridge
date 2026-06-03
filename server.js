@@ -148,7 +148,8 @@ function splitIntoMessages(text) {
 
   // 按句子边界拆——句号/问号/感叹号/换行都是分割点
   // 中英文句号都支持，英文句号要求后面跟空格/换行/结尾避免误拆URL
-  const sentences = text.split(/(?<=[。！？!?\n])\s*|(?<=\.)(?=\s+|$))/).filter(s => s.trim());
+  const sentences = text.split(/(?<=[。！？!?\n])\s*|(?<=\.)(?=\s+|$)/).filter(s => s.trim());
+
   if (sentences.length <= 1) return [text];
 
   // 每句独立成段，最多5条。去掉结尾句号让语气更口语化
