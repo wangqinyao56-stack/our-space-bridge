@@ -442,6 +442,9 @@ const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     try {
       const { text, request_tts } = JSON.parse(body);
+      console.log("[http] Text request, len:", text?.length || 0);
+      recentMsgs.push({ ts: new Date().toISOString(), type: "__http_text", len: text?.length || 0 });
+      if (recentMsgs.length > 30) recentMsgs.shift();
       if (!text?.trim()) {
         res.writeHead(400);
         res.end(JSON.stringify({ error: "Missing text" }));
