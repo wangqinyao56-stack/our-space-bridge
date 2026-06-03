@@ -249,23 +249,27 @@ async function triggerMultimediaEvents(ws, replyTo) {
     console.error("[scenery] Trigger error:", err.message);
   }
 
-  try {
-    // Try gift (low random chance)
-    const gift = await tryTriggerGift(0.05);
-    if (gift) {
-      ws.send(JSON.stringify({
-        type: "gift_event",
-        name: gift.name,
-        message: gift.message,
-        category: gift.category,
-        image_base64: gift.imageBase64,
-        is_special: gift.isSpecial,
-        reply_to: replyTo,
-      }));
-      console.log(`[gift] Sent: ${gift.name}${gift.isSpecial ? " (SPECIAL DATE!)" : ""}`);
+  // Skip gift during travel — sending gifts from a hotel room is weird
+  // But returning phase is fine (he's back that day)
+  if (!isTraveling()) {
+    try {
+      // Try gift (random chance, higher than before)
+      const gift = await tryTriggerGift(0.10);
+      if (gift) {
+        ws.send(JSON.stringify({
+          type: "gift_event",
+          name: gift.name,
+          message: gift.message,
+          category: gift.category,
+          image_base64: gift.imageBase64,
+          is_special: gift.isSpecial,
+          reply_to: replyTo,
+        }));
+        console.log(`[gift] Sent: ${gift.name}${gift.isSpecial ? " (SPECIAL DATE!)" : ""}`);
+      }
+    } catch (err) {
+      console.error("[gift] Trigger error:", err.message);
     }
-  } catch (err) {
-    console.error("[gift] Trigger error:", err.message);
   }
 }
 
