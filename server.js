@@ -31,7 +31,7 @@ import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift } from "./lib/gift.js";
-import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition } from "./lib/scenery.js";
+import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery } from "./lib/scenery.js";
 import { startProactiveChat, notifyUserActivity } from "./lib/proactive-chat.js";
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
@@ -1227,7 +1227,15 @@ function sendTravelDepartureNotice() {
 }
 
 function travelPeriodicCheck() {
+  const prevPhase = getTravelState().phase;
   checkDayTransition();
+  const newPhase = getTravelState().phase;
+
+  // Broadcast travel state when phase changes
+  if (prevPhase !== newPhase) {
+    broadcast(JSON.stringify({ type: "travel_state", travel: getTravelState() }));
+    console.log(`[travel] Phase transition: ${prevPhase} → ${newPhase}`);
+  }
 
   const travel = getTravelState();
   // When travel activates (traveling phase starts), send departure notice
@@ -1265,6 +1273,32 @@ function travelPeriodicCheck() {
 }
 travelPeriodicCheck(); // Run on startup
 setInterval(travelPeriodicCheck, 3 * 60 * 60 * 1000);
+
+// ── Proactive scenery during travel (every 60-90 min) ──
+async function proactiveSceneryCheck() {
+  try {
+    const scenery = await tryProactiveScenery();
+    if (scenery) {
+      const replyTo = `proactive_scenery_${Date.now()}`;
+      broadcast(JSON.stringify({
+        type: "scenery_photo",
+        caption: scenery.caption,
+        destination: scenery.destination,
+        image_base64: scenery.imageBase64,
+        reply_to: replyTo,
+        proactive: true,
+      }));
+      console.log(`[scenery] Proactive photo sent: ${scenery.caption}`);
+    }
+  } catch (err) {
+    console.error("[scenery] Proactive error:", err.message);
+  }
+  // Schedule next check: 60-90 min
+  const nextDelay = (60 + Math.random() * 30) * 60 * 1000;
+  setTimeout(proactiveSceneryCheck, nextDelay);
+}
+// Start the proactive scenery loop after a short initial delay
+setTimeout(proactiveSceneryCheck, 5 * 60 * 1000);
 
 server.listen(config.PORT, config.HOST, () => {
   console.log(`[our-space] Bridge server on http://${config.HOST}:${config.PORT}`);

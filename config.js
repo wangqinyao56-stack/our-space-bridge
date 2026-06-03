@@ -12,6 +12,8 @@ export default {
   SYSTEM_PROMPT_PATH: join(__dirname, "system-prompt.md"),
   DAILY_PROMPT_PATH: join(__dirname, "system-prompt-daily.md"),
   INTIMATE_PROMPT_PATH: join(__dirname, "system-prompt-intimate.md"),
+  TRAVEL_PROMPT_PATH: join(__dirname, "system-prompt-travel.md"),
+  TRAVEL_INTIMATE_PROMPT_PATH: join(__dirname, "system-prompt-travel-intimate.md"),
   ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY || "sk_15dffb4b4bfcaf5d6b0db47ef7564f7fc1ad98a42dffa6cd",
   ELEVENLABS_VOICE_ID: "O2p1C2KJhMzz7EMpXHdN",
   TTS: {
