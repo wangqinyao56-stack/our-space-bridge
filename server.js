@@ -165,6 +165,65 @@ function splitIntoMessages(text) {
   return segments;
 }
 
+// ── 睡眠时段消息队列（02:00-06:00 北京时间，日常聊天暂停回复）───
+const sleepMessageQueue = [];
+
+function isSleepTime() {
+  const bjHour = (new Date().getUTCHours() + 8) % 24;
+  return bjHour >= 2 && bjHour < 6;
+}
+
+function getMsUntilWake() {
+  const now = new Date();
+  const bjHour = (now.getUTCHours() + 8) % 24;
+  // Calculate next 06:00 Beijing time
+  const wakeBJ = new Date(now);
+  wakeBJ.setUTCHours(22, 0, 0, 0); // 06:00 BJ = 22:00 UTC (previous day)
+  if (bjHour >= 6) {
+    // Already past 06:00 today, next wake is tomorrow
+    wakeBJ.setUTCDate(wakeBJ.getUTCDate() + 1);
+  }
+  return wakeBJ.getTime() - now.getTime();
+}
+
+async function processSleepQueue() {
+  if (sleepMessageQueue.length === 0) return;
+  console.log(`[sleep-queue] Processing ${sleepMessageQueue.length} queued messages from sleep period`);
+
+  const entries = [...sleepMessageQueue];
+  sleepMessageQueue.length = 0;
+
+  for (const entry of entries) {
+    const { ws, msg } = entry;
+    if (ws.readyState !== 1) {
+      console.log(`[sleep-queue] Skipping — ws closed`);
+      continue;
+    }
+    try {
+      const fullReply = await handleTextMessage(msg.content);
+      const segments = splitIntoMessages(fullReply);
+      sendSegments(ws, msg.id, segments);
+      console.log(`[sleep-queue] Replied to queued message from ${new Date(entry.receivedAt).toLocaleTimeString("zh-CN")}`);
+    } catch (err) {
+      console.error(`[sleep-queue] Error processing queued message:`, err.message);
+    }
+  }
+}
+
+function scheduleWakeUpProcessing() {
+  const ms = getMsUntilWake();
+  const mins = Math.round(ms / 60000);
+  console.log(`[sleep-queue] Wake-up processing scheduled in ${mins} min (next 06:00 BJ)`);
+
+  setTimeout(() => {
+    processSleepQueue();
+    scheduleWakeUpProcessing(); // Schedule next day
+  }, ms);
+}
+
+// Start the wake-up scheduler on boot
+scheduleWakeUpProcessing();
+
 // ── 夏彦评论灵感笔记 ──
 const FALLBACK_COMMENTS = [
   "真不愧是老婆！灵感井喷啊！",
@@ -606,6 +665,14 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "text") {
       if (!msg.content?.trim()) return;
       try {
+        // 睡眠时段：日常聊天暂停回复，消息排队等早上处理
+        // 亲密空间和旅行亲密空间不受影响（独立 handler）
+        if (isSleepTime()) {
+          sleepMessageQueue.push({ ws, msg, receivedAt: Date.now() });
+          console.log(`[sleep-queue] Queued message from sleep period (queue: ${sleepMessageQueue.length})`);
+          return;
+        }
+
         notifyUserActivity();
         const hsBefore = getHuashengTravelState().active;
         const fullReply = await handleTextMessage(msg.content);
