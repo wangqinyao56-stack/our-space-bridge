@@ -731,15 +731,33 @@ wss.on("connection", (ws, req) => {
       const rawMessages = channel === "intimate"
         ? await getIntimateHistoryMessages()
         : await getChatHistoryMessages();
-      // Convert to app Message format
-      const messages = rawMessages.map((m, i) => ({
-        id: `h${i}_${Date.now()}`,
-        from: m.role === "user" ? "me" : "xiayan",
-        type: "text",
-        content: m.content,
-        status: "delivered",
-        timestamp: Date.now() - (rawMessages.length - i) * 1000,
-      }));
+      // Convert to app Message format, splitting bot replies into segments
+      const messages = [];
+      for (let i = 0; i < rawMessages.length; i++) {
+        const m = rawMessages[i];
+        if (m.role === "assistant" && m.content && m.content.length > 20) {
+          const segments = splitIntoMessages(m.content);
+          segments.forEach((seg, si) => {
+            messages.push({
+              id: `h${i}_s${si}_${Date.now()}`,
+              from: "xiayan",
+              type: "text",
+              content: seg,
+              status: "delivered",
+              timestamp: Date.now() - (rawMessages.length - i) * 1000 + si,
+            });
+          });
+        } else {
+          messages.push({
+            id: `h${i}_${Date.now()}`,
+            from: m.role === "user" ? "me" : "xiayan",
+            type: "text",
+            content: m.content,
+            status: "delivered",
+            timestamp: Date.now() - (rawMessages.length - i) * 1000,
+          });
+        }
+      }
       ws.send(JSON.stringify({ type: "history", channel, messages }));
       return;
     }
