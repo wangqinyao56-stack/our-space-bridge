@@ -26,6 +26,7 @@ import {
   addDiaryPost,
   addDiaryReply,
   generateAIReply,
+  generateAIReplyToComment,
   startProactiveDiary,
 } from "./lib/diary.js";
 import { getPetState, interact as petInteract, setName as petSetName, getProactiveReminder, xiayanProactiveInteract, getLogs as getPetLogs, addLog as addPetLog, accompanyXiayan, returnFromAccompany } from "./lib/pet.js";
@@ -166,12 +167,14 @@ function splitIntoMessages(text) {
 
 // ── 夏彦评论灵感笔记 ──
 const FALLBACK_COMMENTS = [
-  "哇～这个想法好棒！我已经能想象到画面了。",
-  "这个有意思！你画的时候我在旁边给你泡茶～",
-  "嘿嘿，这个灵感让我想到我们上次一起看的那个展。",
-  "哦～这个方向不错诶，华生厉害！",
-  "这个主意好！画完了第一个给我看哦。",
-  "嗯～我觉得这个画出来一定特别美。",
+  "真不愧是老婆！灵感井喷啊！",
+  "期待看到成图！",
+  "加油！画完要第一个给我看哦！",
+  "已经开始期待成图了！",
+  "这个创意真不错！",
+  "期待！老婆加油！",
+  "画的时候记得休息眼睛哦",
+  "要注意休息哦！",
 ];
 
 async function generateInspirationComment(note) {
@@ -1203,6 +1206,27 @@ wss.on("connection", (ws, req) => {
       if (!msg.content?.trim() || !msg.date || !msg.post_id) return;
       const diary = addDiaryReply(msg.date, msg.post_id, "me", msg.content);
       ws.send(JSON.stringify({ type: "diary_data", diary }));
+      // 夏彦 replies to 华生's comment (70% probability, avoid infinite loop)
+      const lastReply = diary.posts.find((p) => p.id === msg.post_id)?.replies?.slice(-1)[0];
+      if (lastReply && lastReply.author === "me" && Math.random() < 0.7) {
+        generateAIReplyToComment(msg.date, msg.post_id, msg.content).then((updatedDiary) => {
+          const updatedPost = updatedDiary.posts.find((p) => p.id === msg.post_id);
+          if (updatedPost?.replies.length) {
+            const aiReply = updatedPost.replies[updatedPost.replies.length - 1];
+            if (aiReply.author === "xiayan") {
+              ws.send(JSON.stringify({
+                type: "diary_reply",
+                date: msg.date,
+                post_id: msg.post_id,
+                content: aiReply.content,
+                time: aiReply.time,
+              }));
+            }
+          }
+        }).catch((err) => {
+          console.error("[ws] Diary AI comment reply error:", err.message);
+        });
+      }
       return;
     }
 
