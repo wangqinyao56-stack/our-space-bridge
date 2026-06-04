@@ -1,5 +1,7 @@
 import http from "node:http";
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 import { v4 as uuid } from "uuid";
 import config from "./config.js";
@@ -48,6 +50,19 @@ process.env.GROQ_API_KEY = config.GROQ_API_KEY;
 // ── Load system prompt at startup ──
 loadSystemPrompt();
 console.log("[our-space] System prompt loaded");
+
+// ── One-time reset of intimate personality notes (bad reflection data cleanup) ──
+(async () => {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
+  const flagFile = path.join(DATA_DIR, ".intimate_notes_reset_done");
+  if (!fs.existsSync(flagFile)) {
+    const { resetPersonality } = await import("./lib/personality.js");
+    resetPersonality("intimate");
+    fs.writeFileSync(flagFile, new Date().toISOString());
+    console.log("[our-space] One-time reset of intimate personality notes done");
+  }
+})();
 
 // ── Scene image helper for chat ──
 async function tryGetSceneImage(reply) {
@@ -842,6 +857,14 @@ wss.on("connection", (ws, req) => {
       ws.send(JSON.stringify({ type: "history_cleared", channel }));
       return;
     }
+
+	　if (msg.type === "clear_personality") {
+	      const track = msg.track || "chat";
+	      const { resetPersonality } = await import("./lib/personality.js");
+	      resetPersonality(track);
+	      ws.send(JSON.stringify({ type: "personality_cleared", track }));
+	      return;
+	    }
 
     // ── Image message (base64 encoded) ──
     if (msg.type === "image") {
