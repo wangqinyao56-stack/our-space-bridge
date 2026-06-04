@@ -126,7 +126,7 @@ startProactiveChat((message) => {
   for (const [ws, wsState] of clients) {
     if (wsState.authenticated && ws.readyState === 1) {
       for (let i = 0; i < segments.length; i++) {
-        const delay = i * (3000 + Math.random() * 4000);
+        const delay = i * (6000 + Math.random() * 8000);
         setTimeout(() => {
           if (ws.readyState === 1) {
             ws.send(JSON.stringify({
@@ -192,7 +192,7 @@ async function generateInspirationComment(note) {
   return FALLBACK_COMMENTS[Math.floor(Math.random() * FALLBACK_COMMENTS.length)];
 }
 
-function sendSegments(ws, replyTo, segments, baseDelayMs = 8000 + Math.random() * 6000) {
+function sendSegments(ws, replyTo, segments, baseDelayMs = 12000 + Math.random() * 10000) {
   let cumulative = 0;
   segments.forEach((seg, i) => {
     // Delay scales with message length + random jitter so it feels natural
@@ -1333,7 +1333,7 @@ async function sendTravelAnnouncement(triggered) {
   for (const [ws, wsState] of clients) {
     if (wsState.authenticated && ws.readyState === 1) {
       for (let i = 0; i < segments.length; i++) {
-        const delay = i * (3000 + Math.random() * 4000);
+        const delay = i * (6000 + Math.random() * 8000);
         setTimeout(() => {
           if (ws.readyState === 1) {
             ws.send(JSON.stringify({
@@ -1358,7 +1358,7 @@ function sendTravelDepartureNotice() {
   for (const [ws, wsState] of clients) {
     if (wsState.authenticated && ws.readyState === 1) {
       for (let i = 0; i < segments.length; i++) {
-        const delay = i * (3000 + Math.random() * 4000);
+        const delay = i * (6000 + Math.random() * 8000);
         setTimeout(() => {
           if (ws.readyState === 1) {
             ws.send(JSON.stringify({
