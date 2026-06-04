@@ -9,6 +9,7 @@ export default {
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || "",
   GROQ_API_KEY: process.env.GROQ_API_KEY || "",
   BFL_API_KEY: process.env.BFL_API_KEY || "",
+  ARK_API_KEY: process.env.ARK_API_KEY || "ark-eb4cc461-f909-41d1-9c79-97c4cb069b52-f468f",
   SYSTEM_PROMPT_PATH: join(__dirname, "system-prompt.md"),
   DAILY_PROMPT_PATH: join(__dirname, "system-prompt-daily.md"),
   INTIMATE_PROMPT_PATH: join(__dirname, "system-prompt-intimate.md"),
