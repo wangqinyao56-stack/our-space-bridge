@@ -72,15 +72,15 @@ console.log("[our-space] System prompt loaded");
   }
 })();
 
-// ── One-time intimate history cleanup (contaminated with "发现" mentions) ──
+// ── One-time intimate history cleanup (contaminated with passive/teasing replies, "发现", etc.) ──
 (async () => {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
-  const flagFile = path.join(DATA_DIR, ".intimate_discover_cleanup_done");
+  const flagFile = path.join(DATA_DIR, ".intimate_cleanup_v3");
   if (!fs.existsSync(flagFile)) {
     await clearIntimateHistory();
     fs.writeFileSync(flagFile, new Date().toISOString());
-    console.log("[our-space] One-time intimate history cleanup (discover contamination) done");
+    console.log("[our-space] Intimate history cleanup v3 done — all contaminated history cleared");
   }
 })();
 
