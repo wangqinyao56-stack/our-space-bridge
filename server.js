@@ -208,8 +208,8 @@ async function processSleepQueue() {
   const entries = [...sleepMessageQueue];
   sleepMessageQueue.length = 0;
 
-  for (const entry of entries) {
-    const { ws, msg } = entry;
+  for (let i = 0; i < entries.length; i++) {
+    const { ws, msg } = entries[i];
     if (ws.readyState !== 1) {
       console.log(`[sleep-queue] Skipping — ws closed`);
       continue;
@@ -218,9 +218,13 @@ async function processSleepQueue() {
       const fullReply = await handleTextMessage(msg.content);
       const segments = splitIntoMessages(fullReply);
       sendSegments(ws, msg.id, segments);
-      console.log(`[sleep-queue] Replied to queued message from ${new Date(entry.receivedAt).toLocaleTimeString("zh-CN")}`);
+      console.log(`[sleep-queue] Replied to queued message from ${new Date(entries[i].receivedAt).toLocaleTimeString("zh-CN")}`);
     } catch (err) {
       console.error(`[sleep-queue] Error processing queued message:`, err.message);
+    }
+    // 每条间隔 3 秒，避免一口气轰炸
+    if (i < entries.length - 1) {
+      await new Promise(r => setTimeout(r, 3000));
     }
   }
 }
