@@ -76,7 +76,7 @@ console.log("[our-space] System prompt loaded");
 (async () => {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
-  const flagFile = path.join(DATA_DIR, ".intimate_cleanup_v7");
+  const flagFile = path.join(DATA_DIR, ".intimate_cleanup_v8_real_prompt");
   if (!fs.existsSync(flagFile)) {
     await clearIntimateHistory();
     fs.writeFileSync(flagFile, new Date().toISOString());
