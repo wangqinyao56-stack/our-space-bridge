@@ -27,7 +27,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      - name: Build and push our-space-bridge
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -35,3 +35,12 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/our-space-bridge:latest
+
+      - name: Build and push weixin-bot
+        uses: docker/build-push-action@v6
+        with:
+          context: ./weixin-bot
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/weixin-bot:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/xiayan-weixin-bot:latest

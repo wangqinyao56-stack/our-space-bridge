@@ -1,0 +1,17 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package.json ./
+RUN npm install --production
+
+COPY lib/ ./lib/
+COPY simple-agent.js .
+
+# 记忆存储卷挂载点
+VOLUME ["/app/memory"]
+
+ENV DISABLE_PROXY=true
+ENV MEMORY_DIR=/data2
+
+CMD ["node", "simple-agent.js"]
