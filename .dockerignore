@@ -3,6 +3,6 @@ server.log
 *.apk
 *.bin
 .git
-*.md
+# *.md  — DO NOT ignore markdown files! System prompts (*.md) are required at runtime.
 test/
 tools/
