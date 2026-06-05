@@ -864,6 +864,27 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    if (msg.type === "get_history_by_date") {
+      const date = msg.date;
+      if (!date) { ws.send(JSON.stringify({ type: "error", message: "Missing date" })); return; }
+      const { getChatHistoryByDate } = await import("./lib/memory.js");
+      const rawMessages = getChatHistoryByDate(date);
+      const messages = [];
+      for (let i = 0; i < rawMessages.length; i++) {
+        const m = rawMessages[i];
+        messages.push({
+          id: `hd${date}_${i}_${Date.now()}`,
+          from: m.role === "user" ? "me" : "xiayan",
+          type: "text",
+          content: m.content,
+          status: "delivered",
+          timestamp: m.time || Date.now(),
+        });
+      }
+      ws.send(JSON.stringify({ type: "history_by_date", date, messages }));
+      return;
+    }
+
     if (msg.type === "clear_history") {
       const channel = msg.channel || "chat";
       if (channel === "intimate") {
