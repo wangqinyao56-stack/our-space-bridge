@@ -53,17 +53,11 @@ process.env.GROQ_API_KEY = config.GROQ_API_KEY;
 loadSystemPrompt();
 console.log("[our-space] System prompt loaded");
 
-// ── One-time reset of intimate personality notes (bad reflection data cleanup) ──
+// ── Always reset intimate personality notes on startup (reflection notes disabled for intimate) ──
 (async () => {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
-  const flagFile = path.join(DATA_DIR, ".intimate_notes_reset_done");
-  if (!fs.existsSync(flagFile)) {
-    const { resetPersonality } = await import("./lib/personality.js");
-    resetPersonality("intimate");
-    fs.writeFileSync(flagFile, new Date().toISOString());
-    console.log("[our-space] One-time reset of intimate personality notes done");
-  }
+  const { resetPersonality } = await import("./lib/personality.js");
+  resetPersonality("intimate");
+  console.log("[our-space] Intimate personality notes reset on startup");
 })();
 
 // ── One-time cleanup of DeepSeek-contaminated history ──
