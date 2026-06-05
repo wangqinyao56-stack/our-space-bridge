@@ -185,6 +185,7 @@ export async function askClaude(opts = {}) {
     max_tokens: maxTokens,
     temperature,
     messages,
+    tool_choice: { type: "none" },
   });
 
   const requestFn = DISABLE_PROXY ? directRequest : proxyRequest;
