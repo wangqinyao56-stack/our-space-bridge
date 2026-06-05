@@ -43,7 +43,7 @@ function directRequest(opts) {
           const content = data.content;
           let reply = "";
           if (Array.isArray(content)) {
-            reply = content.map(b => b.text || "").join("").trim();
+            reply = content.filter(b => b.type === "text").map(b => b.text || "").join("").trim();
           } else if (typeof content === "string") {
             reply = content.trim();
           }
@@ -101,7 +101,7 @@ function proxyRequest(opts) {
             const content = data.content;
             let reply = "";
             if (Array.isArray(content)) {
-              reply = content.map(b => b.text || "").join("").trim();
+              reply = content.filter(b => b.type === "text").map(b => b.text || "").join("").trim();
             } else if (typeof content === "string") {
               reply = content.trim();
             }
