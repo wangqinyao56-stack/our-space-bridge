@@ -833,11 +833,14 @@ wss.on("connection", (ws, req) => {
       const rawMessages = channel === "intimate"
         ? await getIntimateHistoryMessages()
         : await getChatHistoryMessages();
-      // Convert to app Message format, splitting bot replies into segments
+      // Convert to app Message format
+      // Chat messages: split bot replies into short segments like real WeChat
+      // Intimate messages: keep as one long message (no splitting)
       const messages = [];
+      const isIntimate = channel === "intimate";
       for (let i = 0; i < rawMessages.length; i++) {
         const m = rawMessages[i];
-        if (m.role === "assistant" && m.content && m.content.length > 20) {
+        if (!isIntimate && m.role === "assistant" && m.content && m.content.length > 20) {
           const segments = splitIntoMessages(m.content);
           segments.forEach((seg, si) => {
             messages.push({
