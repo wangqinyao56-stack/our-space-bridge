@@ -64,6 +64,19 @@ console.log("[our-space] System prompt loaded");
   }
 })();
 
+// ── One-time cleanup of DeepSeek-contaminated history ──
+(async () => {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
+  const flagFile = path.join(DATA_DIR, ".deepseek_cleanup_done");
+  if (!fs.existsSync(flagFile)) {
+    clearChatHistory();
+    await clearIntimateHistory();
+    fs.writeFileSync(flagFile, new Date().toISOString());
+    console.log("[our-space] One-time cleanup of DeepSeek-contaminated chat & intimate history done");
+  }
+})();
+
 // ── Scene image helper for chat ──
 async function tryGetSceneImage(reply) {
   const hint = detectSceneImage(reply);
