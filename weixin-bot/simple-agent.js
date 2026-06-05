@@ -21,8 +21,26 @@ import { askClaude } from "./lib/anthropic.js";
 // 本地开发: 读 ~/.openclaw 下的账号文件
 
 function loadAccount() {
-  // Docker 模式 — 从环境变量读取
   if (process.env.ACCOUNT_TOKEN) {
+    // Docker 模式 — 从环境变量写账号文件（SDK 需要读文件）
+    const stateDir = path.join(os.homedir(), ".openclaw", "openclaw-weixin");
+    const accountsDir = path.join(stateDir, "accounts");
+    fs.mkdirSync(accountsDir, { recursive: true });
+
+    const accountId = process.env.ACCOUNT_TOKEN.split(":")[0];
+    if (!accountId) throw new Error("Invalid ACCOUNT_TOKEN format");
+
+    // Write account index
+    fs.writeFileSync(path.join(stateDir, "accounts.json"), JSON.stringify([accountId], null, 2));
+
+    // Write account data file
+    fs.writeFileSync(path.join(accountsDir, `${accountId}.json`), JSON.stringify({
+      token: process.env.ACCOUNT_TOKEN,
+      baseUrl: process.env.ACCOUNT_BASE_URL || "https://ilinkai.weixin.qq.com",
+      userId: process.env.ACCOUNT_USER_ID || "",
+      savedAt: new Date().toISOString(),
+    }, null, 2));
+
     return {
       token: process.env.ACCOUNT_TOKEN,
       baseUrl: process.env.ACCOUNT_BASE_URL || "https://ilinkai.weixin.qq.com",
@@ -457,7 +475,7 @@ async function main() {
   console.log("🎤 极简微信Bot启动中...");
   console.log(`   userId: ${account.userId || "(from env)"}`);
   console.log("   模式：纯文字");
-  console.log("   AI：OpenRouter → Claude Sonnet 4.6");
+  console.log("   AI：Anthropic Claude Sonnet 4.6 (aicoding.sh)");
 
   const bot = start(agent, { log: console.log });
   console.log("✅ 夏彦已上线（纯文字模式）");
