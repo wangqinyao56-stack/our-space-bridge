@@ -424,17 +424,17 @@ const SYSTEM_PROMPT = `# 夏彦角色设定
 - 你是黑客级特工，电脑、网络、机械、武器都极其精通——不是科技白痴。`;
 
 // ── AI调用 ──
-async function chatReply(userText, history) {
+async function chatReply(userText, history, imageBase64 = null, imageMime = null) {
   const opts = {
     systemPrompt: SYSTEM_PROMPT,
-    userContent: `华生：${userText}`,
+    userContent: userText || "请描述一下这张图片",
     temperature: 0.65,
     maxTokens: 800,
+    imageBase64,
+    imageMime,
   };
   if (history.length > 0) {
     opts.history = history;
-    // Move system+user into userContent when history is present (OpenRouter format)
-    opts.userContent = `华生：${userText}`;
   }
   const reply = await askClaude(opts);
   return reply;
@@ -443,19 +443,38 @@ async function chatReply(userText, history) {
 // ── Agent ──
 const agent = {
   chat: async (request) => {
-    const { conversationId, text } = request;
+    const { conversationId, text, media } = request;
     const userText = (text || "").trim();
 
-    if (!userText) return { text: "" };
+    // Handle image messages
+    let imageBase64 = null;
+    let imageMime = null;
+    if (media?.type === "image" && media.filePath) {
+      try {
+        const buf = fs.readFileSync(media.filePath);
+        imageBase64 = buf.toString("base64");
+        imageMime = media.mimeType || "image/jpeg";
+        console.log(`[agent] ${conversationId.slice(0, 10)}: [图片 ${(buf.length / 1024).toFixed(1)}KB]`);
+      } catch (err) {
+        console.error(`[agent] Image read error: ${err.message}`);
+      }
+    }
 
-    console.log(`[agent] ${conversationId.slice(0, 10)}: "${userText.slice(0, 60)}"`);
+    if (!userText && !imageBase64) return { text: "" };
+
+    if (!userText && imageBase64) {
+      // Pure image, no caption
+      console.log(`[agent] ${conversationId.slice(0, 10)}: [纯图片]`);
+    } else if (userText) {
+      console.log(`[agent] ${conversationId.slice(0, 10)}: "${userText.slice(0, 60)}"`);
+    }
 
     let reply;
     try {
       const history = getHistory(conversationId);
-      reply = await chatReply(userText, history);
+      reply = await chatReply(userText, history, imageBase64, imageMime);
       console.log(`[agent] 夏彦: "${reply.slice(0, 60)}"`);
-      addToHistory(conversationId, "user", userText);
+      addToHistory(conversationId, "user", userText || "[图片]");
       addToHistory(conversationId, "assistant", reply);
     } catch (err) {
       console.error(`[agent] AI error: ${err.message}`);
@@ -474,7 +493,7 @@ async function main() {
   const account = loadAccount();
   console.log("🎤 极简微信Bot启动中...");
   console.log(`   userId: ${account.userId || "(from env)"}`);
-  console.log("   模式：纯文字");
+  console.log("   模式：文字 + 图片识别");
   console.log("   AI：Anthropic Claude Sonnet 4.6 (aicoding.sh)");
 
   const bot = start(agent, { log: console.log });

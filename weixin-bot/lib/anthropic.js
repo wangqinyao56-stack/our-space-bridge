@@ -133,10 +133,30 @@ export async function askClaude(opts = {}) {
     maxTokens = 800,
     temperature = 0.65,
     timeoutMs = 60000,
+    imageBase64,
+    imageMime,
   } = opts;
 
   if (!systemPrompt || !userContent) {
     throw new Error("systemPrompt and userContent are required");
+  }
+
+  // Build user content — with or without image
+  function buildUserContent(text) {
+    if (!imageBase64) return text;
+
+    // Multimodal: text + image in content array
+    const parts = [];
+    if (text) parts.push({ type: "text", text: text });
+    parts.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: imageMime || "image/jpeg",
+        data: imageBase64,
+      },
+    });
+    return parts;
   }
 
   let messages;
@@ -144,11 +164,19 @@ export async function askClaude(opts = {}) {
     messages = [
       { role: "user", content: `${systemPrompt}\n\n---\n\n以下是以角色身份回复用户的消息。\n\n${userContent}` },
     ];
+    // If has image, use content array for last message
+    if (imageBase64) {
+      messages[0].content = [
+        { type: "text", text: `${systemPrompt}\n\n---\n\n以下是以角色身份回复用户的消息。` },
+        ...(userContent ? [{ type: "text", text: userContent }] : []),
+        { type: "image", source: { type: "base64", media_type: imageMime || "image/jpeg", data: imageBase64 } },
+      ];
+    }
   } else {
     messages = [
       { role: "user", content: `${systemPrompt}\n\n---\n\n以下是以角色身份回复用户的消息。` },
       ...history.map(m => ({ role: m.role === "system" ? "user" : m.role, content: m.content })),
-      { role: "user", content: userContent },
+      { role: "user", content: buildUserContent(userContent) },
     ];
   }
 
