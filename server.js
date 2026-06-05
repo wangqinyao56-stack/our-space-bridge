@@ -17,6 +17,8 @@ import {
   getIntimateHistoryMessages,
   clearChatHistory,
   clearIntimateHistory,
+  deleteChatMessage,
+  deleteIntimateHistoryMessage,
   setWeatherCity,
   sttDebugLog,
   intimateDebugLog,
@@ -896,6 +898,19 @@ wss.on("connection", (ws, req) => {
         clearChatHistory();
       }
       ws.send(JSON.stringify({ type: "history_cleared", channel }));
+      return;
+    }
+
+    if (msg.type === "delete_message") {
+      const channel = msg.channel || "chat";
+      const content = msg.content || "";
+      const from = msg.from === "me" ? "user" : "assistant";
+      if (channel === "intimate") {
+        deleteIntimateHistoryMessage(content, from);
+      } else {
+        deleteChatMessage(content, from);
+      }
+      ws.send(JSON.stringify({ type: "message_deleted", channel, content, from }));
       return;
     }
 
