@@ -8,14 +8,12 @@ RUN npm ci --omit=dev
 COPY . .
 
 ENV PORT=3456
-ENV DATA_DIR=/data1
-ENV DISCOVER_DIR=/data1/discover
-ENV MEMORY_DIR=/data1/memory
-ENV DIARY_DIR=/data1/diary
-ENV ALBUM_DIR=/data1/album
+ENV DATA_DIR=/data
+ENV DISCOVER_DIR=/data/discover
+ENV MEMORY_DIR=/data/memory
+ENV DIARY_DIR=/data/diary
+ENV ALBUM_DIR=/data/album
 ENV HOST=0.0.0.0
-
-RUN mkdir -p /data
 
 EXPOSE 3456
 
