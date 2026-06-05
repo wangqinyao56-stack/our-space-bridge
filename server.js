@@ -286,7 +286,7 @@ async function generateInspirationComment(note) {
   return FALLBACK_COMMENTS[Math.floor(Math.random() * FALLBACK_COMMENTS.length)];
 }
 
-function sendSegments(ws, replyTo, segments, baseDelayMs = 12000 + Math.random() * 10000) {
+function sendSegments(ws, replyTo, segments, baseDelayMs = 18000 + Math.random() * 12000) {
   let cumulative = 0;
   segments.forEach((seg, i) => {
     // Delay scales with message length + random jitter so it feels natural
