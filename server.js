@@ -39,7 +39,7 @@ import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, de
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery } from "./lib/scenery.js";
 import { isHuashengTraveling, getHuashengTravelState } from "./lib/huasheng-travel.js";
-import { startProactiveChat, notifyUserActivity } from "./lib/proactive-chat.js";
+import { startProactiveChat, notifyUserActivity, getProactiveState } from "./lib/proactive-chat.js";
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
@@ -1583,12 +1583,20 @@ function travelPeriodicCheck() {
     }
   }
 
+  // Skip travel trigger if user was recently active — don't interrupt conversations
+  const proactiveState = getProactiveState();
+  const lastActivity = proactiveState._lastUserReplyTime || 0;
+  const userActiveRecently = (Date.now() - lastActivity) < 30 * 60 * 1000;
+  if (userActiveRecently) {
+    console.log("[travel] Skipping trigger — user was active recently (<30min)");
+    return;
+  }
+
   const triggered = maybeTriggerTravel();
   if (triggered) {
     console.log(`[travel] New travel triggered: ${triggered.reason} → ${triggered.destination}`);
     broadcast(JSON.stringify({ type: "travel_state", xiayan: getTravelState(), huasheng: getHuashengTravelState() }));
     travelAnnounceSent = false;
-    // Send announcement immediately so user sees it BEFORE banner
     sendTravelAnnouncement(triggered);
   }
 }
