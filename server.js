@@ -137,15 +137,15 @@ startProactiveDiary((date) => {
   broadcast(diaryData);
 });
 
-// ── Proactive discover (夏彦自主发现) ──
-startProactiveDiscover((moment) => {
-  const data = JSON.stringify({
-    type: "discover_new",
-    moment,
-    message: "夏彦发现了一条有趣的内容~",
-  });
-  broadcast(data);
-});
+// ── Proactive discover (夏彦自主发现) — 已关闭：自动生成的动态太多，影响聊天体验 ──
+// startProactiveDiscover((moment) => {
+//   const data = JSON.stringify({
+//     type: "discover_new",
+//     moment,
+//     message: "夏彦发现了一条有趣的内容~",
+//   });
+//   broadcast(data);
+// });
 
 // ── Proactive chat (夏彦主动给华生发消息) ──
 startProactiveChat((message) => {
