@@ -6,6 +6,7 @@ export default {
   PORT: process.env.PORT || 3456,
   HOST: "0.0.0.0",
   SHARED_SECRET: process.env.OUR_SPACE_SECRET || "our-space-default-secret-change-me",
+  USE_PROXY: process.env.USE_PROXY || false,
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || "",
   GROQ_API_KEY: process.env.GROQ_API_KEY || "",
   BFL_API_KEY: process.env.BFL_API_KEY || "",
