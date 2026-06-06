@@ -837,9 +837,10 @@ wss.on("connection", (ws, req) => {
 
     if (msg.type === "get_history") {
       const channel = msg.channel || "chat";
+      const traveling = isTraveling();
       const rawMessages = channel === "intimate"
-        ? await getIntimateHistoryMessages()
-        : await getChatHistoryMessages();
+        ? await getIntimateHistoryMessages(traveling)
+        : await getChatHistoryMessages(traveling);
       // Convert to app Message format
       // Chat messages: split bot replies into short segments like real WeChat
       // Intimate messages: keep as one long message (no splitting)
