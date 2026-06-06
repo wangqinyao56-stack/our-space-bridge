@@ -674,6 +674,8 @@ wss.on("connection", (ws, req) => {
       if (verifyAuth(msg.token)) {
         clients.get(ws).authenticated = true;
         ws.send(JSON.stringify({ type: "auth_ok" }));
+        // Send current travel state immediately so app shows correct status
+        ws.send(JSON.stringify({ type: "travel_state", xiayan: getTravelState(), huasheng: getHuashengTravelState() }));
         console.log(`[ws] Authenticated: ${ip}`);
       } else {
         ws.send(JSON.stringify({ type: "auth_error", message: "Invalid token" }));
