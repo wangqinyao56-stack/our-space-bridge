@@ -937,6 +937,20 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    if (msg.type === "delete_messages") {
+      const channel = msg.channel || "chat";
+      const items = (msg.items || []).map(i => ({ content: i.content || "", role: i.from === "me" ? "user" : "assistant" }));
+      if (channel === "intimate") {
+        const { deleteIntimateMessages } = await import("./lib/intimate-memory.js");
+        deleteIntimateMessages(items);
+      } else {
+        const { deleteMessages } = await import("./lib/memory.js");
+        deleteMessages(items);
+      }
+      ws.send(JSON.stringify({ type: "messages_deleted", channel, count: items.length }));
+      return;
+    }
+
 	　if (msg.type === "clear_personality") {
 	      const track = msg.track || "chat";
 	      const { resetPersonality } = await import("./lib/personality.js");
