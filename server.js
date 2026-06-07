@@ -425,6 +425,21 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Album thumbnail endpoint — serves photo as image/jpeg
+  if (req.method === "GET" && req.url?.startsWith("/api/album/thumb/")) {
+    const photoId = req.url.replace("/api/album/thumb/", "").split("?")[0];
+    const file = getPhotoFile(photoId);
+    if (file && fs.existsSync(file.path)) {
+      const buf = fs.readFileSync(file.path);
+      res.writeHead(200, { "Content-Type": file.mime || "image/jpeg", "Cache-Control": "public, max-age=86400" });
+      res.end(buf);
+    } else {
+      res.writeHead(404);
+      res.end("Not found");
+    }
+    return;
+  }
+
   // STT debug log (no auth needed)
   if (req.method === "GET" && req.url === "/api/debug/stt") {
     res.writeHead(200, { "Content-Type": "application/json" });
@@ -1484,16 +1499,23 @@ function scheduleXiayanPetCare() {
   const delay = (30 + Math.random() * 60) * 60 * 1000;
   xiayanPetTimer = setTimeout(() => {
     try {
-      const result = xiayanProactiveInteract();
-      broadcast(JSON.stringify({ type: "pet_state", pet: result.pet, reaction: result.pet.reaction }));
-      broadcast(JSON.stringify({
-        type: "pet_log",
-        id: result.log.id,
-        actor: "xiayan",
-        action: result.log.action,
-        reaction: result.log.reaction,
-        timestamp: result.log.timestamp,
-      }));
+      // 夏彦在外旅行且花生没跟着时，不能和花生互动
+      const travelState = getTravelState();
+      const petState = getPetState();
+      if (travelState.phase === "traveling" && !petState.accompanyingXiayan) {
+        console.log("[pet] Skipping proactive care — 夏彦在外旅行，花生在家");
+      } else {
+        const result = xiayanProactiveInteract();
+        broadcast(JSON.stringify({ type: "pet_state", pet: result.pet, reaction: result.pet.reaction }));
+        broadcast(JSON.stringify({
+          type: "pet_log",
+          id: result.log.id,
+          actor: "xiayan",
+          action: result.log.action,
+          reaction: result.log.reaction,
+          timestamp: result.log.timestamp,
+        }));
+      }
     } catch (e) { console.error("[pet] proactive care error:", e.message); }
     scheduleXiayanPetCare(); // schedule next
   }, delay);
