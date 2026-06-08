@@ -446,89 +446,10 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ log: sttDebugLog }, null, 2));
     return;
   }
-
-  // ── Cloud audio assets (sleep sounds, pomodoro music, etc.) ──
-  if (req.method === "GET" && req.url === "/api/audio/list") {
-    const { listAudioAssets } = await import("./lib/audio-assets.js");
-    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" });
-    res.end(JSON.stringify(listAudioAssets()));
-    return;
-  }
-  if (req.method === "GET" && req.url?.startsWith("/api/audio/")) {
-    const fileId = req.url.replace("/api/audio/", "").split("?")[0];
-    const { getAudioAsset } = await import("./lib/audio-assets.js");
-    const asset = getAudioAsset(fileId);
-    if (asset && fs.existsSync(asset.path)) {
-      const stat = fs.statSync(asset.path);
-      res.writeHead(200, {
-        "Content-Type": asset.mime || "audio/mpeg",
-        "Content-Length": stat.size,
-        "Cache-Control": "public, max-age=86400",
-        "Accept-Ranges": "bytes",
-      });
-      fs.createReadStream(asset.path).pipe(res);
-    } else {
-      res.writeHead(404);
-      res.end("Not found");
-    }
-    return;
-  }
-
-  // ── Pomodoro video endpoint ──
-  if (req.method === "GET" && req.url === "/api/pomodoro/video") {
-    const { getPomodoroVideo } = await import("./lib/audio-assets.js");
-    const v = getPomodoroVideo();
-    if (v && fs.existsSync(v.path)) {
-      const stat = fs.statSync(v.path);
-      res.writeHead(200, {
-        "Content-Type": v.mime || "video/mp4",
-        "Content-Length": stat.size,
-        "Cache-Control": "public, max-age=86400",
-        "Accept-Ranges": "bytes",
-      });
-      fs.createReadStream(v.path).pipe(res);
-    } else {
-      res.writeHead(404);
-      res.end("Not found");
-    }
-    return;
-  }
   // Intimate processing debug log
   if (req.method === "GET" && req.url === "/api/debug/intimate") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ log: intimateDebugLog }, null, 2));
-    return;
-  }
-
-  // ── Admin: upload audio/video files ──
-  if (req.method === "POST" && req.url?.startsWith("/api/admin/upload")) {
-    const qIndex = (req.url || "").indexOf("?");
-    const qs = qIndex >= 0 ? req.url.slice(qIndex + 1) : "";
-    const params = new URLSearchParams(qs);
-    const name = params.get("name");
-    if (!name || name.includes("..")) {
-      res.writeHead(400);
-      res.end("Missing or invalid name param");
-      return;
-    }
-    const chunks = [];
-    req.on("data", c => chunks.push(c));
-    req.on("end", async () => {
-      try {
-        const buf = Buffer.concat(chunks);
-        const dest = path.join(process.env.DATA_DIR || "data", "audio", name);
-        fs.mkdirSync(path.dirname(dest), { recursive: true });
-        fs.writeFileSync(dest, buf);
-        const { refreshAssetIndex } = await import("./lib/audio-assets.js");
-        refreshAssetIndex();
-        console.log("[upload] Saved:", name, buf.length, "bytes");
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ ok: true, name, size: buf.length }));
-      } catch (e) {
-        res.writeHead(500);
-        res.end(e.message);
-      }
-    });
     return;
   }
 
