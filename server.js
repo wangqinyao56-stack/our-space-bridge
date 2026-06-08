@@ -502,26 +502,26 @@ const server = http.createServer(async (req, res) => {
 
   // ── Admin: upload audio/video files ──
   if (req.method === "POST" && req.url?.startsWith("/api/admin/upload")) {
-    const url = new URL(req.url, "http://localhost");
-    const name = url.searchParams.get("name");
+    const qIndex = (req.url || "").indexOf("?");
+    const qs = qIndex >= 0 ? req.url.slice(qIndex + 1) : "";
+    const params = new URLSearchParams(qs);
+    const name = params.get("name");
     if (!name || name.includes("..")) {
       res.writeHead(400);
       res.end("Missing or invalid name param");
       return;
     }
-    // Read raw body directly
     const chunks = [];
     req.on("data", c => chunks.push(c));
     req.on("end", async () => {
       try {
         const buf = Buffer.concat(chunks);
-        const dataDir = process.env.DATA_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), "data");
-        const dest = path.join(dataDir, "audio", name);
+        const dest = path.join(process.env.DATA_DIR || "data", "audio", name);
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         fs.writeFileSync(dest, buf);
         const { refreshAssetIndex } = await import("./lib/audio-assets.js");
         refreshAssetIndex();
-        console.log(`[upload] Saved: ${name} (${buf.length} bytes)`);
+        console.log("[upload] Saved:", name, buf.length, "bytes");
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true, name, size: buf.length }));
       } catch (e) {
