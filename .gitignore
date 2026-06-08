@@ -5,6 +5,7 @@ diaries
 
 # Data files — contain personal info, not for git
 data/
+!data/audio/
 discover-data/
 gift-data.json
 gift-log.json
