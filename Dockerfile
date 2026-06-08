@@ -17,4 +17,8 @@ ENV HOST=0.0.0.0
 
 EXPOSE 3456
 
-CMD ["node", "server.js"]
+# Copy static audio/video assets to the persistent data volume (only if not already present)
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+CMD ["/app/entrypoint.sh"]
