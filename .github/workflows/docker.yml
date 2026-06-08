@@ -35,6 +35,7 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/our-space-bridge:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/our-space-bridge:${{ github.sha }}
 
       - name: Build and push weixin-bot
         uses: docker/build-push-action@v6
