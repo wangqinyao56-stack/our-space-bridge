@@ -14,7 +14,7 @@ import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
 
-import { askClaude } from "./lib/anthropic.js";
+import { askClaude } from "./lib/openrouter.js";
 
 // ── 账号加载 ──
 // Docker/Sealos: 读环境变量

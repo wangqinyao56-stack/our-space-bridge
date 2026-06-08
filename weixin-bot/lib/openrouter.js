@@ -10,7 +10,7 @@ import http from "node:http";
 import https from "node:https";
 
 // ── Config ──
-const API_KEY = "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";
+const API_KEY = process.env.OPENROUTER_API_KEY || "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";
 const BASE_URL = "https://openrouter.ai/api/v1";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
