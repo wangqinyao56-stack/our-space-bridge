@@ -16,7 +16,7 @@ const ffmpeg = require("ffmpeg-static");
 const OUT_DIR = path.join(__dirname, "data", "audio");
 
 // ── Music: HOYO-MiX tracks ──
-const MUSIC_IN = "H:/未定素材/未定音乐";
+const MUSIC_IN = "H:/未定素材/未定音乐/工作白噪音";
 const MUSIC_OUT = path.join(OUT_DIR, "music");
 
 // ── Work noise ──
@@ -54,20 +54,16 @@ async function main() {
   console.log("=== Audio Compression ===\n");
 
   // ── Compress work noise ──
-  console.log("[noise] Compressing work white noise...");
+  console.log("[noise] Compressing work white noise (64kbps)...");
   for (const f of NOISE_FILES) {
     const out = path.join(OUT_DIR, f.out);
-    if (fs.existsSync(out)) {
-      console.log(`  SKIP: ${path.basename(f.in)} (already exists)`);
-      continue;
-    }
     if (!fs.existsSync(f.in)) {
       console.log(`  MISSING: ${f.in}`);
       continue;
     }
     const sizeIn = fs.statSync(f.in).size;
     process.stdout.write(`  ${path.basename(f.in)} (${fmtSize(sizeIn)})... `);
-    await compress(f.in, out, "128k");
+    await compress(f.in, out, "64k");
     const sizeOut = fs.statSync(out).size;
     console.log(`${fmtSize(sizeOut)}`);
   }
