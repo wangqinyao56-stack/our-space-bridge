@@ -25,6 +25,7 @@ const NOISE_FILES = [
   { in: "H:/未定素材/未定音乐/工作白噪音/工作白噪音/翻书赶稿.mp3", out: "noise/翻书赶稿.m4a" },
   { in: "H:/未定素材/未定音乐/工作白噪音/工作白噪音/炉火煮水.mp3", out: "noise/炉火煮水.m4a" },
   { in: "H:/未定素材/未定音乐/工作白噪音/电台节目/猫咪呼噜.mp3", out: "noise/猫咪呼噜.m4a" },
+  { in: "H:/未定素材/未定音乐/工作白噪音/电台节目/山泉.mp3", out: "noise/山泉.m4a" },
 ];
 
 function compress(inputPath, outputPath, bitrate = "96k") {
