@@ -446,6 +446,53 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ log: sttDebugLog }, null, 2));
     return;
   }
+
+  // ── Cloud audio assets (sleep sounds, pomodoro music, etc.) ──
+  if (req.method === "GET" && req.url === "/api/audio/list") {
+    const { listAudioAssets } = await import("./lib/audio-assets.js");
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" });
+    res.end(JSON.stringify(listAudioAssets()));
+    return;
+  }
+  if (req.method === "GET" && req.url?.startsWith("/api/audio/")) {
+    const fileId = req.url.replace("/api/audio/", "").split("?")[0];
+    const { getAudioAsset } = await import("./lib/audio-assets.js");
+    const asset = getAudioAsset(fileId);
+    if (asset && fs.existsSync(asset.path)) {
+      const stat = fs.statSync(asset.path);
+      res.writeHead(200, {
+        "Content-Type": asset.mime || "audio/mpeg",
+        "Content-Length": stat.size,
+        "Cache-Control": "public, max-age=86400",
+        "Accept-Ranges": "bytes",
+      });
+      fs.createReadStream(asset.path).pipe(res);
+    } else {
+      res.writeHead(404);
+      res.end("Not found");
+    }
+    return;
+  }
+
+  // ── Pomodoro video endpoint ──
+  if (req.method === "GET" && req.url === "/api/pomodoro/video") {
+    const { getPomodoroVideo } = await import("./lib/audio-assets.js");
+    const v = getPomodoroVideo();
+    if (v && fs.existsSync(v.path)) {
+      const stat = fs.statSync(v.path);
+      res.writeHead(200, {
+        "Content-Type": v.mime || "video/mp4",
+        "Content-Length": stat.size,
+        "Cache-Control": "public, max-age=86400",
+        "Accept-Ranges": "bytes",
+      });
+      fs.createReadStream(v.path).pipe(res);
+    } else {
+      res.writeHead(404);
+      res.end("Not found");
+    }
+    return;
+  }
   // Intimate processing debug log
   if (req.method === "GET" && req.url === "/api/debug/intimate") {
     res.writeHead(200, { "Content-Type": "application/json" });
