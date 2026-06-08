@@ -484,6 +484,31 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Admin upload ──
+  if (req.method === "POST" && req.url?.startsWith("/api/admin/upload")) {
+    try {
+      const qs = (req.url || "").split("?")[1] || "";
+      const name = new URLSearchParams(qs).get("name");
+      if (!name || name.includes("..")) {
+        res.writeHead(400); res.end("Bad name"); return;
+      }
+      const chunks = [];
+      req.on("data", c => chunks.push(c));
+      req.on("end", () => {
+        const buf = Buffer.concat(chunks);
+        const dest = path.join(process.env.DATA_DIR || "data", "audio", name);
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, buf);
+        console.log("[upload] " + name + " " + buf.length + " bytes");
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true, name: name, size: buf.length }));
+      });
+    } catch (e) {
+      res.writeHead(500); res.end(e.message);
+    }
+    return;
+  }
+
   // Intimate processing debug log
   if (req.method === "GET" && req.url === "/api/debug/intimate") {
     res.writeHead(200, { "Content-Type": "application/json" });
