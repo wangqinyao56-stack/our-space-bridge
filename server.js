@@ -509,13 +509,7 @@ const server = http.createServer(async (req, res) => {
       res.end("Missing or invalid name param");
       return;
     }
-    const busboy = await import("busboy").catch(() => null);
-    if (!busboy) {
-      res.writeHead(500);
-      res.end("busboy not installed");
-      return;
-    }
-    // For simplicity, just read raw body
+    // Read raw body directly
     const chunks = [];
     req.on("data", c => chunks.push(c));
     req.on("end", async () => {
