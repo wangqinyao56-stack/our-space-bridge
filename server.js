@@ -500,6 +500,44 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Admin: upload audio/video files ──
+  if (req.method === "POST" && req.url?.startsWith("/api/admin/upload")) {
+    const url = new URL(req.url, "http://localhost");
+    const name = url.searchParams.get("name");
+    if (!name || name.includes("..")) {
+      res.writeHead(400);
+      res.end("Missing or invalid name param");
+      return;
+    }
+    const busboy = await import("busboy").catch(() => null);
+    if (!busboy) {
+      res.writeHead(500);
+      res.end("busboy not installed");
+      return;
+    }
+    // For simplicity, just read raw body
+    const chunks = [];
+    req.on("data", c => chunks.push(c));
+    req.on("end", async () => {
+      try {
+        const buf = Buffer.concat(chunks);
+        const dataDir = process.env.DATA_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), "data");
+        const dest = path.join(dataDir, "audio", name);
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, buf);
+        const { refreshAssetIndex } = await import("./lib/audio-assets.js");
+        refreshAssetIndex();
+        console.log(`[upload] Saved: ${name} (${buf.length} bytes)`);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true, name, size: buf.length }));
+      } catch (e) {
+        res.writeHead(500);
+        res.end(e.message);
+      }
+    });
+    return;
+  }
+
   // Auth
   if (req.method === "POST" && req.url === "/api/auth") {
     const body = await readBody(req);
