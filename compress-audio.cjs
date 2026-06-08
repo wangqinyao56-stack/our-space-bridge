@@ -21,11 +21,11 @@ const MUSIC_OUT = path.join(OUT_DIR, "music");
 
 // ── Work noise ──
 const NOISE_FILES = [
-  { in: "H:/未定素材/未定音乐/工作白噪音/工作白噪音/写字.mp3", out: "noise/写字.m4a" },
-  { in: "H:/未定素材/未定音乐/工作白噪音/工作白噪音/翻书赶稿.mp3", out: "noise/翻书赶稿.m4a" },
-  { in: "H:/未定素材/未定音乐/工作白噪音/工作白噪音/炉火煮水.mp3", out: "noise/炉火煮水.m4a" },
-  { in: "H:/未定素材/未定音乐/工作白噪音/电台节目/猫咪呼噜.mp3", out: "noise/猫咪呼噜.m4a" },
-  { in: "H:/未定素材/未定音乐/工作白噪音/电台节目/山泉.mp3", out: "noise/山泉.m4a" },
+  { in: "H:/未定素材/未定音乐/工作白噪音/工作白噪音/写字.mp3", out: "noise/写字.mp3" },
+  { in: "H:/未定素材/未定音乐/工作白噪音/工作白噪音/翻书赶稿.mp3", out: "noise/翻书赶稿.mp3" },
+  { in: "H:/未定素材/未定音乐/工作白噪音/工作白噪音/炉火煮水.mp3", out: "noise/炉火煮水.mp3" },
+  { in: "H:/未定素材/未定音乐/工作白噪音/电台节目/猫咪呼噜.mp3", out: "noise/猫咪呼噜.mp3" },
+  { in: "H:/未定素材/未定音乐/工作白噪音/电台节目/山泉.mp3", out: "noise/山泉.mp3" },
 ];
 
 function compress(inputPath, outputPath, bitrate = "96k") {
@@ -33,7 +33,7 @@ function compress(inputPath, outputPath, bitrate = "96k") {
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     const args = [
       "-y", "-loglevel", "error", "-i", inputPath,
-      "-c:a", "aac", "-b:a", bitrate, "-ac", "1", "-ar", "44100",
+      "-c:a", "libmp3lame", "-b:a", bitrate, "-ac", "1", "-ar", "44100",
       outputPath,
     ];
     const p = spawn(ffmpeg, args, { stdio: "inherit" });
@@ -78,7 +78,7 @@ async function main() {
   let musicCount = 0;
   const files = fs.readdirSync(MUSIC_IN).filter(f => f.startsWith("HOYO-MiX") && f.endsWith(".mp3"));
   for (const f of files) {
-    const outFile = f.replace(".mp3", ".m4a");
+    const outFile = f.replace(".mp3", ".mp3"); // re-encode in place name
     const out = path.join(MUSIC_OUT, outFile);
     if (fs.existsSync(out)) {
       musicCount++;
