@@ -465,7 +465,8 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method === "GET" && req.url?.startsWith("/api/audio/")) {
     try {
-      const fileId = req.url.replace("/api/audio/", "").split("?")[0];
+      const rawId = req.url.replace("/api/audio/", "").split("?")[0];
+      const fileId = decodeURIComponent(rawId);
       const { getAudioAsset } = await import("./lib/audio-assets.js");
       const asset = getAudioAsset(fileId);
       if (asset && fs.existsSync(asset.path)) {
