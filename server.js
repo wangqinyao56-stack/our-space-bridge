@@ -448,11 +448,15 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ── Cloud audio assets ──
-  if (req.method === "GET" && req.url === "/api/audio/list") {
+  if (req.method === "GET" && req.url?.startsWith("/api/audio/list")) {
     try {
+      const qs = (req.url || "").split("?")[1] || "";
+      const category = new URLSearchParams(qs).get("category");
       const { listAudioAssets } = await import("./lib/audio-assets.js");
+      const all = listAudioAssets();
+      const filtered = category ? all.filter(a => a.category === category) : all;
       res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" });
-      res.end(JSON.stringify(listAudioAssets()));
+      res.end(JSON.stringify(filtered));
     } catch (e) {
       res.writeHead(500);
       res.end(e.message);
