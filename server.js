@@ -60,29 +60,7 @@ console.log("[our-space] System prompt loaded");
   console.log("[our-space] Intimate personality notes reset on startup");
 })();
 
-// ── One-time cleanup of DeepSeek-contaminated history ──
-(async () => {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
-  const flagFile = path.join(DATA_DIR, ".deepseek_cleanup_done");
-  if (!fs.existsSync(flagFile)) {
-    clearChatHistory();
-    fs.writeFileSync(flagFile, new Date().toISOString());
-    console.log("[our-space] One-time cleanup of DeepSeek-contaminated chat history done");
-  }
-})();
-
-// ── One-time intimate history cleanup (contaminated with passive/teasing replies, "发现", etc.) ──
-(async () => {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
-  const flagFile = path.join(DATA_DIR, ".intimate_cleanup_v8_real_prompt");
-  if (!fs.existsSync(flagFile)) {
-    await clearIntimateHistory();
-    fs.writeFileSync(flagFile, new Date().toISOString());
-    console.log("[our-space] Intimate history cleanup v3 done — all contaminated history cleared");
-  }
-})();
+// ── Cleanup blocks removed — flag files were lost on redeploy, causing data loss ──
 
 // ── Scene image helper for chat ──
 async function tryGetSceneImage(reply) {
@@ -505,6 +483,9 @@ const server = http.createServer(async (req, res) => {
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         fs.writeFileSync(dest, buf);
         console.log("[upload] " + name + " " + buf.length + " bytes");
+        // Refresh asset index cache
+        const { refreshAssetIndex } = await import("./lib/audio-assets.js");
+        refreshAssetIndex();
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true, name: name, size: buf.length }));
       });
