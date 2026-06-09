@@ -483,9 +483,6 @@ const server = http.createServer(async (req, res) => {
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         fs.writeFileSync(dest, buf);
         console.log("[upload] " + name + " " + buf.length + " bytes");
-        // Refresh asset index cache
-        const { refreshAssetIndex } = await import("./lib/audio-assets.js");
-        refreshAssetIndex();
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true, name: name, size: buf.length }));
       });
