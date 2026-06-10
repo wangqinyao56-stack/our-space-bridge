@@ -6,4 +6,3 @@ server.log
 # *.md  — DO NOT ignore markdown files! System prompts (*.md) are required at runtime.
 test/
 tools/
-data/audio/music/
