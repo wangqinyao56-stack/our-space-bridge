@@ -11,7 +11,7 @@ import https from "node:https";
 
 const JIUSHI_KEY = "sk-sKe3UbGiWOYaqsPN2WuErVGNyGekOcYMSvJePQEnsBXcfdWq";
 const JIUSHI_HOST = "api.jiushi.xin";
-const JIUSHI_MODEL = "[k]claude-opus-4-6-thinking";
+const JIUSHI_MODEL = "[k]claude-opus-4-7";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
 const DISABLE_PROXY = process.env.DISABLE_PROXY === "true";
