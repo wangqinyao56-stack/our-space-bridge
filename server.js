@@ -862,6 +862,45 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    if (msg.type === "regenerate") {
+      if (!msg.user_content) return;
+      try {
+        notifyUserActivity();
+        // Delete old bot reply from chat history
+        if (msg.bot_content) {
+          deleteMessage(msg.bot_content, "assistant");
+        }
+        // Re-run AI with the original user message
+        const fullReply = await handleTextMessage(msg.user_content);
+        const voiceTag = fullReply.startsWith("[语音]");
+        const reply = voiceTag ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
+
+        if (voiceTag) {
+          const jobId = uuid();
+          ws.send(JSON.stringify({
+            type: "voice_reply_regenerated",
+            reply_to: msg.reply_to,
+            job_id: jobId,
+            text: reply,
+          }));
+          ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.reply_to });
+        } else {
+          ws.send(JSON.stringify({
+            type: "regenerated",
+            reply_to: msg.reply_to,
+            content: reply,
+          }));
+        }
+
+        // Side effects: gift/scenery
+        triggerMultimediaEvents(ws, msg.reply_to);
+      } catch (err) {
+        console.error("[ws] Regenerate error:", err.message);
+        ws.send(JSON.stringify({ type: "error", message: err.message }));
+      }
+      return;
+    }
+
     if (msg.type === "voice") {
       if (!msg.audio) return;
       try {
