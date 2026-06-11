@@ -838,7 +838,6 @@ wss.on("connection", (ws, req) => {
       }
       return;
     }
-    }
 
     if (msg.type === "weather_city") {
       if (msg.city) {
