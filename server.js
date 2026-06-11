@@ -817,6 +817,29 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    if (msg.type === "nxx_sticker") {
+      try {
+        notifyUserActivity();
+        // Broadcast女主's sticker to all clients
+        broadcast(JSON.stringify({
+          type: "nxx_message",
+          character: "nvzhu",
+          content: "[表情包]",
+          stickerIndex: msg.sticker_index,
+          time: new Date().toISOString(),
+        }));
+        // Generate AI responses (they might react to the sticker)
+        const replies = await generateNxxChat({ nvzhuReply: "（发了一个表情包）" });
+        if (replies.length > 0) {
+          broadcast(JSON.stringify({ type: "nxx_messages", messages: replies }));
+        }
+      } catch (e) {
+        console.error("[nxx] Sticker error:", e.message);
+      }
+      return;
+    }
+    }
+
     if (msg.type === "weather_city") {
       if (msg.city) {
         setWeatherCity(msg.city);
