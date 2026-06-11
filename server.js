@@ -45,6 +45,7 @@ import { startProactiveChat, notifyUserActivity, getProactiveState } from "./lib
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
+import { generateNxxChat, getNxxHistory, saveNvzhuMessage } from "./lib/nxx-group.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -156,6 +157,35 @@ startProactiveChat((message) => {
   }
   console.log(`[proactive] Broadcast: "${message.slice(0, 60)}..."`);
 });
+
+// ── NXX Group Chat auto-trigger ──
+let nxxTimer = null;
+
+function scheduleNxxChat() {
+  if (nxxTimer) clearTimeout(nxxTimer);
+  // Random interval: 90-240 minutes
+  const minutes = 90 + Math.floor(Math.random() * 150);
+  console.log(`[nxx-group] Next auto-chat in ${minutes} minutes`);
+  nxxTimer = setTimeout(async () => {
+    try {
+      const messages = await generateNxxChat();
+      if (messages.length > 0) {
+        broadcast(JSON.stringify({ type: "nxx_messages", messages }));
+        console.log(`[nxx-group] Auto-sent ${messages.length} messages`);
+      }
+    } catch (e) {
+      console.error("[nxx-group] Auto-trigger error:", e.message);
+    }
+    scheduleNxxChat(); // Schedule next
+  }, minutes * 60 * 1000);
+}
+
+// Start first trigger after 60-180 min (shorter initial wait)
+setTimeout(() => {
+  scheduleNxxChat();
+}, (60 + Math.floor(Math.random() * 120)) * 60 * 1000);
+
+console.log("[nxx-group] Auto-trigger initialized (first in 60-180 min)");
 
 // ── 分段发送：一句一发，像真人聊微信 ──
 function splitIntoMessages(text) {
@@ -753,6 +783,37 @@ wss.on("connection", (ws, req) => {
 
     if (msg.type === "ping") {
       ws.send(JSON.stringify({ type: "pong" }));
+      return;
+    }
+
+    if (msg.type === "nxx_history") {
+      const history = getNxxHistory(14);
+      ws.send(JSON.stringify({ type: "nxx_history", messages: history }));
+      return;
+    }
+
+    if (msg.type === "nxx_send") {
+      if (!msg.content?.trim()) return;
+      try {
+        notifyUserActivity();
+        // Save女主's message
+        saveNvzhuMessage(msg.content);
+        // Broadcast to all clients
+        broadcast(JSON.stringify({
+          type: "nxx_message",
+          character: "nvzhu",
+          content: msg.content,
+          time: new Date().toISOString(),
+        }));
+        // Generate AI responses
+        const replies = await generateNxxChat({ nvzhuReply: msg.content });
+        if (replies.length > 0) {
+          broadcast(JSON.stringify({ type: "nxx_messages", messages: replies }));
+        }
+      } catch (e) {
+        console.error("[nxx] Send error:", e.message);
+        ws.send(JSON.stringify({ type: "error", message: "群聊生成失败" }));
+      }
       return;
     }
 
