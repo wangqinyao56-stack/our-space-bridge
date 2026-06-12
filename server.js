@@ -854,8 +854,15 @@ wss.on("connection", (ws, req) => {
 
     if (msg.type === "nxx_refresh") {
       try {
-        // Find the most recent nvzhu message to regenerate context
+        // Find last batch of AI messages to delete before regenerating
         const history = getNxxHistory(7);
+        const lastNvzhuIdx = [...history].reverse().findIndex(m => m.character === "nvzhu");
+        const staleMessages = lastNvzhuIdx > 0 ? [...history].reverse().slice(0, lastNvzhuIdx).reverse() : [];
+        if (staleMessages.length > 0) {
+          deleteNxxMessages(staleMessages);
+          broadcast(JSON.stringify({ type: "nxx_messages_deleted", items: staleMessages }));
+        }
+        // Regenerate
         const lastNvzhu = [...history].reverse().find(m => m.character === "nvzhu");
         const nvzhuReply = lastNvzhu?.content || "继续聊";
         const replies = await generateNxxChat({ nvzhuReply });
@@ -1012,10 +1019,15 @@ wss.on("connection", (ws, req) => {
         notifyUserActivity();
         // Delete old bot reply from chat history
         if (msg.bot_content) {
-          deleteMessage(msg.bot_content, "assistant");
+          if (msg.channel === "intimate") {
+            deleteIntimateHistoryMessage(msg.bot_content, "assistant");
+          } else {
+            deleteMessage(msg.bot_content, "assistant");
+          }
         }
-        // Re-run AI with the original user message
-        const fullReply = await handleTextMessage(msg.user_content);
+        // Route to correct handler
+        const handler = msg.channel === "intimate" ? handleIntimateMessage : handleTextMessage;
+        const fullReply = await handler(msg.user_content);
         const voiceTag = fullReply.startsWith("[语音]");
         const reply = voiceTag ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
 
