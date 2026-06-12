@@ -46,6 +46,7 @@ import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.j
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
+import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -730,6 +731,41 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Health data import
+  if (req.method === "POST" && req.url === "/api/health/import") {
+    const body = await readBody(req);
+    try {
+      const { date, metrics } = JSON.parse(body);
+      if (!date || !metrics) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: "date and metrics required" }));
+        return;
+      }
+      const result = importHealthData(date, metrics, "api");
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(result));
+
+      // Async summary generation if data changed
+      if (result.updated) {
+        generateDailySummary(date).then((summary) => {
+          if (summary) {
+            broadcast(JSON.stringify({
+              type: "health_updated",
+              date,
+              summary,
+              metrics,
+            }));
+          }
+        }).catch(() => {});
+      }
+      return;
+    } catch (e) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: e.message }));
+      return;
+    }
+  }
+
   // 404
   res.writeHead(404);
   res.end("Not Found");
@@ -749,6 +785,7 @@ const wss = new WebSocketServer({ server });
 wss.on("connection", (ws, req) => {
   const ip = req.socket.remoteAddress;
   const connId = Math.random().toString(36).slice(2, 6);
+  const todayStr = () => new Date(new Date().getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
   console.log(`[ws] Connected: ${ip} #${connId} (total: ${clients.size + 1})`);
   clients.set(ws, { authenticated: false, connId, connectedAt: Date.now() });
   recentMsgs.push({ ts: new Date().toISOString(), type: "__ws_connected", connId, total: clients.size });
@@ -1725,6 +1762,78 @@ wss.on("connection", (ws, req) => {
         type: "device_state",
         ...getDeviceState(),
       }));
+      return;
+    }
+
+    // ── Health data ──
+
+    if (msg.type === "health_list_dates") {
+      ws.send(JSON.stringify({
+        type: "health_dates",
+        dates: listHealthDates(),
+      }));
+      return;
+    }
+
+    if (msg.type === "health_get") {
+      const date = msg.date || todayStr();
+      const data = getHealthForDate(date);
+      ws.send(JSON.stringify({
+        type: "health_data",
+        date,
+        data,
+      }));
+      return;
+    }
+
+    if (msg.type === "health_get_range") {
+      const items = getHealthRange(msg.from, msg.to);
+      ws.send(JSON.stringify({
+        type: "health_range",
+        from: msg.from,
+        to: msg.to,
+        items,
+      }));
+      return;
+    }
+
+    if (msg.type === "health_get_summary") {
+      const date = msg.date || todayStr();
+      let summaryData = getHealthSummary(date);
+      if (!summaryData) {
+        // Try to generate
+        const summary = await generateDailySummary(date);
+        summaryData = summary ? { date, summary, version: 1 } : null;
+      }
+      ws.send(JSON.stringify({
+        type: "health_summary",
+        date,
+        summary: summaryData?.summary || null,
+        cached: !!getHealthSummary(date),
+      }));
+      return;
+    }
+
+    if (msg.type === "health_import") {
+      if (!msg.date || !msg.metrics) {
+        ws.send(JSON.stringify({ type: "health_import_result", error: "date and metrics required" }));
+        return;
+      }
+      const result = importHealthData(msg.date, msg.metrics, "ws");
+      ws.send(JSON.stringify({ type: "health_import_result", ...result }));
+
+      if (result.updated) {
+        generateDailySummary(msg.date).then((summary) => {
+          if (summary) {
+            broadcast(JSON.stringify({
+              type: "health_updated",
+              date: msg.date,
+              summary,
+              metrics: msg.metrics,
+            }));
+          }
+        }).catch(() => {});
+      }
       return;
     }
 
