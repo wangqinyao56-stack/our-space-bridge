@@ -166,7 +166,7 @@ let nxxTimer = null;
 function broadcastNxxMessages(messages) {
   if (!messages || messages.length === 0) return;
   for (let i = 0; i < messages.length; i++) {
-    const delay = i === 0 ? 0 : 1000 + (i - 1) * 500; // 0, 1000ms, 1500ms, 2000ms...
+    const delay = i === 0 ? 0 : 2000 + (i - 1) * 1500; // 0, 2000ms, 3500ms, 5000ms...
     setTimeout(() => {
       broadcast(JSON.stringify({ type: "nxx_message", ...messages[i] }));
     }, delay);
