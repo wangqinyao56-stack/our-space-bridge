@@ -161,6 +161,19 @@ startProactiveChat((message) => {
 // ── NXX Group Chat auto-trigger ──
 let nxxTimer = null;
 
+// Staggered broadcast: first message immediately, rest with increasing gaps
+// Prevents the "泄洪" (flood) effect where all AI replies appear at once
+function broadcastNxxMessages(messages) {
+  if (!messages || messages.length === 0) return;
+  for (let i = 0; i < messages.length; i++) {
+    const delay = i === 0 ? 0 : 1000 + (i - 1) * 500; // 0, 1000ms, 1500ms, 2000ms...
+    setTimeout(() => {
+      broadcast(JSON.stringify({ type: "nxx_message", ...messages[i] }));
+    }, delay);
+  }
+  console.log(`[nxx-group] Staggered broadcast of ${messages.length} messages`);
+}
+
 function scheduleNxxChat() {
   if (nxxTimer) clearTimeout(nxxTimer);
   // Random interval: 90-240 minutes
@@ -170,7 +183,7 @@ function scheduleNxxChat() {
     try {
       const messages = await generateNxxChat();
       if (messages.length > 0) {
-        broadcast(JSON.stringify({ type: "nxx_messages", messages }));
+        broadcastNxxMessages(messages);
         console.log(`[nxx-group] Auto-sent ${messages.length} messages`);
       }
     } catch (e) {
@@ -808,10 +821,8 @@ wss.on("connection", (ws, req) => {
         // Generate AI responses
         const replies = await generateNxxChat({ nvzhuReply: msg.content });
         if (replies.length > 0) {
-          broadcast(JSON.stringify({ type: "nxx_messages", messages: replies }));
+          broadcastNxxMessages(replies);
         }
-      } catch (e) {
-        console.error("[nxx] Send error:", e.message);
         ws.send(JSON.stringify({ type: "error", message: "群聊生成失败" }));
       }
       return;
@@ -824,17 +835,34 @@ wss.on("connection", (ws, req) => {
         broadcast(JSON.stringify({
           type: "nxx_message",
           character: "nvzhu",
-          content: "[表情包]",
-          stickerIndex: msg.sticker_index,
+          content: "",
+          sticker: msg.sticker_file || "",
           time: new Date().toISOString(),
         }));
         // Generate AI responses (they might react to the sticker)
         const replies = await generateNxxChat({ nvzhuReply: "（发了一个表情包）" });
         if (replies.length > 0) {
-          broadcast(JSON.stringify({ type: "nxx_messages", messages: replies }));
+          broadcastNxxMessages(replies);
         }
       } catch (e) {
         console.error("[nxx] Sticker error:", e.message);
+      }
+      return;
+    }
+
+    if (msg.type === "nxx_refresh") {
+      try {
+        // Find the most recent nvzhu message to regenerate context
+        const history = getNxxHistory(7);
+        const lastNvzhu = [...history].reverse().find(m => m.character === "nvzhu");
+        const nvzhuReply = lastNvzhu?.content || "继续聊";
+        const replies = await generateNxxChat({ nvzhuReply });
+        if (replies.length > 0) {
+          broadcastNxxMessages(replies);
+        }
+      } catch (e) {
+        console.error("[nxx] Refresh error:", e.message);
+        ws.send(JSON.stringify({ type: "error", message: "刷新失败" }));
       }
       return;
     }
