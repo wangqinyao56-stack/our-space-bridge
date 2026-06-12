@@ -854,20 +854,21 @@ wss.on("connection", (ws, req) => {
 
     if (msg.type === "nxx_refresh") {
       try {
-        // Find last batch of AI messages to delete before regenerating
         const history = getNxxHistory(7);
         const lastNvzhuIdx = [...history].reverse().findIndex(m => m.character === "nvzhu");
         const staleMessages = lastNvzhuIdx > 0 ? [...history].reverse().slice(0, lastNvzhuIdx).reverse() : [];
         if (staleMessages.length > 0) {
           deleteNxxMessages(staleMessages);
-          broadcast(JSON.stringify({ type: "nxx_messages_deleted", items: staleMessages }));
         }
-        // Regenerate
         const lastNvzhu = [...history].reverse().find(m => m.character === "nvzhu");
         const nvzhuReply = lastNvzhu?.content || "继续聊";
         const replies = await generateNxxChat({ nvzhuReply });
         if (replies.length > 0) {
-          broadcastNxxMessages(replies);
+          broadcast(JSON.stringify({
+            type: "nxx_refreshed",
+            deleted: staleMessages,
+            messages: replies,
+          }));
         }
       } catch (e) {
         console.error("[nxx] Refresh error:", e.message);
