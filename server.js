@@ -823,6 +823,8 @@ wss.on("connection", (ws, req) => {
         if (replies.length > 0) {
           broadcastNxxMessages(replies);
         }
+      } catch (e) {
+        console.error("[nxx] Send error:", e.message);
         ws.send(JSON.stringify({ type: "error", message: "群聊生成失败" }));
       }
       return;
