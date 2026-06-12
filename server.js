@@ -340,9 +340,9 @@ function sendSegments(ws, replyTo, segments, baseDelayMs = 18000 + Math.random()
 // Trigger gift and scenery events (non-blocking, fires once per message batch)
 let _multimediaCooldown = 0;
 async function triggerMultimediaEvents(ws, replyTo) {
-  // Cooldown: only check once per 30 seconds to avoid spamming
+  // Cooldown: only check once per 15 seconds to avoid spamming
   const now = Date.now();
-  if (now - _multimediaCooldown < 30000) return;
+  if (now - _multimediaCooldown < 15000) return;
   _multimediaCooldown = now;
 
   // Sticker: 8% chance, separate from scenery/gift
@@ -392,8 +392,8 @@ async function triggerMultimediaEvents(ws, replyTo) {
   // But returning phase is fine (he's back that day)
   if (!isTraveling()) {
     try {
-      // Try gift (random chance, higher than before)
-      const gift = await tryTriggerGift(0.10);
+      // Try gift (random chance)
+      const gift = await tryTriggerGift(0.30);
       if (gift) {
         ws.send(JSON.stringify({
           type: "gift_event",
