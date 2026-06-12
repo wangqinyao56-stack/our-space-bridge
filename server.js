@@ -45,7 +45,7 @@ import { startProactiveChat, notifyUserActivity, getProactiveState } from "./lib
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
-import { generateNxxChat, getNxxHistory, saveNvzhuMessage } from "./lib/nxx-group.js";
+import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -865,6 +865,37 @@ wss.on("connection", (ws, req) => {
       } catch (e) {
         console.error("[nxx] Refresh error:", e.message);
         ws.send(JSON.stringify({ type: "error", message: "刷新失败" }));
+      }
+      return;
+    }
+
+    if (msg.type === "nxx_delete") {
+      try {
+        deleteNxxMessages([{ character: msg.character, content: msg.content, time: msg.time, sticker: msg.sticker || "" }]);
+        broadcast(JSON.stringify({
+          type: "nxx_deleted",
+          character: msg.character,
+          content: msg.content,
+          time: msg.time,
+          sticker: msg.sticker || "",
+        }));
+      } catch (e) {
+        console.error("[nxx] Delete error:", e.message);
+      }
+      return;
+    }
+
+    if (msg.type === "nxx_delete_messages") {
+      try {
+        if (msg.items && Array.isArray(msg.items)) {
+          deleteNxxMessages(msg.items);
+          broadcast(JSON.stringify({
+            type: "nxx_messages_deleted",
+            items: msg.items,
+          }));
+        }
+      } catch (e) {
+        console.error("[nxx] Batch delete error:", e.message);
       }
       return;
     }
