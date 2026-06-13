@@ -11,7 +11,7 @@ import https from "node:https";
 
 const ZHAILIAN_KEY = "sk-pJzEUjdQT4nC3AAVl7mJap0H0jXXyFlJtNo0R7njaGExFTvW";
 const ZHAILIAN_HOST = "a2.zlapi.vip";
-const ZHAILIAN_MODEL = "claude-opus-4-6-k";
+const ZHAILIAN_MODEL = "[0.06]k扬/claude-opus-4-6";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
 const DISABLE_PROXY = process.env.DISABLE_PROXY === "true";
