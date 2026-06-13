@@ -7,6 +7,7 @@ RUN npm install --production
 
 COPY lib/ ./lib/
 COPY simple-agent.js .
+COPY system-prompt.txt .
 
 # 记忆存储卷挂载点
 VOLUME ["/app/memory"]

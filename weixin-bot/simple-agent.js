@@ -190,7 +190,7 @@ async function main() {
   console.log("🎤 极简微信Bot启动中...");
   console.log(`   userId: ${account.userId || "(from env)"}`);
   console.log("   模式：文字 + 图片识别");
-  console.log("   AI：玖时 [k]claude-opus-4-6");
+  console.log("   AI：玖时 claude-opus-4-6（企业按量）");
 
   const bot = start(agent, { log: console.log });
   console.log("✅ 夏彦已上线（纯文字模式）");
