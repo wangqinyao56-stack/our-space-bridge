@@ -14,7 +14,7 @@ import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
 
-import { askClaude } from "./lib/api2d.js";
+import { askClaude } from "./lib/zhailian.js";
 
 // ── 账号加载 ──
 // Docker/Sealos: 读环境变量
@@ -190,7 +190,7 @@ async function main() {
   console.log("🎤 极简微信Bot启动中...");
   console.log(`   userId: ${account.userId || "(from env)"}`);
   console.log("   模式：文字 + 图片识别");
-  console.log("   AI：玖时 [企业按量]claude-opus-4-6");
+  console.log("   AI：宅恋 [0.3]不明鹿/claude-opus-4-6");
 
   const bot = start(agent, { log: console.log });
   console.log("✅ 夏彦已上线（纯文字模式）");
