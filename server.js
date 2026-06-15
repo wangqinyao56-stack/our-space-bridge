@@ -1168,17 +1168,22 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "get_history") {
       const channel = msg.channel || "chat";
       const traveling = isTraveling();
-      const rawMessages = channel === "intimate"
-        ? await getIntimateHistoryMessages(traveling)
-        : await getChatHistoryMessages(traveling);
+      let rawMessages;
+      if (channel === "intimate") {
+        rawMessages = await getIntimateHistoryMessages(traveling);
+      } else if (channel === "affection_home" || channel === "affection_date") {
+        const { getAffectionHistoryMessages } = await import("./lib/affection-memory.js");
+        rawMessages = getAffectionHistoryMessages(channel);
+      } else {
+        rawMessages = await getChatHistoryMessages(traveling);
+      }
       // Convert to app Message format
-      // Chat messages: split bot replies into short segments like real WeChat
-      // Intimate messages: keep as one long message (no splitting)
+      // Affection/Intimate messages: keep as one long message (no splitting)
       const messages = [];
-      const isIntimate = channel === "intimate";
+      const noSplit = channel === "intimate" || channel === "affection_home" || channel === "affection_date";
       for (let i = 0; i < rawMessages.length; i++) {
         const m = rawMessages[i];
-        if (!isIntimate && m.role === "assistant" && m.content && m.content.length > 20) {
+        if (!noSplit && m.role === "assistant" && m.content && m.content.length > 20) {
           const segments = splitIntoMessages(m.content);
           segments.forEach((seg, si) => {
             messages.push({
@@ -1230,6 +1235,9 @@ wss.on("connection", (ws, req) => {
       const channel = msg.channel || "chat";
       if (channel === "intimate") {
         await clearIntimateHistory();
+      } else if (channel === "affection_home" || channel === "affection_date") {
+        const { clearAffectionMemory } = await import("./lib/affection-memory.js");
+        clearAffectionMemory(channel);
       } else {
         clearChatHistory();
       }
@@ -1241,7 +1249,10 @@ wss.on("connection", (ws, req) => {
       const channel = msg.channel || "chat";
       const content = msg.content || "";
       const from = msg.from === "me" ? "user" : "assistant";
-      if (channel === "intimate") {
+      if (channel === "affection_home" || channel === "affection_date") {
+        const { deleteAffectionMessage } = await import("./lib/affection-memory.js");
+        deleteAffectionMessage(channel, content, from);
+      } else if (channel === "intimate") {
         deleteIntimateHistoryMessage(content, from);
       } else {
         deleteChatMessage(content, from);
