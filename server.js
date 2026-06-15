@@ -11,6 +11,8 @@ import {
   loadSystemPrompt,
   handleTextMessage,
   handleIntimateMessage,
+  handleAffectionHomeMessage,
+  handleAffectionDateMessage,
   handleVoiceMessage,
   getChatHistory,
   getChatHistoryMessages,
@@ -1047,6 +1049,36 @@ wss.on("connection", (ws, req) => {
         console.error("[ws] Intimate text error:", err.message);
         intimateDebugLog.push({ timestamp: new Date().toISOString(), stage: "ws_error", error: err.message });
         if (intimateDebugLog.length > 20) intimateDebugLog.shift();
+        ws.send(JSON.stringify({ type: "error", message: err.message }));
+      }
+      return;
+    }
+
+    // ── 居家温存 ──
+    if (msg.type === "affection_home") {
+      if (!msg.content?.trim()) return;
+      try {
+        notifyUserActivity();
+        const reply = await handleAffectionHomeMessage(msg.content);
+        const segments = splitIntoMessages(reply);
+        sendSegments(ws, msg.id, segments);
+      } catch (err) {
+        console.error("[ws] Affection home error:", err.message);
+        ws.send(JSON.stringify({ type: "error", message: err.message }));
+      }
+      return;
+    }
+
+    // ── 出门约会 ──
+    if (msg.type === "affection_date") {
+      if (!msg.content?.trim()) return;
+      try {
+        notifyUserActivity();
+        const reply = await handleAffectionDateMessage(msg.content);
+        const segments = splitIntoMessages(reply);
+        sendSegments(ws, msg.id, segments);
+      } catch (err) {
+        console.error("[ws] Affection date error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
       }
       return;

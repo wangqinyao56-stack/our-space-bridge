@@ -17,6 +17,8 @@ export default {
   TRAVEL_PROMPT_PATH: join(__dirname, "system-prompt-travel.md"),
   TRAVEL_INTIMATE_PROMPT_PATH: join(__dirname, "system-prompt-travel-intimate.md"),
   HUASHENG_TRAVEL_PROMPT_PATH: join(__dirname, "system-prompt-huasheng-travel.md"),
+  AFFECTION_HOME_PROMPT_PATH: join(__dirname, "system-prompt-affection-home.md"),
+  AFFECTION_DATE_PROMPT_PATH: join(__dirname, "system-prompt-affection-date.md"),
   ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY || "sk_15dffb4b4bfcaf5d6b0db47ef7564f7fc1ad98a42dffa6cd",
   ELEVENLABS_VOICE_ID: "O2p1C2KJhMzz7EMpXHdN",
   TTS: {
