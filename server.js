@@ -47,6 +47,7 @@ import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from ".
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
+import { recognizeImage } from "./lib/ai.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -1244,9 +1245,14 @@ wss.on("connection", (ws, req) => {
       try {
         // Auto-save to album
         const photo = addPhoto(msg.base64, msg.mime, "me");
+        // Recognize image content with 火山方舟 vision model
+        const imageDesc = await recognizeImage(msg.base64, msg.mime);
+        const textContent = imageDesc
+          ? `[华生发来了一张图片，图片内容是：${imageDesc}]`
+          : `[华生发来了一张图片]`;
         // Forward to AI with image context
         const reply = await handleTextMessage(
-          `[华生发来了一张图片]`,
+          textContent,
           false,
           { imageBase64: msg.base64, imageMime: msg.mime }
         );
