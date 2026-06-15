@@ -50,6 +50,7 @@ import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus 
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage } from "./lib/ai.js";
+import { getAll, getActive, getPending, getHistory, proposeDate, activateDate, completeDate, cancelDate, checkTodayDates, detectDateProposal } from "./lib/date-plans.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -1871,6 +1872,52 @@ wss.on("connection", (ws, req) => {
             }));
           }
         }).catch(() => {});
+      }
+      return;
+    }
+
+    // ── Date plans ──
+    if (msg.type === "date_plans_get_all") {
+      const all = getAll();
+      const active = getActive();
+      ws.send(JSON.stringify({ type: "date_plans", plans: all, activeDate: active }));
+      return;
+    }
+
+    if (msg.type === "date_plans_get_history") {
+      const history = getHistory();
+      ws.send(JSON.stringify({ type: "date_plans_history", plans: history }));
+      return;
+    }
+
+    if (msg.type === "date_plan_propose") {
+      if (!msg.text?.trim()) return;
+      const plan = proposeDate({
+        text: msg.text,
+        proposedBy: "me",
+        scheduledDate: msg.scheduledDate || null,
+        scheduledTime: msg.scheduledTime || null,
+      });
+      ws.send(JSON.stringify({ type: "date_plan_created", plan }));
+      broadcast(JSON.stringify({ type: "date_plan_created", plan }));
+      return;
+    }
+
+    if (msg.type === "date_plan_complete") {
+      if (!msg.id) return;
+      const plan = completeDate(msg.id);
+      if (plan) {
+        ws.send(JSON.stringify({ type: "date_plan_updated", plan }));
+        broadcast(JSON.stringify({ type: "date_plan_updated", plan, dateActive: null }));
+      }
+      return;
+    }
+
+    if (msg.type === "date_plan_cancel") {
+      if (!msg.id) return;
+      const plan = cancelDate(msg.id);
+      if (plan) {
+        ws.send(JSON.stringify({ type: "date_plan_updated", plan }));
       }
       return;
     }
