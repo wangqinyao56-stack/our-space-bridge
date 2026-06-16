@@ -25,6 +25,7 @@ import {
   sttDebugLog,
   intimateDebugLog,
   detectSceneImage,
+  setDatingInviteHandler,
 } from "./lib/message-router.js";
 import {
   loadDiary,
@@ -430,6 +431,17 @@ function broadcast(data) {
     }
   }
 }
+
+// Wire dating_invite: when 夏彦 proposes a date in chat, push scene to app
+setDatingInviteHandler((sceneId, text) => {
+  broadcast(JSON.stringify({
+    type: "dating_invite",
+    sceneId,
+    text: text || "",
+    timestamp: Date.now(),
+  }));
+  console.log(`[dating-invite] Broadcast scene=${sceneId}`);
+});
 
 // ── HTTP Server ──
 const server = http.createServer(async (req, res) => {
@@ -1075,11 +1087,25 @@ wss.on("connection", (ws, req) => {
       if (!msg.content?.trim()) return;
       try {
         notifyUserActivity();
-        const reply = await handleAffectionDateMessage(msg.content);
+        const reply = await handleAffectionDateMessage(msg.content, msg.sceneId || null);
         const segments = splitIntoMessages(reply);
         sendSegments(ws, msg.id, segments);
       } catch (err) {
         console.error("[ws] Affection date error:", err.message);
+        ws.send(JSON.stringify({ type: "error", message: err.message }));
+      }
+      return;
+    }
+
+    if (msg.type === "phone_call") {
+      if (!msg.content?.trim()) return;
+      try {
+        notifyUserActivity();
+        const reply = await handleTextMessage(msg.content);
+        const segments = splitIntoMessages(reply);
+        sendSegments(ws, msg.id, segments);
+      } catch (err) {
+        console.error("[ws] Phone call error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
       }
       return;
@@ -1174,13 +1200,16 @@ wss.on("connection", (ws, req) => {
       } else if (channel === "affection_home" || channel === "affection_date") {
         const { getAffectionHistoryMessages } = await import("./lib/affection-memory.js");
         rawMessages = getAffectionHistoryMessages(channel);
+      } else if (channel === "phone_call") {
+        // Phone calls don't persist server-side history yet
+        rawMessages = [];
       } else {
         rawMessages = await getChatHistoryMessages(traveling);
       }
       // Convert to app Message format
       // Affection/Intimate messages: keep as one long message (no splitting)
       const messages = [];
-      const noSplit = channel === "intimate" || channel === "affection_home" || channel === "affection_date";
+      const noSplit = channel === "intimate" || channel === "affection_home" || channel === "affection_date" || channel === "phone_call";
       for (let i = 0; i < rawMessages.length; i++) {
         const m = rawMessages[i];
         if (!noSplit && m.role === "assistant" && m.content && m.content.length > 20) {
@@ -1930,6 +1959,17 @@ wss.on("connection", (ws, req) => {
       if (plan) {
         ws.send(JSON.stringify({ type: "date_plan_updated", plan }));
       }
+      return;
+    }
+
+    if (msg.type === "answer_call") {
+      console.log(`[phone-call] Answered: ${msg.callId || "unknown"}`);
+      return;
+    }
+
+    if (msg.type === "decline_call") {
+      console.log(`[phone-call] Declined: ${msg.callId || "unknown"}`);
+      // Server may trigger a follow-up "missed call" message in travel chat
       return;
     }
 
