@@ -739,6 +739,26 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Dating scene backgrounds — serve from /data/dating-bgs
+  if (req.method === "GET" && req.url?.startsWith("/api/dating-bgs/")) {
+    const filename = req.url.replace("/api/dating-bgs/", "").split("?")[0];
+    if (filename.includes("..") || filename.includes("/")) {
+      res.writeHead(400); res.end("Bad filename"); return;
+    }
+    const bgDir = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, "dating-bgs") : path.join(__dirname, "public", "dating-bgs");
+    const filePath = path.join(bgDir, filename);
+    if (fs.existsSync(filePath)) {
+      const ext = path.extname(filename).toLowerCase();
+      const mime = ext === ".png" ? "image/png" : "image/jpeg";
+      const buf = fs.readFileSync(filePath);
+      res.writeHead(200, { "Content-Type": mime, "Cache-Control": "public, max-age=86400" });
+      res.end(buf);
+    } else {
+      res.writeHead(404); res.end("Not found");
+    }
+    return;
+  }
+
   // Chat history
   if (req.method === "GET" && req.url === "/api/history") {
     const history = getChatHistory();
