@@ -539,7 +539,7 @@ const server = http.createServer(async (req, res) => {
       req.on("data", c => chunks.push(c));
       req.on("end", () => {
         const buf = Buffer.concat(chunks);
-        const dest = path.join(process.env.DATA_DIR || "data", "audio", name);
+        const dest = path.join(process.env.DATA_DIR || "data", name.startsWith("dating-bgs/") ? "" : "audio", name);
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         fs.writeFileSync(dest, buf);
         console.log("[upload] " + name + " " + buf.length + " bytes");
@@ -656,20 +656,10 @@ const server = http.createServer(async (req, res) => {
     if (filename.includes("..") || filename.includes("/")) {
       res.writeHead(400); res.end("Bad filename"); return;
     }
-    const bgDir = path.join(__dirname, "public", "dating-bgs");
-    const dataBgDir = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, "dating-bgs") : null;
-    const audioBgDir = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, "audio", "dating-bgs") : null;
-    let filePath = path.join(bgDir, filename);
-    // Try data dirs
-    const dirs = [
-      dataBgDir,
-      audioBgDir,
-    ].filter(Boolean);
-    for (const dir of dirs) {
-      const p = path.join(dir, filename);
-      if (fs.existsSync(p)) { filePath = p; break; }
-    }
-    console.log(`[dating-bgs] ${filename} → ${filePath} (exists: ${fs.existsSync(filePath)})`);
+    const bgDir = process.env.DATA_DIR
+      ? path.join(process.env.DATA_DIR, "dating-bgs")
+      : path.join(__dirname, "public", "dating-bgs");
+    const filePath = path.join(bgDir, filename);
     if (fs.existsSync(filePath)) {
       const ext = path.extname(filename).toLowerCase();
       const mime = ext === ".png" ? "image/png" : "image/jpeg";
