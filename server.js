@@ -660,12 +660,16 @@ const server = http.createServer(async (req, res) => {
     const dataBgDir = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, "dating-bgs") : null;
     const audioBgDir = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, "audio", "dating-bgs") : null;
     let filePath = path.join(bgDir, filename);
-    if (!fs.existsSync(filePath) && dataBgDir) {
-      filePath = path.join(dataBgDir, filename);
+    // Try data dirs
+    const dirs = [
+      dataBgDir,
+      audioBgDir,
+    ].filter(Boolean);
+    for (const dir of dirs) {
+      const p = path.join(dir, filename);
+      if (fs.existsSync(p)) { filePath = p; break; }
     }
-    if (!fs.existsSync(filePath) && audioBgDir) {
-      filePath = path.join(audioBgDir, filename);
-    }
+    console.log(`[dating-bgs] ${filename} → ${filePath} (exists: ${fs.existsSync(filePath)})`);
     if (fs.existsSync(filePath)) {
       const ext = path.extname(filename).toLowerCase();
       const mime = ext === ".png" ? "image/png" : "image/jpeg";
