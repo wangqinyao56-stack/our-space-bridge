@@ -658,9 +658,13 @@ const server = http.createServer(async (req, res) => {
     }
     const bgDir = path.join(__dirname, "public", "dating-bgs");
     const dataBgDir = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, "dating-bgs") : null;
+    const audioBgDir = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, "audio", "dating-bgs") : null;
     let filePath = path.join(bgDir, filename);
     if (!fs.existsSync(filePath) && dataBgDir) {
       filePath = path.join(dataBgDir, filename);
+    }
+    if (!fs.existsSync(filePath) && audioBgDir) {
+      filePath = path.join(audioBgDir, filename);
     }
     if (fs.existsSync(filePath)) {
       const ext = path.extname(filename).toLowerCase();
