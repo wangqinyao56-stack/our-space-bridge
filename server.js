@@ -656,8 +656,12 @@ const server = http.createServer(async (req, res) => {
     if (filename.includes("..") || filename.includes("/")) {
       res.writeHead(400); res.end("Bad filename"); return;
     }
-    const bgDir = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, "dating-bgs") : path.join(__dirname, "public", "dating-bgs");
-    const filePath = path.join(bgDir, filename);
+    const bgDir = path.join(__dirname, "public", "dating-bgs");
+    const dataBgDir = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, "dating-bgs") : null;
+    let filePath = path.join(bgDir, filename);
+    if (!fs.existsSync(filePath) && dataBgDir) {
+      filePath = path.join(dataBgDir, filename);
+    }
     if (fs.existsSync(filePath)) {
       const ext = path.extname(filename).toLowerCase();
       const mime = ext === ".png" ? "image/png" : "image/jpeg";
