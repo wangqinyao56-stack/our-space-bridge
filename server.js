@@ -1107,8 +1107,13 @@ wss.on("connection", (ws, req) => {
     // ── 出门约会：清空旧记忆 ──
     if (msg.type === "affection_date_clear") {
       try {
-        const { clearAffectionMemory } = await import("./lib/affection-memory.js");
+        const { clearAffectionMemory, recordAffectionMessage } = await import("./lib/affection-memory.js");
         clearAffectionMemory("affection_date");
+        // Record the opening line so AI has context for the first reply
+        if (msg.openingText) {
+          recordAffectionMessage("affection_date", "assistant", msg.openingText);
+          console.log(`[ws] Recorded opening: "${msg.openingText.slice(0, 50)}..."`);
+        }
         console.log("[ws] Cleared affection_date memory for new date");
       } catch (err) {
         console.error("[ws] affection_date_clear error:", err.message);
