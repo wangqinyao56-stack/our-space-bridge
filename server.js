@@ -1123,7 +1123,7 @@ wss.on("connection", (ws, req) => {
       if (!msg.content?.trim()) return;
       try {
         notifyUserActivity();
-        const reply = await handleTextMessage(msg.content);
+        const reply = await handleIntimateMessage(msg.content);
         const segments = splitIntoMessages(reply);
         sendSegments(ws, msg.id, segments);
       } catch (err) {
