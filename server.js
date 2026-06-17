@@ -1122,8 +1122,10 @@ wss.on("connection", (ws, req) => {
       try {
         notifyUserActivity();
         const reply = await handleAffectionDateMessage(msg.content, msg.sceneId || null);
-        // Don't split — AVG dialog shows full message at once, typewriter handles pacing
-        ws.send(JSON.stringify({ type: "text_reply", id: msg.id, content: reply, timestamp: Date.now() }));
+        const segments = splitIntoMessages(reply);
+        // Longer delay for dating: text length × 120ms + 5s reading buffer, min 8s max 25s
+        const baseDelay = Math.max(8000, Math.min(reply.length * 120 + 5000, 25000));
+        sendSegments(ws, msg.id, segments, baseDelay);
       } catch (err) {
         console.error("[ws] Affection date error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
