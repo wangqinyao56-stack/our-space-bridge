@@ -1104,6 +1104,18 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    // ── 出门约会：清空旧记忆 ──
+    if (msg.type === "affection_date_clear") {
+      try {
+        const { clearAffectionMemory } = await import("./lib/affection-memory.js");
+        clearAffectionMemory("affection_date");
+        console.log("[ws] Cleared affection_date memory for new date");
+      } catch (err) {
+        console.error("[ws] affection_date_clear error:", err.message);
+      }
+      return;
+    }
+
     // ── 出门约会 ──
     if (msg.type === "affection_date") {
       if (!msg.content?.trim()) return;
