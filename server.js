@@ -1123,7 +1123,7 @@ wss.on("connection", (ws, req) => {
         notifyUserActivity();
         const reply = await handleAffectionDateMessage(msg.content, msg.sceneId || null);
         const segments = splitIntoMessages(reply);
-        sendSegments(ws, msg.id, segments, 1500 + Math.random() * 2000);
+        sendSegments(ws, msg.id, segments, 4000 + Math.random() * 3000);
       } catch (err) {
         console.error("[ws] Affection date error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
