@@ -51,7 +51,7 @@ import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus 
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage } from "./lib/ai.js";
-import { getAll, getActive, getPending, getHistory, proposeDate, activateDate, completeDate, cancelDate, checkTodayDates, detectDateProposal } from "./lib/date-plans.js";
+import { getAll, getActive, getPending, getHistory, proposeDate, activateDate, completeDate, cancelDate, checkTodayDates, detectDateProposal, detectSceneId } from "./lib/date-plans.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -1101,6 +1101,32 @@ wss.on("connection", (ws, req) => {
         console.error("[ws] Affection home error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
       }
+      return;
+    }
+
+    // ── 查询约会状态 ──
+    if (msg.type === "get_date_status") {
+      // Check for pending dates that should activate today
+      const activated = checkTodayDates();
+      for (const plan of activated) {
+        const sceneId = plan.sceneId || detectSceneId(plan.text);
+        if (sceneId) {
+          broadcast(JSON.stringify({
+            type: "dating_invite",
+            sceneId,
+            text: plan.text || "",
+            timestamp: Date.now(),
+          }));
+          console.log(`[dating-invite] Auto-activated scheduled date: ${plan.id} scene=${sceneId}`);
+        }
+      }
+      const active = getActive();
+      const pending = getPending();
+      ws.send(JSON.stringify({
+        type: "date_status",
+        active: active ? { id: active.id, sceneId: active.sceneId || detectSceneId(active.text) || null, text: active.text } : null,
+        pending: pending.map(p => ({ id: p.id, text: p.text, scheduledDate: p.scheduledDate })),
+      }));
       return;
     }
 
