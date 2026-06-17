@@ -26,6 +26,7 @@ import {
   intimateDebugLog,
   detectSceneImage,
   setDatingInviteHandler,
+  setRemoteToyHandler,
 } from "./lib/message-router.js";
 import {
   loadDiary,
@@ -441,6 +442,17 @@ setDatingInviteHandler((sceneId, text) => {
     timestamp: Date.now(),
   }));
   console.log(`[dating-invite] Broadcast scene=${sceneId}`);
+});
+
+// Wire remote_toy: when 夏彦 sends [震动:强度:模式] in intimate/phone, push to client
+setRemoteToyHandler((command) => {
+  broadcast(JSON.stringify({
+    type: "remote_toy",
+    intensity: command.intensity,
+    pattern: command.pattern,
+    timestamp: Date.now(),
+  }));
+  console.log(`[remote-toy] Broadcast intensity=${command.intensity} pattern=${command.pattern}`);
 });
 
 // ── HTTP Server ──
