@@ -27,6 +27,10 @@ import {
   detectSceneImage,
   setDatingInviteHandler,
   setRemoteToyHandler,
+  setRhythmSyncHandler,
+  setSceneImmersionHandler,
+  setCountdownHandler,
+  setTouchFantasyHandler,
 } from "./lib/message-router.js";
 import {
   loadDiary,
@@ -45,6 +49,7 @@ import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, de
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery } from "./lib/scenery.js";
 import { isHuashengTraveling, getHuashengTravelState } from "./lib/huasheng-travel.js";
+import { isCoupleTraveling, getCoupleTravelState, createTrip, checkIn, checkOut, getTimeOfDay, getAvailableScenes, maybeAutoAdvanceDay, getDayContext } from "./lib/couple-travel.js";
 import { startProactiveChat, notifyUserActivity, getProactiveState } from "./lib/proactive-chat.js";
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
@@ -455,6 +460,47 @@ setRemoteToyHandler((command) => {
   console.log(`[remote-toy] Broadcast intensity=${command.intensity} pattern=${command.pattern}`);
 });
 
+// Wire 节奏同步: [节奏:BPM:强度]
+setRhythmSyncHandler((command) => {
+  broadcast(JSON.stringify({
+    type: "rhythm_sync",
+    bpm: command.bpm,
+    intensity: command.intensity,
+    timestamp: Date.now(),
+  }));
+  console.log(`[rhythm-sync] Broadcast BPM=${command.bpm} intensity=${command.intensity}`);
+});
+
+// Wire 场景沉浸: [场景:类型]
+setSceneImmersionHandler((command) => {
+  broadcast(JSON.stringify({
+    type: "scene_immersion",
+    scene: command.scene,
+    timestamp: Date.now(),
+  }));
+  console.log(`[scene-immersion] Broadcast scene=${command.scene}`);
+});
+
+// Wire 倒计时期待: [倒计时:秒数]
+setCountdownHandler((command) => {
+  broadcast(JSON.stringify({
+    type: "countdown_start",
+    seconds: command.seconds,
+    timestamp: Date.now(),
+  }));
+  console.log(`[countdown] Broadcast seconds=${command.seconds}`);
+});
+
+// Wire 触感幻想: [触感:类型]
+setTouchFantasyHandler((command) => {
+  broadcast(JSON.stringify({
+    type: "touch_fantasy",
+    sensation: command.type,
+    timestamp: Date.now(),
+  }));
+  console.log(`[touch-fantasy] Broadcast type=${command.type}`);
+});
+
 // ── HTTP Server ──
 const server = http.createServer(async (req, res) => {
   // CORS
@@ -659,6 +705,13 @@ const server = http.createServer(async (req, res) => {
       xiayan: getTravelState(),
       huasheng: getHuashengTravelState(),
     }));
+    return;
+  }
+
+  // Couple travel status
+  if (req.method === "GET" && req.url === "/api/couple-travel/status") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(getCoupleTravelState()));
     return;
   }
 
@@ -867,6 +920,7 @@ wss.on("connection", (ws, req) => {
         ws.send(JSON.stringify({ type: "auth_ok" }));
         // Send current travel state immediately so app shows correct status
         ws.send(JSON.stringify({ type: "travel_state", xiayan: getTravelState(), huasheng: getHuashengTravelState() }));
+        ws.send(JSON.stringify({ type: "couple_travel_state", trip: getCoupleTravelState() }));
         console.log(`[ws] Authenticated: ${ip}`);
       } else {
         ws.send(JSON.stringify({ type: "auth_error", message: "Invalid token" }));
@@ -1139,6 +1193,37 @@ wss.on("connection", (ws, req) => {
         active: active ? { id: active.id, sceneId: active.sceneId || detectSceneId(active.text) || null, text: active.text } : null,
         pending: pending.map(p => ({ id: p.id, text: p.text, scheduledDate: p.scheduledDate })),
       }));
+      return;
+    }
+
+    // ── 情侣旅行 ──
+    if (msg.type === "couple_travel_create") {
+      try {
+        const trip = createTrip({ destinations: msg.destinations || [] });
+        broadcast(JSON.stringify({ type: "couple_travel_state", trip }));
+        console.log(`[couple-travel] Created trip: ${trip.tripId} dests=${trip.destinations.join(",")}`);
+      } catch (err) {
+        ws.send(JSON.stringify({ type: "error", message: err.message }));
+      }
+      return;
+    }
+
+    if (msg.type === "couple_travel_checkout") {
+      const trip = checkOut();
+      broadcast(JSON.stringify({ type: "couple_travel_state", trip }));
+      return;
+    }
+
+    if (msg.type === "couple_travel_get_state") {
+      ws.send(JSON.stringify({ type: "couple_travel_state", trip: getCoupleTravelState() }));
+      return;
+    }
+
+    if (msg.type === "couple_travel_get_scenes") {
+      const trip = getCoupleTravelState();
+      const tod = trip.phase === "traveling" ? getTimeOfDay() : getTimeOfDay();
+      const scenes = getAvailableScenes(tod, trip.destinations || []);
+      ws.send(JSON.stringify({ type: "couple_travel_scenes", timeOfDay: tod, day: trip.currentDay, scenes, destinations: trip.destinations }));
       return;
     }
 
@@ -2227,6 +2312,20 @@ function travelPeriodicCheck() {
 }
 travelPeriodicCheck(); // Run on startup
 setInterval(travelPeriodicCheck, 3 * 60 * 60 * 1000);
+
+// ── Couple travel day auto-advance (every 15 min) ──
+function coupleTravelPeriodicCheck() {
+  if (!isCoupleTraveling()) return;
+  const prevDay = getCoupleTravelState().currentDay;
+  maybeAutoAdvanceDay();
+  const newState = getCoupleTravelState();
+  if (prevDay !== newState.currentDay || newState.phase === "completed") {
+    broadcast(JSON.stringify({ type: "couple_travel_state", trip: newState }));
+    console.log(`[couple-travel] State updated: day=${newState.currentDay} phase=${newState.phase}`);
+  }
+}
+coupleTravelPeriodicCheck(); // Run on startup
+setInterval(coupleTravelPeriodicCheck, 15 * 60 * 1000);
 
 // ── Proactive scenery during travel (every 60-90 min) ──
 async function proactiveSceneryCheck() {
