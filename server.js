@@ -652,12 +652,17 @@ const server = http.createServer(async (req, res) => {
     try {
       const { getRecentHistoryMessages } = await import("./lib/memory.js");
       const { getIntimateHistory } = await import("./lib/intimate-memory.js");
+      const { getAffectionHistory } = await import("./lib/affection-memory.js");
       const chatMsgs = await getRecentHistoryMessages();
       const intimateMsgs = await getIntimateHistory();
+      const affectionHomeMsgs = getAffectionHistory("affection_home");
+      const affectionDateMsgs = getAffectionHistory("affection_date");
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         chat: chatMsgs,
         intimate: intimateMsgs,
+        affection_home: affectionHomeMsgs,
+        affection_date: affectionDateMsgs,
         exported_at: new Date().toISOString(),
       }));
     } catch (err) {
@@ -678,19 +683,35 @@ const server = http.createServer(async (req, res) => {
       const data = JSON.parse(body);
       const { recordUserMessage, recordBotReply } = await import("./lib/memory.js");
       const { recordIntimateMessage } = await import("./lib/intimate-memory.js");
+      const { recordAffectionMessage } = await import("./lib/affection-memory.js");
+      let count = 0;
       if (data.chat) {
         for (const m of data.chat) {
           if (m.role === "user") recordUserMessage(m.content);
           else if (m.role === "assistant") recordBotReply(m.content);
+          count++;
         }
       }
       if (data.intimate) {
         for (const m of data.intimate) {
           recordIntimateMessage(m.role, m.content);
+          count++;
+        }
+      }
+      if (data.affection_home) {
+        for (const m of data.affection_home) {
+          recordAffectionMessage("affection_home", m.role, m.content);
+          count++;
+        }
+      }
+      if (data.affection_date) {
+        for (const m of data.affection_date) {
+          recordAffectionMessage("affection_date", m.role, m.content);
+          count++;
         }
       }
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ ok: true, imported: (data.chat?.length || 0) + (data.intimate?.length || 0) }));
+      res.end(JSON.stringify({ ok: true, imported: count }));
     } catch (err) {
       res.writeHead(500);
       res.end(JSON.stringify({ error: err.message }));
