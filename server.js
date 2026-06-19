@@ -188,8 +188,8 @@ function broadcastNxxMessages(messages) {
 
 function scheduleNxxChat() {
   if (nxxTimer) clearTimeout(nxxTimer);
-  // Random interval: 180-360 minutes (3-6 hours)
-  const minutes = 180 + Math.floor(Math.random() * 180);
+  // Random interval: 1200-1440 minutes (20-24 hours, ~once per day)
+  const minutes = 1200 + Math.floor(Math.random() * 240);
   console.log(`[nxx-group] Next auto-chat in ${minutes} minutes`);
   nxxTimer = setTimeout(async () => {
     try {
