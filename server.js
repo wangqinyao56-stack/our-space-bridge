@@ -1267,6 +1267,7 @@ wss.on("connection", (ws, req) => {
 
     // ── 居家温存开场白（存入历史但不触发AI回复）──
     if (msg.type === "affection_home_opening") {
+      const { recordAffectionMessage } = await import("./lib/affection-memory.js");
       recordAffectionMessage("affection_home", "assistant", msg.content || "");
       return;
     }
