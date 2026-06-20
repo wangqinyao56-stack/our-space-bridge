@@ -1281,6 +1281,12 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    // ── 居家温存开场白（存入历史，不触发AI回复）──
+    if (msg.type === "affection_home_opening") {
+      recordAffectionMessage("affection_home", "assistant", msg.content || "");
+      return;
+    }
+
     // ── 居家温存 CG 列表/解锁 ──
     if (msg.type === "get_affection_cgs") {
       const { getCGHistory, getUnlockedCGs } = await import("./lib/affection-cg.js");
