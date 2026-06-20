@@ -1265,6 +1265,12 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    // ── 居家温存开场白（存入历史但不触发AI回复）──
+    if (msg.type === "affection_home_opening") {
+      recordAffectionMessage("affection_home", "assistant", msg.content || "");
+      return;
+    }
+
     // ── 居家温存 ──
     if (msg.type === "affection_home") {
       if (!msg.content?.trim()) return;
