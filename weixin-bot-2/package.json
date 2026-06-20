@@ -1,8 +1,8 @@
 {
-  "name": "xiayan-weixin-bot",
+  "name": "xiayan-weixin-bot-2",
   "version": "1.0.0",
   "type": "module",
-  "description": "夏彦极简微信Bot — 纯文字对话",
+  "description": "夏彦微信Bot 2号 — 广广专用",
   "main": "simple-agent.js",
   "scripts": {
     "start": "node simple-agent.js"
