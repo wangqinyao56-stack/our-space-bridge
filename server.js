@@ -597,7 +597,7 @@ const server = http.createServer(async (req, res) => {
       req.on("data", c => chunks.push(c));
       req.on("end", () => {
         const buf = Buffer.concat(chunks);
-        const isBgUpload = name.startsWith("dating-bgs/") || name.startsWith("home-bgs/");
+        const isBgUpload = name.startsWith("dating-bgs/") || name.startsWith("home-bgs/") || name.startsWith("home-sprites/");
         const dest = path.join(process.env.DATA_DIR || "data", isBgUpload ? "" : "audio", name);
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         fs.writeFileSync(dest, buf);
@@ -789,6 +789,28 @@ const server = http.createServer(async (req, res) => {
       ? path.join(process.env.DATA_DIR, "home-bgs")
       : path.join(__dirname, "public", "home-bgs");
     const filePath = path.join(bgDir, filename);
+    if (fs.existsSync(filePath)) {
+      const ext = path.extname(filename).toLowerCase();
+      const mime = ext === ".png" ? "image/png" : "image/jpeg";
+      const buf = fs.readFileSync(filePath);
+      res.writeHead(200, { "Content-Type": mime, "Cache-Control": "public, max-age=86400" });
+      res.end(buf);
+    } else {
+      res.writeHead(404); res.end("Not found");
+    }
+    return;
+  }
+
+  // ── Home sprites — public, no auth needed ──
+  if (req.method === "GET" && req.url?.startsWith("/api/home-sprites/")) {
+    const filename = req.url.replace("/api/home-sprites/", "").split("?")[0];
+    if (filename.includes("..") || filename.includes("/")) {
+      res.writeHead(400); res.end("Bad filename"); return;
+    }
+    const spriteDir = process.env.DATA_DIR
+      ? path.join(process.env.DATA_DIR, "home-sprites")
+      : path.join(__dirname, "public", "home-sprites");
+    const filePath = path.join(spriteDir, filename);
     if (fs.existsSync(filePath)) {
       const ext = path.extname(filename).toLowerCase();
       const mime = ext === ".png" ? "image/png" : "image/jpeg";
