@@ -611,6 +611,26 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Admin CG upload ──
+  if (req.method === "POST" && req.url?.startsWith("/api/admin/upload-cg")) {
+    try {
+      const qs = (req.url || "").split("?")[1] || "";
+      const name = new URLSearchParams(qs).get("name") || "cg.png";
+      const chunks = [];
+      req.on("data", c => chunks.push(c));
+      req.on("end", async () => {
+        const buf = Buffer.concat(chunks);
+        const { uploadCG } = await import("./lib/affection-cg.js");
+        const cg = uploadCG(name, buf);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true, cg }));
+      });
+    } catch (e) {
+      res.writeHead(500); res.end(e.message);
+    }
+    return;
+  }
+
   // Intimate processing debug log
   if (req.method === "GET" && req.url === "/api/debug/intimate") {
     res.writeHead(200, { "Content-Type": "application/json" });
@@ -774,6 +794,30 @@ const server = http.createServer(async (req, res) => {
       const mime = ext === ".png" ? "image/png" : "image/jpeg";
       const buf = fs.readFileSync(filePath);
       res.writeHead(200, { "Content-Type": mime, "Cache-Control": "public, max-age=86400" });
+      res.end(buf);
+    } else {
+      res.writeHead(404); res.end("Not found");
+    }
+    return;
+  }
+
+  // ── Affection Home CGs — public, no auth needed ──
+  if (req.method === "GET" && req.url === "/api/affection-cgs") {
+    const { getCGHistory } = await import("./lib/affection-cg.js");
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-cache" });
+    res.end(JSON.stringify(getCGHistory()));
+    return;
+  }
+  if (req.method === "GET" && req.url?.startsWith("/api/affection-cgs/")) {
+    const cgId = req.url.replace("/api/affection-cgs/", "").split("?")[0];
+    if (cgId.includes("..") || cgId.includes("/")) {
+      res.writeHead(400); res.end("Bad id"); return;
+    }
+    const { getCGImage } = await import("./lib/affection-cg.js");
+    const result = getCGImage(cgId);
+    if (result) {
+      const buf = fs.readFileSync(result.filePath);
+      res.writeHead(200, { "Content-Type": result.mime, "Cache-Control": "public, max-age=86400" });
       res.end(buf);
     } else {
       res.writeHead(404); res.end("Not found");
@@ -1210,6 +1254,28 @@ wss.on("connection", (ws, req) => {
       } catch (err) {
         console.error("[ws] Affection home error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
+      }
+      return;
+    }
+
+    // ── 居家温存 CG 列表/解锁 ──
+    if (msg.type === "get_affection_cgs") {
+      const { getCGHistory, getUnlockedCGs } = await import("./lib/affection-cg.js");
+      ws.send(JSON.stringify({
+        type: "affection_cgs",
+        all: getCGHistory(),
+        unlocked: getUnlockedCGs(),
+      }));
+      return;
+    }
+    if (msg.type === "unlock_affection_cg") {
+      const { unlockCG } = await import("./lib/affection-cg.js");
+      const cg = unlockCG(msg.cgId, msg.context || "");
+      if (cg) {
+        broadcast(JSON.stringify({
+          type: "affection_cg_unlocked",
+          cg,
+        }));
       }
       return;
     }
