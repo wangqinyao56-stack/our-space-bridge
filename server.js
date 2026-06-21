@@ -51,7 +51,7 @@ import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImag
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery } from "./lib/scenery.js";
 import { isHuashengTraveling, getHuashengTravelState } from "./lib/huasheng-travel.js";
 import { isCoupleTraveling, getCoupleTravelState, createTrip, checkIn, checkOut, getTimeOfDay, getAvailableScenes, maybeAutoAdvanceDay, getDayContext } from "./lib/couple-travel.js";
-import { startProactiveChat, notifyUserActivity, getProactiveState } from "./lib/proactive-chat.js";
+import { startProactiveChat, notifyUserActivity, getProactiveState, scheduleOutReminder, clearOutReminder } from "./lib/proactive-chat.js";
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
@@ -1180,6 +1180,22 @@ wss.on("connection", (ws, req) => {
         }
 
         notifyUserActivity();
+
+        // ── 出门时间追踪 ──
+        const userMsg = msg.content;
+        // 检测回家时间: "6点回家" / "8点左右回来" / "大概7点到家"
+        const returnMatch = userMsg.match(/(\d{1,2})点(?:半|左右|多)?(?:回家|回来|到家|回去|能到|到)/);
+        if (returnMatch) {
+          const hour = parseInt(returnMatch[1]);
+          if (hour >= 6 && hour <= 23) {
+            scheduleOutReminder(hour);
+          }
+        }
+        // 检测已到家: "我回来了" / "到家了" / "到了"
+        if (/我回来了|到家了|回来了|我到了/.test(userMsg)) {
+          clearOutReminder();
+        }
+
         const hsBefore = getHuashengTravelState().active;
         const fullReply = await handleTextMessage(msg.content);
         const hsAfter = getHuashengTravelState().active;
