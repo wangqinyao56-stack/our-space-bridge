@@ -48,7 +48,7 @@ import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
-import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery } from "./lib/scenery.js";
+import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery, confirmReturned } from "./lib/scenery.js";
 import { isHuashengTraveling, getHuashengTravelState } from "./lib/huasheng-travel.js";
 import { isCoupleTraveling, getCoupleTravelState, createTrip, checkIn, checkOut, getTimeOfDay, getAvailableScenes, maybeAutoAdvanceDay, getDayContext } from "./lib/couple-travel.js";
 import { startProactiveChat, notifyUserActivity, getProactiveState, scheduleOutReminder, clearOutReminder } from "./lib/proactive-chat.js";
@@ -1366,6 +1366,15 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "couple_travel_checkout") {
       const trip = checkOut();
       broadcast(JSON.stringify({ type: "couple_travel_state", trip }));
+      return;
+    }
+
+    if (msg.type === "reset_travel") {
+      confirmReturned();
+      const travel = getTravelState();
+      broadcast(JSON.stringify({ type: "travel_state", xiayan: travel, huasheng: getHuashengTravelState() }));
+      ws.send(JSON.stringify({ type: "travel_state", xiayan: travel, huasheng: getHuashengTravelState() }));
+      console.log("[travel] Manually reset to idle");
       return;
     }
 
