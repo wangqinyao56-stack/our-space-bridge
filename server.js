@@ -31,6 +31,7 @@ import {
   setSceneImmersionHandler,
   setCountdownHandler,
   setTouchFantasyHandler,
+  getAffectionHomeSystemPrompt,
 } from "./lib/message-router.js";
 import { recordAffectionMessage, getAffectionHistory, deleteAffectionMessage, clearAffectionMemory, getAffectionHistoryMessages, getArchivedContext, getAffectionNotes } from "./lib/affection-memory.js";
 import {
@@ -57,7 +58,7 @@ import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from ".
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
-import { recognizeImage } from "./lib/ai.js";
+import { recognizeImage, askJiushi } from "./lib/ai.js";
 import { getAll, getActive, getPending, getHistory, proposeDate, activateDate, completeDate, cancelDate, checkTodayDates, detectDateProposal, detectSceneId } from "./lib/date-plans.js";
 
 // ── Set API keys from config ──
@@ -1300,6 +1301,30 @@ wss.on("connection", (ws, req) => {
     // ── 居家温存开场白（存入历史，不触发AI回复）──
     if (msg.type === "affection_home_opening") {
       recordAffectionMessage("affection_home", "assistant", msg.content || "");
+      return;
+    }
+
+    // ── 居家温存恢复对话（中途退出再进来，夏彦主动接上话题）──
+    if (msg.type === "affection_home_resume") {
+      try {
+        const history = getAffectionHistoryMessages("affection_home");
+        const reply = await askJiushi({
+          systemPrompt: getAffectionHomeSystemPrompt() + `\n\n【⚠ 恢复对话】你刚才和华生在聊天，她中途退出了一下又回来了。下面是你们刚才的聊天记录。请主动跟她说话——自然地提一下刚才聊的话题，问她"怎么走神了？"或者"刚才说到哪了？"语气轻松亲密，不要重新自我介绍，不要像刚见面一样。就一两句，自然得像她只是去倒了杯水回来。`,
+          userContent: msg.context || "",
+          history: history.slice(-6),
+          maxTokens: 150,
+          temperature: 0.75,
+          timeoutMs: 30000,
+        });
+        const cleaned = stripBracketActions(stripYellowFaces(reply));
+        if (cleaned) {
+          recordAffectionMessage("affection_home", "assistant", cleaned);
+          const segments = splitIntoMessages(cleaned);
+          sendSegments(ws, msg.id, segments);
+        }
+      } catch (err) {
+        console.error("[ws] Affection home resume error:", err.message);
+      }
       return;
     }
 
