@@ -849,6 +849,39 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Health data import (before auth gate — app uploads from device)
+  if (req.method === "POST" && req.url === "/api/health/import") {
+    const body = await readBody(req);
+    try {
+      const { date, metrics } = JSON.parse(body);
+      if (!date || !metrics) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: "date and metrics required" }));
+        return;
+      }
+      const result = importHealthData(date, metrics, "api");
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(result));
+
+      if (result.updated) {
+        generateDailySummary(date).then((summary) => {
+          if (summary) {
+            broadcast(JSON.stringify({
+              type: "health_updated",
+              date,
+              metrics: result.metrics,
+              summary: summary.slice(0, 300),
+            }));
+          }
+        }).catch(() => {});
+      }
+    } catch (e) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
   // All other endpoints require auth
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
@@ -944,41 +977,6 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
     res.end(history);
     return;
-  }
-
-  // Health data import
-  if (req.method === "POST" && req.url === "/api/health/import") {
-    const body = await readBody(req);
-    try {
-      const { date, metrics } = JSON.parse(body);
-      if (!date || !metrics) {
-        res.writeHead(400);
-        res.end(JSON.stringify({ error: "date and metrics required" }));
-        return;
-      }
-      const result = importHealthData(date, metrics, "api");
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(result));
-
-      // Async summary generation if data changed
-      if (result.updated) {
-        generateDailySummary(date).then((summary) => {
-          if (summary) {
-            broadcast(JSON.stringify({
-              type: "health_updated",
-              date,
-              summary,
-              metrics,
-            }));
-          }
-        }).catch(() => {});
-      }
-      return;
-    } catch (e) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ error: e.message }));
-      return;
-    }
   }
 
   // 404
