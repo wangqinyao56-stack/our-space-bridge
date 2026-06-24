@@ -1471,7 +1471,7 @@ wss.on("connection", (ws, req) => {
           if (msg.channel === "intimate") {
             deleteIntimateHistoryMessage(msg.bot_content, "assistant");
           } else {
-            deleteMessage(msg.bot_content, "assistant");
+            deleteChatMessage(msg.bot_content, "assistant");
           }
         }
         // Route to correct handler

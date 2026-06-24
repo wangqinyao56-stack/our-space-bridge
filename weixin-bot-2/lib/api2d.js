@@ -1,7 +1,7 @@
 /**
- * 玖时 API client — Claude via api.jiushi.xin
+ * 宅恋 API client — Claude via az.zlapi.vip (报用鹿)
  *
- * 和主 bot 使用同一个玖时账号和模型。
+ * 2026-06-24: 玖时模型炸了，已切换到宅恋报用鹿。
  * Local dev: routes through proxy (Clash Verge) for GFW bypass.
  * Docker/Sealos: direct HTTPS (DISABLE_PROXY=true)
  */
@@ -9,9 +9,9 @@
 import http from "node:http";
 import https from "node:https";
 
-const JIUSHI_KEY = "sk-sKe3UbGiWOYaqsPN2WuErVGNyGekOcYMSvJePQEnsBXcfdWq";
-const JIUSHI_HOST = "api.jiushi.xin";
-const JIUSHI_MODEL = "[企业按量]claude-opus-4-6";
+const JIUSHI_KEY = "sk-pJzEUjdQT4nC3AAVl7mJap0H0jXXyFlJtNo0R7njaGExFTvW";
+const JIUSHI_HOST = "az.zlapi.vip";
+const JIUSHI_MODEL = "[0.04]报用鹿/claude-opus-4.5";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
 const DISABLE_PROXY = process.env.DISABLE_PROXY === "true";
