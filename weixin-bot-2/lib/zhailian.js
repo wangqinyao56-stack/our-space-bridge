@@ -1,7 +1,7 @@
 /**
- * 宅恋 API client — via az.zlapi.vip
+ * 玖时 API client — via api.jiushi.xin
  *
- * 和主 bot 亲密空间使用同一个宅恋账号和模型。
+ * 和主 bot 亲密空间使用同一个玖时账号和模型。
  * Local dev: routes through proxy (Clash Verge) for GFW bypass.
  * Docker/Sealos: direct HTTPS (DISABLE_PROXY=true)
  */
@@ -9,9 +9,9 @@
 import http from "node:http";
 import https from "node:https";
 
-const ZHAILIAN_KEY = "sk-pJzEUjdQT4nC3AAVl7mJap0H0jXXyFlJtNo0R7njaGExFTvW";
-const ZHAILIAN_HOST = "az.zlapi.vip";
-const ZHAILIAN_MODEL = "[0.04]报用鹿/claude-opus-4.5";
+const ZHAILIAN_KEY = "sk-sKe3UbGiWOYaqsPN2WuErVGNyGekOcYMSvJePQEnsBXcfdWq";
+const ZHAILIAN_HOST = "api.jiushi.xin";
+const ZHAILIAN_MODEL = "[按量]claude-opus-4-6";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
 const DISABLE_PROXY = process.env.DISABLE_PROXY === "true";
