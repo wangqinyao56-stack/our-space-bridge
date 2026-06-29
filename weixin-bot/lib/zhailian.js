@@ -10,7 +10,7 @@ import http from "node:http";
 import https from "node:https";
 
 const ZHAILIAN_KEY = "sk-sKe3UbGiWOYaqsPN2WuErVGNyGekOcYMSvJePQEnsBXcfdWq";
-const ZHAILIAN_HOST = "api.jiushi.xin";
+const ZHAILIAN_HOST = "az.zlapi.vip";
 const ZHAILIAN_MODEL = "[0.04]报用鹿/claude-opus-4.5";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
