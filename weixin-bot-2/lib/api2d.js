@@ -1,5 +1,5 @@
 /**
- * 玖时 API client — Claude via api.jiushi.xin (企业按量)
+ * 玖时 API client — Claude via api.jiushi.xin (按量)
  *
  * Local dev: routes through proxy (Clash Verge) for GFW bypass.
  * Docker/Sealos: direct HTTPS (DISABLE_PROXY=true)
@@ -10,7 +10,7 @@ import https from "node:https";
 
 const JIUSHI_KEY = "sk-sKe3UbGiWOYaqsPN2WuErVGNyGekOcYMSvJePQEnsBXcfdWq";
 const JIUSHI_HOST = "api.jiushi.xin";
-const JIUSHI_MODEL = "[企业按量]claude-opus-4-6";
+const JIUSHI_MODEL = "[按量]claude-opus-4-6";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
 const DISABLE_PROXY = process.env.DISABLE_PROXY === "true";
