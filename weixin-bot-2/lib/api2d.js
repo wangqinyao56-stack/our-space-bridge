@@ -10,7 +10,7 @@ import https from "node:https";
 
 const JIUSHI_KEY = "sk-sKe3UbGiWOYaqsPN2WuErVGNyGekOcYMSvJePQEnsBXcfdWq";
 const JIUSHI_HOST = "api.jiushi.xin";
-const JIUSHI_MODEL = "[按量]claude-opus-4-6";
+const JIUSHI_MODEL = "[0.04]报用鹿/claude-opus-4.5";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
 const DISABLE_PROXY = process.env.DISABLE_PROXY === "true";
