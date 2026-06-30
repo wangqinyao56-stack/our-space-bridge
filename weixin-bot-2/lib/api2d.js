@@ -8,7 +8,7 @@
 import http from "node:http";
 import https from "node:https";
 
-const JIUSHI_KEY = "sk-pJzEUjdQT4nC3AAVl7mJap0H0jXXyFlJtNo0R7njaGExFTvW";
+const JIUSHI_KEY = "sk-sKe3UbGiWOYaqsPN2WuErVGNyGekOcYMSvJePQEnsBXcfdWq";
 const JIUSHI_HOST = "az.zlapi.vip";
 const JIUSHI_MODEL = "[企业按量]claude-opus-4-6";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
