@@ -18,8 +18,10 @@ import {
   getChatHistory,
   getChatHistoryMessages,
   getIntimateHistoryMessages,
+  getBlindBoxHistoryMessages,
   clearChatHistory,
   clearIntimateHistory,
+  clearBlindBoxHistory,
   deleteChatMessage,
   deleteIntimateHistoryMessage,
   setWeatherCity,
@@ -1285,6 +1287,26 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    // ── 盲盒剧场（独立频道）──
+    if (msg.type === "blindbox_text") {
+      if (!msg.content?.trim()) return;
+      try {
+        notifyUserActivity();
+        const reply = await handleIntimateMessage(msg.content, "blindbox");
+        const blindBox = getCurrentBlindBox();
+        ws.send(JSON.stringify({
+          type: "blindbox_reply",
+          reply_to: msg.id,
+          content: reply,
+          blindBox: blindBox ? { name: blindBox.name } : null,
+        }));
+      } catch (err) {
+        console.error("[ws] BlindBox text error:", err.message);
+        ws.send(JSON.stringify({ type: "error", message: err.message }));
+      }
+      return;
+    }
+
     // ── 居家温存 ──
     if (msg.type === "affection_home") {
       if (!msg.content?.trim()) return;
@@ -1552,6 +1574,8 @@ wss.on("connection", (ws, req) => {
       let rawMessages;
       if (channel === "intimate") {
         rawMessages = await getIntimateHistoryMessages(traveling);
+      } else if (channel === "blindbox") {
+        rawMessages = await getBlindBoxHistoryMessages();
       } else if (channel === "affection_home" || channel === "affection_date") {
         const { getAffectionHistoryMessages } = await import("./lib/affection-memory.js");
         rawMessages = getAffectionHistoryMessages(channel);
@@ -1564,7 +1588,7 @@ wss.on("connection", (ws, req) => {
       // Convert to app Message format
       // Affection/Intimate messages: keep as one long message (no splitting)
       const messages = [];
-      const noSplit = channel === "intimate" || channel === "affection_home" || channel === "affection_date" || channel === "phone_call";
+      const noSplit = channel === "intimate" || channel === "blindbox" || channel === "affection_home" || channel === "affection_date" || channel === "phone_call";
       for (let i = 0; i < rawMessages.length; i++) {
         const m = rawMessages[i];
         if (!noSplit && m.role === "assistant" && m.content && m.content.length > 20) {
@@ -1619,6 +1643,8 @@ wss.on("connection", (ws, req) => {
       const channel = msg.channel || "chat";
       if (channel === "intimate") {
         await clearIntimateHistory();
+      } else if (channel === "blindbox") {
+        await clearBlindBoxHistory();
       } else if (channel === "affection_home" || channel === "affection_date") {
         const { clearAffectionMemory } = await import("./lib/affection-memory.js");
         clearAffectionMemory(channel);
