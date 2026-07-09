@@ -11,6 +11,7 @@ import {
   loadSystemPrompt,
   handleTextMessage,
   handleIntimateMessage,
+  getCurrentBlindBox,
   handleAffectionHomeMessage,
   handleAffectionDateMessage,
   handleVoiceMessage,
@@ -931,8 +932,9 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       const reply = await handleIntimateMessage(text);
+      const blindBox = getCurrentBlindBox();
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ reply }));
+      res.end(JSON.stringify({ reply, blindBox: blindBox ? { name: blindBox.name } : null }));
     } catch (err) {
       console.error("[api] Intimate text error:", err.message);
       intimateDebugLog.push({ timestamp: new Date().toISOString(), stage: "http_error", error: err.message });
@@ -1264,10 +1266,12 @@ wss.on("connection", (ws, req) => {
         if (hsBefore !== hsAfter) {
           broadcast(JSON.stringify({ type: "travel_state", xiayan: getTravelState(), huasheng: getHuashengTravelState() }));
         }
+        const blindBox = getCurrentBlindBox();
         ws.send(JSON.stringify({
           type: "intimate_reply",
           reply_to: msg.id,
           content: reply,
+          blindBox: blindBox ? { name: blindBox.name } : null,
         }));
 
         // Trigger gift/scenery for intimate space too
