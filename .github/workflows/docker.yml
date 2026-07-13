@@ -56,3 +56,12 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/weixin-bot-2:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/xiayan-weixin-bot-2:latest
+
+      - name: Build and push weixin-bot-3
+        uses: docker/build-push-action@v6
+        with:
+          context: ./weixin-bot-3
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/weixin-bot-3:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/xiayan-weixin-bot-3:latest
