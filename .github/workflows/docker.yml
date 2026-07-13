@@ -64,4 +64,4 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository }}/weixin-bot-3:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/pingguogeng:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/pingguogengbot:latest
