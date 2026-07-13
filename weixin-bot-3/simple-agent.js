@@ -193,7 +193,7 @@ async function main() {
   console.log("   AI：企业按量 [企业按量]claude-opus-4-6");
 
   const bot = start(agent, { log: console.log });
-  console.log("✅ 夏彦3号已上线（纯文字模式）");
+  console.log("✅ 夏彦3号已上线（苹果梗专用）");
 
   await bot.wait();
 }
