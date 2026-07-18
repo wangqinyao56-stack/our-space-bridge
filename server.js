@@ -522,7 +522,7 @@ const server = http.createServer(async (req, res) => {
   // Health check
   if (req.method === "GET" && req.url === "/api/ping") {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, clients: clients.size, tts_queue: ttsQueue.length, version: "2026-07-09-v12", recent: recentMsgs.slice(-10) }));
+    res.end(JSON.stringify({ ok: true, clients: clients.size, tts_queue: ttsQueue.length, version: "2026-07-19-v13", recent: recentMsgs.slice(-10) }));
     return;
   }
 
@@ -545,6 +545,28 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/api/debug/stt") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ log: sttDebugLog }, null, 2));
+    return;
+  }
+
+  // Data persistence debug — which state files exist and when they were last written
+  // （排查"生理期设置被部署刷掉"用：部署后对比 mtime 就知道哪些文件没扛住）
+  if (req.method === "GET" && req.url === "/api/debug/data-dir") {
+    const baseDir = process.env.DATA_DIR || ".";
+    const info = { DATA_DIR: process.env.DATA_DIR || null, MEMORY_DIR: process.env.MEMORY_DIR || null, files: {} };
+    for (const dir of [baseDir, path.join(baseDir, "memory"), path.join(baseDir, "diary")]) {
+      try {
+        info.files[dir] = fs.readdirSync(dir)
+          .filter((f) => f.endsWith(".json"))
+          .map((f) => {
+            const st = fs.statSync(path.join(dir, f));
+            return { file: f, size: st.size, mtime: st.mtime.toISOString() };
+          });
+      } catch (e) {
+        info.files[dir] = "ERR: " + e.message;
+      }
+    }
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(info, null, 2));
     return;
   }
 
