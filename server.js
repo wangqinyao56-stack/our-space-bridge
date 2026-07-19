@@ -552,7 +552,16 @@ const server = http.createServer(async (req, res) => {
   // （排查"生理期设置被部署刷掉"用：部署后对比 mtime 就知道哪些文件没扛住）
   if (req.method === "GET" && req.url === "/api/debug/data-dir") {
     const baseDir = process.env.DATA_DIR || ".";
-    const info = { DATA_DIR: process.env.DATA_DIR || null, MEMORY_DIR: process.env.MEMORY_DIR || null, files: {} };
+    const info = { DATA_DIR: process.env.DATA_DIR || null, MEMORY_DIR: process.env.MEMORY_DIR || null, files: {}, probe: {} };
+    // 权限探针：mkdir 和新建文件到底行不行、报什么错
+    try { fs.mkdirSync(path.join(baseDir, "memory"), { recursive: true }); info.probe.mkdir_memory = "ok"; }
+    catch (e) { info.probe.mkdir_memory = e.message; }
+    const testFile = path.join(baseDir, "__write_probe.json");
+    try {
+      fs.writeFileSync(testFile, "{}");
+      info.probe.write_new_root = "ok";
+      try { fs.unlinkSync(testFile); } catch {}
+    } catch (e) { info.probe.write_new_root = e.message; }
     for (const dir of [baseDir, path.join(baseDir, "memory"), path.join(baseDir, "diary")]) {
       try {
         info.files[dir] = fs.readdirSync(dir)
