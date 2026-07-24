@@ -37,6 +37,7 @@ import {
   getAffectionHomeSystemPrompt,
 } from "./lib/message-router.js";
 import { recordAffectionMessage, getAffectionHistory, deleteAffectionMessage, clearAffectionMemory, getAffectionHistoryMessages, getArchivedContext, getAffectionNotes } from "./lib/affection-memory.js";
+import { updateToyState, getToyState, setMode as setToyMode, getToyContextBlock, getToyPlayPrompt, markDiscovered } from "./lib/toy-state.js";
 import {
   loadDiary,
   listDiaryDates,
@@ -454,15 +455,17 @@ setDatingInviteHandler((sceneId, text) => {
   console.log(`[dating-invite] Broadcast scene=${sceneId}`);
 });
 
-// Wire remote_toy: when 夏彦 sends [震动:强度:模式] in intimate/phone, push to client
+// Wire remote_toy: when 夏彦 sends [震动:强度:模式:端位] or [TOY:stop] in intimate/phone, push to client
 setRemoteToyHandler((command) => {
   broadcast(JSON.stringify({
     type: "remote_toy",
     intensity: command.intensity,
     pattern: command.pattern,
+    targetEnd: command.targetEnd || "both",
+    stop: command.stop || false,
     timestamp: Date.now(),
   }));
-  console.log(`[remote-toy] Broadcast intensity=${command.intensity} pattern=${command.pattern}`);
+  console.log(`[remote-toy] Broadcast intensity=${command.intensity} pattern=${command.pattern} targetEnd=${command.targetEnd || "both"} stop=${command.stop || false}`);
 });
 
 // Wire 节奏同步: [节奏:BPM:强度]
@@ -1315,6 +1318,36 @@ wss.on("connection", (ws, req) => {
         if (intimateDebugLog.length > 20) intimateDebugLog.shift();
         ws.send(JSON.stringify({ type: "error", message: err.message }));
       }
+      return;
+    }
+
+    // ── 小玩具系统 ──
+    if (msg.type === "toy_state_change") {
+      updateToyState({
+        toyType: msg.toyType || "none",
+        suctionConnected: msg.ends?.suction ?? false,
+        insertionConnected: msg.ends?.insertion ?? false,
+        vibrateConnected: msg.ends?.vibrate ?? false,
+        mode: msg.mode || "chat",
+      });
+      const state = getToyState();
+      ws.send(JSON.stringify({ type: "toy_state_ack", state }));
+      // Broadcast to all clients so other devices stay in sync
+      broadcast(JSON.stringify({ type: "toy_state", state }));
+      console.log("[toy] State change received:", JSON.stringify(state));
+      return;
+    }
+
+    if (msg.type === "toy_get_state") {
+      ws.send(JSON.stringify({ type: "toy_state", state: getToyState() }));
+      return;
+    }
+
+    if (msg.type === "toy_set_mode") {
+      if (msg.mode === "cuddle" || msg.mode === "chat") {
+        setToyMode(msg.mode);
+      }
+      ws.send(JSON.stringify({ type: "toy_state", state: getToyState() }));
       return;
     }
 
