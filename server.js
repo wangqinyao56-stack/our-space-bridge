@@ -64,6 +64,7 @@ import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } f
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage, askJiushi } from "./lib/ai.js";
 import { getAll, getActive, getPending, getHistory, proposeDate, activateDate, completeDate, cancelDate, checkTodayDates, detectDateProposal, detectSceneId } from "./lib/date-plans.js";
+import { startSession, playerAction, generateDoors, selectWorld, clearWorld, continueToNext, refreshState, getPublicState, addItem, giveItemToXiayan, useXiayanItem, removeItem, toggleEquipItem, getHistory as getSGHistory, listSessions, loadSession, deleteSession } from "./lib/sentinel-guide.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -1014,6 +1015,34 @@ const server = http.createServer(async (req, res) => {
     const history = getChatHistory();
     res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
     res.end(history);
+    return;
+  }
+
+  // ── 向哨无限流 HTTP API ──
+  if (req.method === "GET" && req.url === "/api/sentinel-guide/history") {
+    const sessions = listSessions();
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(sessions));
+    return;
+  }
+
+  if (req.method === "GET" && req.url === "/api/sentinel-guide/state") {
+    const state = getPublicState();
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(state || { status: "idle" }));
+    return;
+  }
+
+  if (req.method === "GET" && req.url?.startsWith("/api/sentinel-guide/session/")) {
+    const sessionId = req.url.split("/api/sentinel-guide/session/")[1];
+    const session = loadSession(sessionId);
+    if (session) {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(session));
+    } else {
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: "Session not found" }));
+    }
     return;
   }
 
@@ -2415,6 +2444,155 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "decline_call") {
       console.log(`[phone-call] Declined: ${msg.callId || "unknown"}`);
       // Server may trigger a follow-up "missed call" message in travel chat
+      return;
+    }
+
+    // ── 向哨无限流 ──
+    if (msg.type === "sentinel_guide_start") {
+      try {
+        notifyUserActivity();
+        const result = await startSession();
+        ws.send(JSON.stringify({ type: "sentinel_guide_started", ...result }));
+      } catch (err) {
+        console.error("[ws] SG start error:", err.message);
+        ws.send(JSON.stringify({ type: "sentinel_guide_error", message: err.message }));
+      }
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_action") {
+      if (!msg.content?.trim()) return;
+      try {
+        notifyUserActivity();
+        const result = await playerAction(msg.content);
+        if (result.error) {
+          ws.send(JSON.stringify({ type: "sentinel_guide_error", message: result.error }));
+        } else {
+          ws.send(JSON.stringify({ type: "sentinel_guide_reply", ...result }));
+        }
+      } catch (err) {
+        console.error("[ws] SG action error:", err.message);
+        ws.send(JSON.stringify({ type: "sentinel_guide_error", message: err.message }));
+      }
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_doors") {
+      try {
+        const result = await generateDoors(msg.terrorLevel);
+        if (result.error) {
+          ws.send(JSON.stringify({ type: "sentinel_guide_error", message: result.error }));
+        } else {
+          ws.send(JSON.stringify({ type: "sentinel_guide_reply", ...result }));
+        }
+      } catch (err) {
+        console.error("[ws] SG doors error:", err.message);
+        ws.send(JSON.stringify({ type: "sentinel_guide_error", message: err.message }));
+      }
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_select_world") {
+      if (!msg.world) return;
+      try {
+        const result = await selectWorld(msg.world);
+        if (result.error) {
+          ws.send(JSON.stringify({ type: "sentinel_guide_error", message: result.error }));
+        } else {
+          ws.send(JSON.stringify({ type: "sentinel_guide_reply", ...result }));
+        }
+      } catch (err) {
+        console.error("[ws] SG select error:", err.message);
+        ws.send(JSON.stringify({ type: "sentinel_guide_error", message: err.message }));
+      }
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_clear_world") {
+      try {
+        const result = await clearWorld(msg.points);
+        ws.send(JSON.stringify({ type: "sentinel_guide_cleared", ...result }));
+      } catch (err) {
+        console.error("[ws] SG clear error:", err.message);
+        ws.send(JSON.stringify({ type: "sentinel_guide_error", message: err.message }));
+      }
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_continue") {
+      try {
+        const result = await continueToNext();
+        if (result.error) {
+          ws.send(JSON.stringify({ type: "sentinel_guide_error", message: result.error }));
+        } else {
+          ws.send(JSON.stringify({ type: "sentinel_guide_reply", ...result }));
+        }
+      } catch (err) {
+        console.error("[ws] SG continue error:", err.message);
+        ws.send(JSON.stringify({ type: "sentinel_guide_error", message: err.message }));
+      }
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_update") {
+      const state = refreshState(msg.state);
+      ws.send(JSON.stringify({ type: "sentinel_guide_state", state }));
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_history") {
+      const sessions = listSessions();
+      ws.send(JSON.stringify({ type: "sentinel_guide_history_list", sessions }));
+      return;
+    }
+
+    // ── Inventory operations ──
+    if (msg.type === "sentinel_guide_add_item") {
+      const result = addItem(msg.item);
+      ws.send(JSON.stringify({ type: "sentinel_guide_item_added", ...result }));
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_give_item") {
+      const result = giveItemToXiayan(msg.itemId);
+      ws.send(JSON.stringify({ type: "sentinel_guide_item_given", ...result }));
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_use_item") {
+      const result = useXiayanItem(msg.itemId, msg.worldName);
+      ws.send(JSON.stringify({ type: "sentinel_guide_item_used", ...result }));
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_remove_item") {
+      const result = removeItem(msg.itemId);
+      ws.send(JSON.stringify({ type: "sentinel_guide_item_removed", ...result }));
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_equip_item") {
+      const result = toggleEquipItem(msg.itemId);
+      ws.send(JSON.stringify({ type: "sentinel_guide_item_equipped", ...result }));
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_load") {
+      if (!msg.sessionId) return;
+      const session = loadSession(msg.sessionId);
+      if (session) {
+        ws.send(JSON.stringify({ type: "sentinel_guide_loaded", session }));
+      } else {
+        ws.send(JSON.stringify({ type: "sentinel_guide_error", message: "Session not found" }));
+      }
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_delete") {
+      if (!msg.sessionId) return;
+      deleteSession(msg.sessionId);
+      const sessions = listSessions();
+      ws.send(JSON.stringify({ type: "sentinel_guide_deleted", sessionId: msg.sessionId, sessions }));
       return;
     }
 
