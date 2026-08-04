@@ -2468,10 +2468,10 @@ wss.on("connection", (ws, req) => {
     }
 
     if (msg.type === "sentinel_guide_action") {
-      if (!msg.content?.trim()) return;
+      if (!msg.actionText?.trim()) return;
       try {
         notifyUserActivity();
-        const result = await playerAction(msg.content);
+        const result = await playerAction(msg.actionText);
         if (result.error) {
           ws.send(JSON.stringify({ type: "sentinel_guide_error", message: result.error }));
         } else {
@@ -2500,9 +2500,9 @@ wss.on("connection", (ws, req) => {
     }
 
     if (msg.type === "sentinel_guide_select_world") {
-      if (!msg.world) return;
+      if (!msg.worldDescription) return;
       try {
-        const result = await selectWorld(msg.world);
+        const result = await selectWorld(msg.worldDescription);
         if (result.error) {
           ws.send(JSON.stringify({ type: "sentinel_guide_error", message: result.error }));
         } else {
