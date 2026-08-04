@@ -1020,9 +1020,9 @@ const server = http.createServer(async (req, res) => {
 
   // ── 向哨无限流 HTTP API ──
   if (req.method === "GET" && req.url === "/api/sentinel-guide/history") {
-    const sessions = listSessions();
+    const narrative = getSGHistory();
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify(sessions));
+    res.end(JSON.stringify({ narrative, state: getPublicState() }));
     return;
   }
 
@@ -1030,6 +1030,13 @@ const server = http.createServer(async (req, res) => {
     const state = getPublicState();
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
     res.end(JSON.stringify(state || { status: "idle" }));
+    return;
+  }
+
+  if (req.method === "GET" && req.url === "/api/sentinel-guide/sessions") {
+    const sessions = listSessions();
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(sessions));
     return;
   }
 
