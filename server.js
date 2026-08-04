@@ -2455,6 +2455,9 @@ wss.on("connection", (ws, req) => {
     }
 
     // ── 向哨无限流 ──
+    if (msg.type?.startsWith("sentinel_guide")) {
+      console.log("[ws] SG message:", msg.type, msg.actionText ? "action:" + msg.actionText.slice(0, 40) : "", msg.worldDescription ? "world:" + msg.worldDescription : "");
+    }
     if (msg.type === "sentinel_guide_start") {
       try {
         notifyUserActivity();
