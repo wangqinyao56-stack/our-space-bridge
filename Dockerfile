@@ -15,6 +15,9 @@ ENV DIARY_DIR=/data/diary
 ENV ALBUM_DIR=/data/album
 ENV HOST=0.0.0.0
 
+ARG ARK_API_KEY
+ENV ARK_API_KEY=$ARK_API_KEY
+
 EXPOSE 3456
 
 # Copy static audio/video assets to the persistent data volume (only if not already present)

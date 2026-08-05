@@ -34,6 +34,8 @@ jobs:
         with:
           context: .
           push: true
+          build-args: |
+            ARK_API_KEY=${{ secrets.ARK_API_KEY }}
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/our-space-bridge:latest
