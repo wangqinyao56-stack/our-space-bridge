@@ -64,7 +64,7 @@ import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } f
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage, askJiushi } from "./lib/ai.js";
 import { getAll, getActive, getPending, getHistory, proposeDate, activateDate, completeDate, cancelDate, checkTodayDates, detectDateProposal, detectSceneId } from "./lib/date-plans.js";
-import { startSession, playerAction, generateDoors, selectWorld, clearWorld, continueToNext, refreshState, getPublicState, addItem, giveItemToXiayan, useXiayanItem, removeItem, toggleEquipItem, getHistory as getSGHistory, listSessions, loadSession, deleteSession, getForumPosts, generateForumPost } from "./lib/sentinel-guide.js";
+import { startSession, playerAction, generateDoors, selectWorld, clearWorld, continueToNext, refreshState, getPublicState, getSystemPanel, addItem, giveItemToXiayan, useXiayanItem, removeItem, toggleEquipItem, getHistory as getSGHistory, listSessions, loadSession, deleteSession, getForumPosts, generateForumPost } from "./lib/sentinel-guide.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -1036,7 +1036,15 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/api/sentinel-guide/sessions") {
     const sessions = listSessions();
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify(sessions));
+    res.end(JSON.stringify({ sessions }));
+    return;
+  }
+
+  // ── System Panel API ──
+  if (req.method === "GET" && req.url === "/api/sentinel-guide/system-panel") {
+    const panel = getSystemPanel();
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(panel));
     return;
   }
 

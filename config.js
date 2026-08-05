@@ -10,7 +10,7 @@ export default {
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || "",
   GROQ_API_KEY: process.env.GROQ_API_KEY || "",
   BFL_API_KEY: process.env.BFL_API_KEY || "",
-  ARK_API_KEY: process.env.ARK_API_KEY || "ark-eb4cc461-f909-41d1-9c79-97c4cb069b52-f468f",
+  ARK_API_KEY: process.env.ARK_API_KEY || "",
   SYSTEM_PROMPT_PATH: join(__dirname, "system-prompt.md"),
   DAILY_PROMPT_PATH: join(__dirname, "system-prompt-daily.md"),
   INTIMATE_PROMPT_PATH: join(__dirname, "system-prompt-intimate.md"),
@@ -22,6 +22,7 @@ export default {
   COUPLE_TRAVEL_PROMPT_PATH: join(__dirname, "system-prompt-couple-travel.md"),
   BLINDBOX_PROMPT_PATH: join(__dirname, "system-prompt-blindbox.md"),
   SENTINEL_PROMPT_PATH: join(__dirname, "system-prompt-sentinel.md"),
+  SENTINEL_SFW_PROMPT_PATH: join(__dirname, "system-prompt-sentinel-sfw.md"),
   ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY || "sk_15dffb4b4bfcaf5d6b0db47ef7564f7fc1ad98a42dffa6cd",
   ELEVENLABS_VOICE_ID: "O2p1C2KJhMzz7EMpXHdN",
   TTS: {
