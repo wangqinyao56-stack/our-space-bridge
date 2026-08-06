@@ -1050,6 +1050,8 @@ const server = http.createServer(async (req, res) => {
 
   // ── Forum API ──
   if (req.method === "GET" && req.url === "/api/sentinel-guide/forum/posts") {
+    // Auto-trigger generation if cooldown has passed (no need to wait for manual call)
+    generateForumPost().catch(() => {});
     const posts = getForumPosts();
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
     res.end(JSON.stringify(posts));
