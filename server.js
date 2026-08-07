@@ -64,7 +64,7 @@ import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } f
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage, askJiushi } from "./lib/ai.js";
 import { getAll, getActive, getPending, getHistory, proposeDate, activateDate, completeDate, cancelDate, checkTodayDates, detectDateProposal, detectSceneId } from "./lib/date-plans.js";
-import { startSession, playerAction, generateDoors, selectWorld, clearWorld, continueToNext, refreshState, getPublicState, getSystemPanel, addItem, giveItemToXiayan, useXiayanItem, removeItem, toggleEquipItem, getHistory as getSGHistory, listSessions, loadSession, deleteSession, getForumPosts, generateForumPost } from "./lib/sentinel-guide.js";
+import { startSession, playerAction, generateDoors, selectWorld, clearWorld, continueToNext, refreshState, getPublicState, getSystemPanel, addItem, giveItemToXiayan, useXiayanItem, removeItem, toggleEquipItem, getHistory as getSGHistory, listSessions, loadSession, deleteSession, getForumPosts, generateForumPost, generateDynamicShop, getShopItems, purchaseItem, withdrawFromWarehouse, useWarehouseItem, depositToWarehouse } from "./lib/sentinel-guide.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -2633,6 +2633,48 @@ wss.on("connection", (ws, req) => {
       deleteSession(msg.sessionId);
       const sessions = listSessions();
       ws.send(JSON.stringify({ type: "sentinel_guide_deleted", sessionId: msg.sessionId, sessions }));
+      return;
+    }
+
+    // ═══ Shop & Warehouse ═══
+
+    if (msg.type === "sentinel_guide_get_shop") {
+      const catalog = getShopItems().length > 0 ? getShopItems() : generateDynamicShop();
+      const state = getPublicState();
+      ws.send(JSON.stringify({ type: "sentinel_guide_shop", catalog, points: state?.points || 0, warehouse: state?.warehouse || [] }));
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_purchase") {
+      if (!msg.shopItemId) { ws.send(JSON.stringify({ type: "sentinel_guide_error", message: "Missing shopItemId" })); return; }
+      const result = purchaseItem(msg.shopItemId);
+      if (result.error) { ws.send(JSON.stringify({ type: "sentinel_guide_error", message: result.error })); return; }
+      const state = getPublicState();
+      ws.send(JSON.stringify({ type: "sentinel_guide_purchased", item: result.item, points: result.points, warehouse: result.warehouse || state?.warehouse || [] }));
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_withdraw") {
+      if (!msg.warehouseItemId) { ws.send(JSON.stringify({ type: "sentinel_guide_error", message: "Missing warehouseItemId" })); return; }
+      const result = withdrawFromWarehouse(msg.warehouseItemId);
+      if (result.error) { ws.send(JSON.stringify({ type: "sentinel_guide_error", message: result.error })); return; }
+      ws.send(JSON.stringify({ type: "sentinel_guide_withdrawn", item: result.item, inventory: result.inventory, warehouse: result.warehouse }));
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_use_warehouse") {
+      if (!msg.warehouseItemId) { ws.send(JSON.stringify({ type: "sentinel_guide_error", message: "Missing warehouseItemId" })); return; }
+      const result = useWarehouseItem(msg.warehouseItemId);
+      if (result.error) { ws.send(JSON.stringify({ type: "sentinel_guide_error", message: result.error })); return; }
+      ws.send(JSON.stringify({ type: "sentinel_guide_warehouse_used", item: result.item, warehouse: result.warehouse, state: result.state }));
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_deposit") {
+      if (!msg.inventoryItemId) { ws.send(JSON.stringify({ type: "sentinel_guide_error", message: "Missing inventoryItemId" })); return; }
+      const result = depositToWarehouse(msg.inventoryItemId);
+      if (result.error) { ws.send(JSON.stringify({ type: "sentinel_guide_error", message: result.error })); return; }
+      ws.send(JSON.stringify({ type: "sentinel_guide_deposited", item: result.item, inventory: result.inventory, warehouse: result.warehouse }));
       return;
     }
 
