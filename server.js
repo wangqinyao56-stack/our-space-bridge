@@ -591,15 +591,9 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     try {
-      // Clear sentinel sessions
-      const sgDir = path.join(process.env.DATA_DIR || "data", "sentinel-guide");
-      if (fs.existsSync(path.join(sgDir, "sessions"))) {
-        for (const f of fs.readdirSync(path.join(sgDir, "sessions")).filter(f => f.endsWith(".json"))) {
-          fs.unlinkSync(path.join(sgDir, "sessions", f));
-        }
-      }
-      if (fs.existsSync(path.join(sgDir, "state.json"))) fs.unlinkSync(path.join(sgDir, "state.json"));
-      if (fs.existsSync(path.join(sgDir, "sessions-index.json"))) fs.unlinkSync(path.join(sgDir, "sessions-index.json"));
+      // Reset in-memory sentinel state + disk files
+      const { resetAllState } = await import("./lib/sentinel-guide.js");
+      resetAllState();
       // Clear chat memories
       const memDir = process.env.MEMORY_DIR || path.join(process.env.DATA_DIR || "data", "memory");
       if (fs.existsSync(memDir)) {
