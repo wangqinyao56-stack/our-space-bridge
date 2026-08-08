@@ -566,7 +566,7 @@ const server = http.createServer(async (req, res) => {
       info.probe.write_new_root = "ok";
       try { fs.unlinkSync(testFile); } catch {}
     } catch (e) { info.probe.write_new_root = e.message; }
-    for (const dir of [baseDir, path.join(baseDir, "memory"), path.join(baseDir, "diary")]) {
+    for (const dir of [baseDir, path.join(baseDir, "memory"), path.join(baseDir, "diary"), path.join(baseDir, "sentinel-guide")]) {
       try {
         info.files[dir] = fs.readdirSync(dir)
           .filter((f) => f.endsWith(".json"))
@@ -594,16 +594,30 @@ const server = http.createServer(async (req, res) => {
       // Reset in-memory sentinel state + disk files
       const { resetAllState } = await import("./lib/sentinel-guide.js");
       resetAllState();
+      // Aggressive: also nuke the entire sentinel-guide directory
+      const sgDir = path.join(process.env.DATA_DIR || "/data", "sentinel-guide");
+      if (fs.existsSync(sgDir)) {
+        for (const f of fs.readdirSync(sgDir)) {
+          const fp = path.join(sgDir, f);
+          const st = fs.statSync(fp);
+          if (st.isDirectory()) {
+            for (const sf of fs.readdirSync(fp)) fs.unlinkSync(path.join(fp, sf));
+            fs.rmdirSync(fp);
+          } else {
+            fs.unlinkSync(fp);
+          }
+        }
+      }
       // Clear chat memories
-      const memDir = process.env.MEMORY_DIR || path.join(process.env.DATA_DIR || "data", "memory");
+      const memDir = process.env.MEMORY_DIR || path.join(process.env.DATA_DIR || "/data", "memory");
       if (fs.existsSync(memDir)) {
         for (const f of fs.readdirSync(memDir).filter(f => f.endsWith(".json") || f.endsWith(".jsonl"))) {
           fs.unlinkSync(path.join(memDir, f));
         }
       }
-      res.writeHead(200); res.end(JSON.stringify({ ok: true, message: "All data cleared" }));
+      res.writeHead(200); res.end(JSON.stringify({ ok: true, message: "All data cleared", sgDir }));
     } catch (e) {
-      res.writeHead(500); res.end(JSON.stringify({ error: e.message }));
+      res.writeHead(500); res.end(JSON.stringify({ error: e.message, stack: e.stack }));
     }
     return;
   }
