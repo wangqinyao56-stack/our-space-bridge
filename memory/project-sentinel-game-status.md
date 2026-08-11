@@ -1,13 +1,29 @@
 ---
 name: project-sentinel-game-status
-description: 向哨无限流游戏开发进度和待办 — 2026-08-05
+description: 向哨无限流游戏开发进度和待办 — 2026-08-09
 metadata:
   type: project
 ---
 
 # 向哨无限流游戏 — 开发状态
 
-**最后更新**: 2026-08-07 深夜
+**最后更新**: 2026-08-09 深夜
+
+## 2026-08-09 深夜 向哨8连修 (已部署App，服务端待Sealos重启)
+
+详细改动见 [[project-sentinel-fix-20260809]]
+
+- [x] Bug1: BGM+UI首轮回复后误切换 (phase transition guard)
+- [x] Bug2+3: 开场改安全屋（非空白空间），渐进式觉醒
+- [x] Bug4: 进副本【系统】世界观通报
+- [x] Bug5: 论坛新帖"帖子不存在" (getPost异步查服务端)
+- [x] Bug6+8: 文风重构——动作推进/身体反应优先/短段落/删文学腔
+- [x] Bug7: parseReply正则补【系统】截断点+系统消息独立金色框架
+- [x] 夏彦人设强化：对外冷锋利/对她软撒娇/占有欲/安全网/并肩作战信任
+- [x] 双prompt同步 (sentinel + sentinel-sfw)
+- [x] App APK构建+安装
+- [x] 服务端push+dispatch
+- [ ] **Sealos重启Pod**让服务端生效
 
 ## 2026-08-08 凌晨 模型降级+亲密描写+反刻板修复 (未部署)
 
