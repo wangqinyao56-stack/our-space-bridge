@@ -64,7 +64,7 @@ import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } f
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage, askJiushi } from "./lib/ai.js";
 import { getAll, getActive, getPending, getHistory, proposeDate, activateDate, completeDate, cancelDate, checkTodayDates, detectDateProposal, detectSceneId } from "./lib/date-plans.js";
-import { startSession, playerAction, generateDoors, selectWorld, clearWorld, continueToNext, refreshState, getPublicState, getSystemPanel, addItem, giveItemToXiayan, useXiayanItem, removeItem, toggleEquipItem, getHistory as getSGHistory, listSessions, loadSession, deleteSession, getForumPosts, generateForumPost, generateDynamicShop, getShopItems, purchaseItem, withdrawFromWarehouse, useWarehouseItem, depositToWarehouse } from "./lib/sentinel-guide.js";
+import { startSession, playerAction, generateDoors, selectWorld, clearWorld, continueToNext, refreshState, getPublicState, getSystemPanel, addItem, giveItemToXiayan, useXiayanItem, removeItem, toggleEquipItem, getHistory as getSGHistory, listSessions, loadSession, deleteSession, getForumPosts, generateForumPost, generateDynamicShop, getShopItems, purchaseItem, withdrawFromWarehouse, useWarehouseItem, depositToWarehouse, rewindToTurn } from "./lib/sentinel-guide.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -2608,6 +2608,26 @@ wss.on("connection", (ws, req) => {
         }
       } catch (err) {
         console.error("[ws] SG continue error:", err.message);
+        ws.send(JSON.stringify({ type: "sentinel_guide_error", message: err.message }));
+      }
+      return;
+    }
+
+    if (msg.type === "sentinel_guide_rewind") {
+      if (msg.turnIndex == null || !msg.actionText?.trim()) {
+        ws.send(JSON.stringify({ type: "sentinel_guide_error", message: "Missing turnIndex or actionText" }));
+        return;
+      }
+      try {
+        notifyUserActivity();
+        const result = await rewindToTurn(msg.turnIndex, msg.actionText);
+        if (result.error) {
+          ws.send(JSON.stringify({ type: "sentinel_guide_error", message: result.error }));
+        } else {
+          ws.send(JSON.stringify({ type: "sentinel_guide_reply", ...result }));
+        }
+      } catch (err) {
+        console.error("[ws] SG rewind error:", err.message);
         ws.send(JSON.stringify({ type: "sentinel_guide_error", message: err.message }));
       }
       return;
