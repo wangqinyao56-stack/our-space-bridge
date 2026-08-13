@@ -64,7 +64,7 @@ import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } f
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage, askJiushi } from "./lib/ai.js";
 import { getAll, getActive, getPending, getHistory, proposeDate, activateDate, completeDate, cancelDate, checkTodayDates, detectDateProposal, detectSceneId } from "./lib/date-plans.js";
-import { startSession, playerAction, generateDoors, selectWorld, clearWorld, continueToNext, refreshState, getPublicState, getSystemPanel, addItem, giveItemToXiayan, useXiayanItem, removeItem, toggleEquipItem, getHistory as getSGHistory, listSessions, loadSession, deleteSession, getForumPosts, generateForumPost, generateDynamicShop, getShopItems, purchaseItem, withdrawFromWarehouse, useWarehouseItem, depositToWarehouse, rewindToTurn } from "./lib/sentinel-guide.js";
+import { startSession, playerAction, generateDoors, selectWorld, clearWorld, continueToNext, refreshState, getPublicState, getSystemPanel, addItem, giveItemToXiayan, useXiayanItem, removeItem, toggleEquipItem, getHistory as getSGHistory, listSessions, loadSession, deleteSession, getForumPosts, generateForumPost, generateDynamicShop, getShopItems, purchaseItem, withdrawFromWarehouse, useWarehouseItem, depositToWarehouse, rewindToTurn, restoreSession } from "./lib/sentinel-guide.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -1106,6 +1106,14 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(500);
       res.end(JSON.stringify({ error: e.message }));
     }
+    return;
+  }
+
+  if (req.method === "POST" && req.url?.startsWith("/api/sentinel-guide/restore/")) {
+    const sessionId = req.url.split("/api/sentinel-guide/restore/")[1];
+    const result = restoreSession(sessionId);
+    res.writeHead(result.error ? 404 : 200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(result));
     return;
   }
 
