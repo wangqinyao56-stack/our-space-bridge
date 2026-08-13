@@ -1117,6 +1117,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === "POST" && req.url?.startsWith("/api/sentinel-guide/purchase/")) {
+    const shopItemId = req.url.split("/api/sentinel-guide/purchase/")[1];
+    const result = purchaseItem(shopItemId);
+    res.writeHead(result.error ? 400 : 200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(result));
+    return;
+  }
+
   if (req.method === "GET" && req.url?.startsWith("/api/sentinel-guide/session/")) {
     const sessionId = req.url.split("/api/sentinel-guide/session/")[1];
     const session = loadSession(sessionId);
