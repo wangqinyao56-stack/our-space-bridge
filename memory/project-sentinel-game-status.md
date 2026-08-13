@@ -1,13 +1,41 @@
 ---
 name: project-sentinel-game-status
-description: 向哨无限流游戏开发进度和待办 — 2026-08-09
+description: 向哨无限流游戏开发进度和待办 — 2026-08-13
 metadata:
   type: project
 ---
 
 # 向哨无限流游戏 — 开发状态
 
-**最后更新**: 2026-08-09 深夜
+**最后更新**: 2026-08-13 下午
+
+## 2026-08-13 下午 向哨prompt精简——去机械节拍（已push+dispatch）
+
+- [x] **问题**：剧情"拼尸块"——人物细节好但段间无起承转合，段落全碎、节奏均匀（用户拿实际剧情反馈）
+- [x] **根因**：三条规则叠加成机械节拍器
+  1. "每段至少出现一次夏彦" → 每段都在点名（"夏彦X 夏彦X"）
+  2. "叙述→对话强制交替，每轮至少3-4次" → 每句对话后必跟一段动作，节拍器
+  3. "短段落≤4行"硬限制 → 段落全碎、无主次
+- [x] **改动**（主版 system-prompt-sentinel.md + SFW版同步，共8+6处）
+  - 删"每段至少出现一次夏彦"，保留"别连续3句他开头"
+  - 放宽"强制交替次数"→"对话该长则长该短则短"
+  - "短段落≤4行"→"段落长短跟着情绪走，关键场景允许铺陈"
+- [x] commit `197e68a` push + dispatch
+- [ ] 待 Sealos 重启 Pod 生效
+
+## 2026-08-13 凌晨 回溯功能 + 数据一致性修复 (已部署App，服务端已push)
+
+详细改动见 change-log.jsonl
+
+- [x] **回溯功能**：任意叙述块右上角「↩ 回溯」按钮，点击从该回合重新生成剧情（`rewindToTurn` + WS handler + 客户端按钮）
+- [x] **回溯根因踩坑**：之前按钮加在 `{turn.xiayan ? ...}` 永不渲染的块里——因为 parseReply 里 `xiayan = ""` 写死，夏彦对话都内联在 narration 里。教训：改UI前先确认目标数据字段是否真有值
+- [x] **数据一致性修复**（4个问题同一根因）：
+  - AI 在叙述正文编造数值（积分145/副本2/失控值/精神值），引擎 `updateStateFromReply` 正则从 combined(narration+xiayan+statChanges) 提取，把编造值当真实值覆盖
+  - 修复①：数值提取只从【数值变化】块 statText，不从叙述正文
+  - 修复②：prompt 加「数值铁律」禁止编造任何游戏数值，唯一权威是上下文 [积分][当前状态] 块
+  - 修复③：结算后注入真实结算通知，覆盖 AI 编造积分/副本数
+- [x] **商城空根因**：`detectAndApplySettlement` 返回双层嵌套 `settlement.settlement.shopCatalog`，客户端访问 `settlement.shopCatalog` 拿到 undefined。修复：结构平铺
+- [x] **回溯恢复 phase**：回溯时 phase=cleared→exploring，避免"已通关状态+副本中期叙述"混乱
 
 ## 2026-08-09 深夜 向哨8连修 (已部署App，服务端待Sealos重启)
 
