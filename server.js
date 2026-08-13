@@ -64,7 +64,7 @@ import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } f
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage, askJiushi } from "./lib/ai.js";
 import { getAll, getActive, getPending, getHistory, proposeDate, activateDate, completeDate, cancelDate, checkTodayDates, detectDateProposal, detectSceneId } from "./lib/date-plans.js";
-import { startSession, playerAction, generateDoors, selectWorld, clearWorld, continueToNext, refreshState, getPublicState, getSystemPanel, addItem, giveItemToXiayan, useXiayanItem, removeItem, toggleEquipItem, getHistory as getSGHistory, listSessions, loadSession, deleteSession, getForumPosts, generateForumPost, generateDynamicShop, getShopItems, purchaseItem, withdrawFromWarehouse, useWarehouseItem, depositToWarehouse, rewindToTurn, restoreSession } from "./lib/sentinel-guide.js";
+import { startSession, playerAction, generateDoors, selectWorld, clearWorld, continueToNext, refreshState, getPublicState, getSystemPanel, addItem, giveItemToXiayan, useXiayanItem, removeItem, toggleEquipItem, getHistory as getSGHistory, listSessions, loadSession, deleteSession, getForumPosts, generateForumPost, generateDynamicShop, getShopItems, purchaseItem, withdrawFromWarehouse, useWarehouseItem, depositToWarehouse, rewindToTurn, restoreSession, buyForXiayan } from "./lib/sentinel-guide.js";
 
 // ── Set API keys from config ──
 process.env.GROQ_API_KEY = config.GROQ_API_KEY;
@@ -1120,6 +1120,14 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "POST" && req.url?.startsWith("/api/sentinel-guide/purchase/")) {
     const shopItemId = req.url.split("/api/sentinel-guide/purchase/")[1];
     const result = purchaseItem(shopItemId);
+    res.writeHead(result.error ? 400 : 200, { "Content-Type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify(result));
+    return;
+  }
+
+  if (req.method === "POST" && req.url?.startsWith("/api/sentinel-guide/buy-for-xiayan/")) {
+    const shopItemId = req.url.split("/api/sentinel-guide/buy-for-xiayan/")[1];
+    const result = buyForXiayan(shopItemId);
     res.writeHead(result.error ? 400 : 200, { "Content-Type": "application/json; charset=utf-8" });
     res.end(JSON.stringify(result));
     return;
