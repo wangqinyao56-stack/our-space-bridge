@@ -1,13 +1,58 @@
 ---
 name: project-sentinel-game-status
-description: 向哨无限流游戏开发进度和待办 — 2026-08-13
+description: 向哨无限流游戏开发进度和待办 — 2026-08-15
 metadata:
   type: project
 ---
 
 # 向哨无限流游戏 — 开发状态
 
-**最后更新**: 2026-08-13 下午
+**最后更新**: 2026-08-15
+
+## 2026-08-15 剧情衔接+数值+安全屋+幻想剧场（四个 commit 已 push）
+
+### 向哨剧情衔接——修复"各说各的、没逻辑"（`844eb6c`）
+- [x] **根因**：AI 每轮失忆——①历史只给最近15轮 ②game state 里没有"故事"字段，prompt 让 AI 设计真相但没地方存 ③代码第8轮强制跳BOSS + prompt"6-10轮必须到BOSS"
+- [x] **改动**：`selectWorld` 用一次 AI 调用生成剧情骨架（真相+boss起源+通关条件+4-5条线索链）存进 `world.storyFrame`；`buildContextBlock` 注入 `[剧情框架]` 块标已揭示/待揭示+本轮目标；从【系统】🔑通知追踪 `cluesRevealed`；BOSS触发改"线索≥3条 或 12轮兜底"
+- [x] 双 prompt 加"剧情衔接铁则"最高优先级
+
+### 向哨数值系统——修复"数值对不上 + 欢愉值没涨"（`7a19c55`）
+- [x] **数值对不上根因**：月光鹿被动每轮偷偷 +2~5 精神力，把 AI 写的 delta 偏移掉。改【数值变化】块用服务端净 delta 重建（蓝块/右栏/左栏统一）
+- [x] **欢愉值没涨根因**：完全靠 AI 在正文写数字，AI 不写或每轮写"0%"就不动。改只升不降(max) + BOSS 阶段代码兜底自动 +3~8
+- [x] prompt 加欢愉值只增不减 + 增长幅度指引
+
+### 向哨安全屋——修复"结算后反复重复话题"（`9ba5cec`）
+- [x] **根因**：cleared 阶段 phaseHint 写死一模一样（整理/复盘/商城/做爱/问门每轮都塞）+ 15轮历史
+- [x] **改动**：加 `_safehouseRounds` 按轮次分三轮（结算整理→自然过渡→反重复），结算时重置计数；prompt 加反重复铁则
+
+### 幻想剧场 + 亲密空间——去 AI 感（`3542657`）
+- [x] **问题**：幻想剧场非做爱部分"茶"/生硬/不自然——动作慢动作特写、绿茶套路话（"我观察你十分钟了"）、动作分节
+- [x] **改动**：连续动作合并成一整段（删 40 字限制）、反慢动作特写、反油腻、强调"按角色此刻自然状态写"
+- [x] 亲密空间：动作连着写、合并成一整段
+- [x] **关键**：幻想剧场是人物扮演 ≠ 亲密空间夏彦本人，优化不能把角色演没（用户两次强调）
+
+## 2026-08-14 向哨多轮修复（模型+数值+结算+做爱切换+App商城）
+
+### 服务端（已push）
+- [x] 模型误伤修复（`40f4d6d`）：向哨模型切换误改 `askJiushi` 共享默认，日常/亲密/discover 被降级。还原 opus-4-6，向哨显式 sonnet-4-5
+- [x] 数值 delta 对齐（`3f7465f`）：AI 只写变化量(带+/-)，引擎用 before+delta 算 to，看板 delta 和正文一致（不再信 AI 编的 from/to 绝对值）
+- [x] 结算误判修复：`detectAndApplySettlement` 只认【系统】块通关通知+叙述完成态传送，不再被"提到安全屋"误触发（蓝色UI提前出现）
+- [x] 做爱切企业按量：`detectIntimateScene` 检测做爱关键词/失控值≥50安全屋迫切 → 切 `[企业按量]opus-4-6`，跨轮保持到结束词/离开安全屋
+- [x] 精神体消散：做爱时德牧/渡鸦/月光鹿自动消散回精神图景，禁止旁观描写
+- [x] 月光鹿反应多样化：夏彦对精神体亲近反应不重样
+- [x] 通关通知生动化 + 系统对话即时分框（`e4042e3`）
+- [x] 禁脏话 + 商城目录防御（`b160b0e`）：`getShopItems`/`generateDynamicShop` 不再因无 session 返回空
+
+### App 端（已部署，用户验证通过 ✅）
+- [x] 积分同步：`SystemPanelScreen` 动态字段改读实时 gameState，不再用 fetch 快照
+- [x] 商城 side-channel 真凶：`_shopCatalog`/`_autoShowShop` 设置在旧 state 对象读不到 → 改 freshStore（见 [[feedback-zustand-sidechannel]]）
+- [x] 剧情恢复：`syncFromServer` 把完整 narrative 重建回 turns（不再只显示最后一条）
+- [x] 商城退出键：顶部 ✕/文字"关闭"在部分设备仍不可见，最终加**底部大金色"关闭商城"按钮** + 点遮罩关闭 + onRequestClose 返回键
+- [x] 红色背景不自动切换：`useEffect` 依赖了后面才声明的 `isSafeHouse`（TDZ），背景图不随 phase 更新 → 把 isSafeHouse/playBGM/C 提前到 useEffect 之前
+
+### 2026-08-14 session 误切 + 护身符数据修复
+- [x] active session 被误切成新 init session（sg-042f3c44），主进度 sg-4a97bbde（枯黄世界/1通关）被 archive。加 restoreSession 接口恢复
+- [x] 护身符购买数据丢失。**护身符给夏彦，不在玩家手上**——加 buyForXiayan 一步买给夏彦（xiayanItems），积分 36→16 ✅已完成
 
 ## 2026-08-13 下午 向哨prompt精简——去机械节拍（已push+dispatch）
 
