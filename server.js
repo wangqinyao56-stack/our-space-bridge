@@ -60,7 +60,7 @@ import { startProactiveChat, notifyUserActivity, getProactiveState, scheduleOutR
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
-import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook } from "./lib/coread.js";
+import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport } from "./lib/coread.js";
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage, askJiushi } from "./lib/ai.js";
@@ -332,6 +332,17 @@ async function generateInspirationComment(note) {
   }
   // Fallback
   return FALLBACK_COMMENTS[Math.floor(Math.random() * FALLBACK_COMMENTS.length)];
+}
+
+function decodeTxtBase64(base64) {
+  const buf = Buffer.from(base64, "base64");
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(buf);
+  } catch {
+    try { return new TextDecoder("gbk").decode(buf); } catch {
+      return buf.toString("utf-8");
+    }
+  }
 }
 
 function sendSegments(ws, replyTo, segments, baseDelayMs = 18000 + Math.random() * 12000) {
@@ -2034,6 +2045,26 @@ wss.on("connection", (ws, req) => {
       } catch (e) {
         console.error("[coread] continue failed:", e.message);
         ws.send(JSON.stringify({ type: "coread_error", message: "生成失败，稍后再试" }));
+      }
+      return;
+    }
+
+    if (msg.type === "coread_import") {
+      let text = msg.text;
+      if (!text && msg.base64) {
+        text = decodeTxtBase64(msg.base64);
+      }
+      if (!text?.trim()) return;
+      try {
+        const { state, passage, error } = await coreadImport(msg.title, text);
+        if (error) {
+          ws.send(JSON.stringify({ type: "coread_error", message: error }));
+          return;
+        }
+        ws.send(JSON.stringify({ type: "coread_state", state, passage }));
+      } catch (e) {
+        console.error("[coread] import failed:", e.message);
+        ws.send(JSON.stringify({ type: "coread_error", message: "导入失败，稍后再试" }));
       }
       return;
     }
