@@ -14,6 +14,7 @@ export default {
   BFL_API_KEY: process.env.BFL_API_KEY || "",
   ARK_API_KEY: process.env.ARK_API_KEY || "",
   ZHIPU_API_KEY: process.env.ZHIPU_API_KEY || "05499a21dd5b47d0818a6d226d3febb1.0zAdeTYUBrpOWt21",
+  HINDSIGHT_URL: process.env.HINDSIGHT_URL || "",
   SYSTEM_PROMPT_PATH: join(__dirname, "system-prompt.md"),
   DAILY_PROMPT_PATH: join(__dirname, "system-prompt-daily.md"),
   INTIMATE_PROMPT_PATH: join(__dirname, "system-prompt-intimate.md"),
