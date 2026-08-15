@@ -60,6 +60,7 @@ import { startProactiveChat, notifyUserActivity, getProactiveState, scheduleOutR
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
+import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook } from "./lib/coread.js";
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage, askJiushi } from "./lib/ai.js";
@@ -1998,6 +1999,59 @@ wss.on("connection", (ws, req) => {
       if (!msg.id) return;
       deleteTodo(msg.id);
       ws.send(JSON.stringify({ type: "todo_updated", todo: null, todos: getTodos() }));
+      return;
+    }
+
+    // ── 共读 coread ──
+    if (msg.type === "coread_get") {
+      ws.send(JSON.stringify({ type: "coread_state", state: coreadGetState() }));
+      return;
+    }
+
+    if (msg.type === "coread_start") {
+      try {
+        const { state, passage, error } = await coreadStart(msg.title);
+        if (error) {
+          ws.send(JSON.stringify({ type: "coread_error", message: error }));
+          return;
+        }
+        ws.send(JSON.stringify({ type: "coread_state", state, passage }));
+      } catch (e) {
+        console.error("[coread] start failed:", e.message);
+        ws.send(JSON.stringify({ type: "coread_error", message: "生成失败，稍后再试" }));
+      }
+      return;
+    }
+
+    if (msg.type === "coread_continue") {
+      try {
+        const { state, passage, error } = await coreadContinue();
+        if (error) {
+          ws.send(JSON.stringify({ type: "coread_error", message: error }));
+          return;
+        }
+        ws.send(JSON.stringify({ type: "coread_state", state, passage }));
+      } catch (e) {
+        console.error("[coread] continue failed:", e.message);
+        ws.send(JSON.stringify({ type: "coread_error", message: "生成失败，稍后再试" }));
+      }
+      return;
+    }
+
+    if (msg.type === "coread_discuss") {
+      if (!msg.text?.trim()) return;
+      try {
+        const { state, reply } = await coreadDiscuss(msg.text);
+        ws.send(JSON.stringify({ type: "coread_state", state, reply }));
+      } catch (e) {
+        console.error("[coread] discuss failed:", e.message);
+        ws.send(JSON.stringify({ type: "coread_error", message: "回复失败，稍后再试" }));
+      }
+      return;
+    }
+
+    if (msg.type === "coread_suggest") {
+      ws.send(JSON.stringify({ type: "coread_suggested", book: await coreadPickBook() }));
       return;
     }
 
