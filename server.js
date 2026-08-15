@@ -63,7 +63,7 @@ import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus 
 import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport } from "./lib/coread.js";
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
 import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail } from "./lib/netease.js";
-import { generateTaskScene as monopolyScene, getTaskByType as monopolyTask } from "./lib/monopoly.js";
+import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset } from "./lib/monopoly.js";
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage, askJiushi } from "./lib/ai.js";
@@ -2152,15 +2152,25 @@ wss.on("connection", (ws, req) => {
     }
 
     // ── 色色大富翁 monopoly ──
-    if (msg.type === "monopoly_task") {
+    if (msg.type === "monopoly_get") {
+      ws.send(JSON.stringify({ type: "monopoly_state", state: monopolyGetState() }));
+      return;
+    }
+
+    if (msg.type === "monopoly_roll") {
+      const dice = Math.max(1, Math.min(6, parseInt(msg.dice) || 1));
       try {
-        const task = monopolyTask(msg.taskType);
-        const scene = await monopolyScene(task);
-        ws.send(JSON.stringify({ type: "monopoly_scene", task, scene }));
+        const { state, task, scene, fromPos, toPos, who } = await monopolyRoll(dice);
+        ws.send(JSON.stringify({ type: "monopoly_scene", state, task, scene, fromPos, toPos, who, dice }));
       } catch (e) {
-        console.error("[monopoly] scene failed:", e.message);
+        console.error("[monopoly] roll failed:", e.message);
         ws.send(JSON.stringify({ type: "monopoly_error", message: "生成失败，稍后再试" }));
       }
+      return;
+    }
+
+    if (msg.type === "monopoly_reset") {
+      ws.send(JSON.stringify({ type: "monopoly_state", state: monopolyReset() }));
       return;
     }
 
