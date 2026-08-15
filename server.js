@@ -63,6 +63,7 @@ import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus 
 import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport } from "./lib/coread.js";
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
 import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail } from "./lib/netease.js";
+import { generateTaskScene as monopolyScene, getTaskByType as monopolyTask } from "./lib/monopoly.js";
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage, askJiushi } from "./lib/ai.js";
@@ -2146,6 +2147,19 @@ wss.on("connection", (ws, req) => {
       } catch (e) {
         console.error("[duetto] discuss failed:", e.message);
         ws.send(JSON.stringify({ type: "duetto_error", message: "回复失败，稍后再试" }));
+      }
+      return;
+    }
+
+    // ── 色色大富翁 monopoly ──
+    if (msg.type === "monopoly_task") {
+      try {
+        const task = monopolyTask(msg.taskType);
+        const scene = await monopolyScene(task);
+        ws.send(JSON.stringify({ type: "monopoly_scene", task, scene }));
+      } catch (e) {
+        console.error("[monopoly] scene failed:", e.message);
+        ws.send(JSON.stringify({ type: "monopoly_error", message: "生成失败，稍后再试" }));
       }
       return;
     }
