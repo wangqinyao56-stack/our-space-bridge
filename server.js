@@ -62,6 +62,7 @@ import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from ".
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
 import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport } from "./lib/coread.js";
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
+import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail } from "./lib/netease.js";
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage, askJiushi } from "./lib/ai.js";
@@ -2093,10 +2094,38 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
-    if (msg.type === "duetto_share") {
-      if (!msg.title?.trim()) return;
+    if (msg.type === "duetto_search") {
       try {
-        const { state, song, error } = await duettoShare(msg.title, msg.artist);
+        const songs = await neteaseSearch(msg.keywords);
+        ws.send(JSON.stringify({ type: "duetto_search_result", songs, keywords: msg.keywords }));
+      } catch (e) {
+        console.error("[duetto] search failed:", e.message);
+        ws.send(JSON.stringify({ type: "duetto_search_result", songs: [], keywords: msg.keywords }));
+      }
+      return;
+    }
+
+    if (msg.type === "duetto_share") {
+      try {
+        let title = msg.title;
+        let artist = msg.artist;
+        let lyric = "";
+        let cover = "";
+        const songId = msg.songId || null;
+
+        // 从网易云按 songId 拉详情 + 歌词
+        if (songId) {
+          const detail = await neteaseDetail(songId);
+          if (detail) {
+            title = detail.name;
+            artist = detail.artist;
+            cover = detail.cover;
+          }
+          lyric = await neteaseLyric(songId);
+        }
+
+        if (!title?.trim()) return;
+        const { state, song, error } = await duettoShare(title, artist, { lyric, cover, songId });
         if (error) {
           ws.send(JSON.stringify({ type: "duetto_error", message: error }));
           return;
