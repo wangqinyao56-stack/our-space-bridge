@@ -61,6 +61,7 @@ import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.j
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
 import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport } from "./lib/coread.js";
+import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage, askJiushi } from "./lib/ai.js";
@@ -2083,6 +2084,40 @@ wss.on("connection", (ws, req) => {
 
     if (msg.type === "coread_suggest") {
       ws.send(JSON.stringify({ type: "coread_suggested", book: await coreadPickBook() }));
+      return;
+    }
+
+    // ── 一起听歌 duetto ──
+    if (msg.type === "duetto_get") {
+      ws.send(JSON.stringify({ type: "duetto_state", state: duettoGetState() }));
+      return;
+    }
+
+    if (msg.type === "duetto_share") {
+      if (!msg.title?.trim()) return;
+      try {
+        const { state, song, error } = await duettoShare(msg.title, msg.artist);
+        if (error) {
+          ws.send(JSON.stringify({ type: "duetto_error", message: error }));
+          return;
+        }
+        ws.send(JSON.stringify({ type: "duetto_state", state, song }));
+      } catch (e) {
+        console.error("[duetto] share failed:", e.message);
+        ws.send(JSON.stringify({ type: "duetto_error", message: "生成失败，稍后再试" }));
+      }
+      return;
+    }
+
+    if (msg.type === "duetto_discuss") {
+      if (!msg.text?.trim()) return;
+      try {
+        const { state, reply } = await duettoDiscuss(msg.text);
+        ws.send(JSON.stringify({ type: "duetto_state", state, reply }));
+      } catch (e) {
+        console.error("[duetto] discuss failed:", e.message);
+        ws.send(JSON.stringify({ type: "duetto_error", message: "回复失败，稍后再试" }));
+      }
       return;
     }
 
