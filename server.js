@@ -63,7 +63,7 @@ import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from ".
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
 import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport } from "./lib/coread.js";
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
-import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail } from "./lib/netease.js";
+import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail, getSongUrl as neteaseUrl } from "./lib/netease.js";
 import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset } from "./lib/monopoly.js";
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
@@ -2121,9 +2121,10 @@ wss.on("connection", (ws, req) => {
         let artist = msg.artist;
         let lyric = "";
         let cover = "";
+        let url = "";
         const songId = msg.songId || null;
 
-        // 从网易云按 songId 拉详情 + 歌词
+        // 从网易云按 songId 拉详情 + 歌词 + 播放链接
         if (songId) {
           const detail = await neteaseDetail(songId);
           if (detail) {
@@ -2132,10 +2133,11 @@ wss.on("connection", (ws, req) => {
             cover = detail.cover;
           }
           lyric = await neteaseLyric(songId);
+          url = await neteaseUrl(songId);
         }
 
         if (!title?.trim()) return;
-        const { state, song, error } = await duettoShare(title, artist, { lyric, cover, songId });
+        const { state, song, error } = await duettoShare(title, artist, { lyric, cover, songId, url });
         if (error) {
           ws.send(JSON.stringify({ type: "duetto_error", message: error }));
           return;
