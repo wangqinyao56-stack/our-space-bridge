@@ -7,6 +7,7 @@ import { v4 as uuid } from "uuid";
 import config from "./config.js";
 import { verifyAuth, createSessionToken } from "./lib/auth.js";
 import { TTSQueue } from "./lib/tts-queue.js";
+import { VolcAsr } from "./lib/realtime-asr.js";
 import {
   loadSystemPrompt,
   handleTextMessage,
@@ -242,6 +243,18 @@ function splitIntoMessages(text) {
   }
 
   return segments;
+}
+
+// ── 语音回复触发判断 ──
+function shouldVoiceReply(text) {
+  if (!text || typeof text !== "string") return false;
+  // 用户主动要求语音/打电话/听声音
+  if (/打电话|语音|发条语音|想听你说话|想听你的声音|念给我听|说句话/.test(text)) return true;
+  // 用户此刻没法打字
+  if (/没法打字|不能打字|不方便打字|打字不方便|腾不出手|没手打字/.test(text)) return true;
+  // 用户在外忙碌/工作/开车等场景
+  if (/在外|在外面|在忙|忙着|在上班|在开会|在开车|在路上|在赶路/.test(text)) return true;
+  return false;
 }
 
 // ── 睡眠时段消息队列（02:00-06:00 北京时间，日常聊天暂停回复）───
@@ -1377,18 +1390,21 @@ wss.on("connection", (ws, req) => {
           clearOutReminder();
         }
 
+        // 对方正在输入状态
+        ws.send(JSON.stringify({ type: "presence", status: "typing" }));
+
         const hsBefore = getHuashengTravelState().active;
         const fullReply = await handleTextMessage(msg.content);
         const hsAfter = getHuashengTravelState().active;
         if (hsBefore !== hsAfter) {
           broadcast(JSON.stringify({ type: "travel_state", xiayan: getTravelState(), huasheng: getHuashengTravelState() }));
         }
-        // Check for [语音] tag — only generate TTS when AI requests it
-        const voiceTag = fullReply.startsWith("[语音]");
-        const reply = voiceTag ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
+        // 语音触发条件：夏彦主动[语音]标签、用户主动要求语音/打电话、用户此刻没法打字（在外忙碌/工作）
+        const wantsVoice = fullReply.startsWith("[语音]") || shouldVoiceReply(msg.content);
+        const reply = fullReply.replace(/^\[语音\]\s*/, "");
 
-        if (voiceTag) {
-          // Voice bubble: skip text segments, send voice_reply instead
+        if (wantsVoice) {
+          // 语音气泡：发 voice_reply + 入 TTS 队列
           const jobId = uuid();
           ws.send(JSON.stringify({
             type: "voice_reply",
@@ -1398,7 +1414,6 @@ wss.on("connection", (ws, req) => {
           }));
           ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
         } else {
-          // 分段发送，像真人发微信一样自然断句
           const segments = splitIntoMessages(reply);
           sendSegments(ws, msg.id, segments);
         }
@@ -1744,25 +1759,19 @@ wss.on("connection", (ws, req) => {
       if (!msg.audio) return;
       try {
         notifyUserActivity();
+        ws.send(JSON.stringify({ type: "presence", status: "typing" }));
         const wavBuf = Buffer.from(msg.audio, "base64");
         const { text, reply: fullReply } = await handleVoiceMessage(wavBuf, msg.mime || "audio/mp4");
-        const wantsVoice = fullReply.startsWith("[语音]");
-        const reply = wantsVoice ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
-
-        if (wantsVoice) {
-          // Voice bubble: skip text segments, send voice_reply instead
-          const jobId = uuid();
-          ws.send(JSON.stringify({
-            type: "voice_reply",
-            reply_to: msg.id,
-            job_id: jobId,
-            text: reply,
-          }));
-          ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
-        } else {
-          const segments = splitIntoMessages(reply);
-          sendSegments(ws, msg.id, segments);
-        }
+        const reply = fullReply.replace(/^\[语音\]\s*/, "");
+        // 用户发语音 → 夏彦也回语音
+        const jobId = uuid();
+        ws.send(JSON.stringify({
+          type: "voice_reply",
+          reply_to: msg.id,
+          job_id: jobId,
+          text: reply,
+        }));
+        ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
 
         ws.send(JSON.stringify({
           type: "voice_transcribed",
