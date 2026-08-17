@@ -12,6 +12,7 @@ import {
   loadSystemPrompt,
   handleTextMessage,
   handleIntimateMessage,
+  handlePhoneCallMessage,
   getCurrentBlindBox,
   handleAffectionHomeMessage,
   handleAffectionDateMessage,
@@ -1701,9 +1702,16 @@ wss.on("connection", (ws, req) => {
       if (!msg.content?.trim()) return;
       try {
         notifyUserActivity();
-        const reply = await handleIntimateMessage(msg.content);
-        const segments = splitIntoMessages(reply);
-        sendSegments(ws, msg.id, segments);
+        const reply = await handlePhoneCallMessage(msg.content);
+        // 电话 = 语音：发 voice_reply + 入 TTS 队列
+        const jobId = uuid();
+        ws.send(JSON.stringify({
+          type: "voice_reply",
+          reply_to: msg.id,
+          job_id: jobId,
+          text: reply,
+        }));
+        ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
       } catch (err) {
         console.error("[ws] Phone call error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
