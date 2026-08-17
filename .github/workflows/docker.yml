@@ -68,3 +68,12 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/weixin-bot-3:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/pingguogengbot:latest
+
+      - name: Build and push weixin-bot-4
+        uses: docker/build-push-action@v6
+        with:
+          context: ./weixin-bot-4
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/weixin-bot-4:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/zhimabot:latest
