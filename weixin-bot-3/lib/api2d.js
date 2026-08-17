@@ -143,15 +143,11 @@ export async function askClaude(opts = {}) {
     if (!imageBase64) return text;
     const parts = [];
     if (text) parts.push({ type: "text", text });
-    // 微信 SDK 给的 mimeType 是 "image/*" 通配符，视觉接口不认，落到具体 mime
+    // OpenAI 兼容接口用 image_url（不是 Anthropic 的 source），否则图片会被中转丢弃
     const mime = imageMime && imageMime !== "image/*" ? imageMime : "image/jpeg";
     parts.push({
-      type: "image",
-      source: {
-        type: "base64",
-        media_type: mime,
-        data: imageBase64,
-      },
+      type: "image_url",
+      image_url: { url: `data:${mime};base64,${imageBase64}` },
     });
     return parts;
   }
