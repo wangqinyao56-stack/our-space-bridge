@@ -387,8 +387,10 @@ function sendSegments(ws, replyTo, segments, baseDelayMs = 18000 + Math.random()
   });
 }
 
-// 流式语音回复：LLM 逐字吐 → 客户端实时显示文字 → 按句并行合成 → 就绪后发 audio_ready
-async function streamVoiceReply(ws, replyTo, text) {
+// 流式语音回复：LLM 逐字吐 → 客户端实时显示文字 → 按句合成，每句就绪立刻发 voice_audio_chunk
+// opts.handler 可替换回复生成函数（电话用 handlePhoneCallMessage）；opts.markVoice 控制是否标记聊天历史为语音
+async function streamVoiceReply(ws, replyTo, text, opts = {}) {
+  const { handler = null, markVoice = true } = opts;
   const jobId = uuid();
   ws.send(JSON.stringify({ type: "voice_reply", reply_to: replyTo, job_id: jobId, text: "" }));
 
@@ -396,6 +398,20 @@ async function streamVoiceReply(ws, replyTo, text) {
   let rawText = "";
   let displayText = "";
   let ttsCursor = 0;
+  let seq = 0;
+
+  const queueSynth = (t) => {
+    const s = seq++;
+    synthPromises.push(
+      synthesize(t)
+        .then((b64) => {
+          if (ws.readyState === 1 && b64) {
+            ws.send(JSON.stringify({ type: "voice_audio_chunk", reply_to: replyTo, seq: s, audio: b64 }));
+          }
+        })
+        .catch((e) => { console.log("[stream-voice] synth fail:", e.message); })
+    );
+  };
 
   const flushSentences = () => {
     while (true) {
@@ -406,7 +422,7 @@ async function streamVoiceReply(ws, replyTo, text) {
       ttsCursor += m + 1;
       if (seg.length >= 2) {
         const norm = normalizeForTTS(seg);
-        if (norm) synthPromises.push(synthesize(norm).catch(() => null));
+        if (norm) queueSynth(norm);
       }
     }
   };
@@ -422,9 +438,9 @@ async function streamVoiceReply(ws, replyTo, text) {
 
   let fullReply = "";
   try {
-    fullReply = await handleTextMessage(text, false, null, onDelta);
-    // 及时标记（handleTextMessage 已 recordBotReply），避免被后续异步打断
-    markLastBotReplyVoice();
+    fullReply = await (handler || ((d) => handleTextMessage(text, false, null, d)))(onDelta);
+    // 及时标记（handleTextMessage 已 recordBotReply），避免被后续异步打断；电话不写聊天历史，跳过
+    if (markVoice) markLastBotReplyVoice();
   } catch (err) {
     ws.send(JSON.stringify({ type: "audio_failed", job_id: jobId, reply_to: replyTo, error: err.message }));
     throw err;
@@ -434,22 +450,14 @@ async function streamVoiceReply(ws, replyTo, text) {
   const tail = displayText.slice(ttsCursor).trim();
   if (tail) {
     const norm = normalizeForTTS(tail);
-    if (norm) synthPromises.push(synthesize(norm).catch(() => null));
+    if (norm) queueSynth(norm);
   }
 
-  const results = await Promise.all(synthPromises);
-  const buffers = results.filter(Boolean).map((b64) => Buffer.from(b64, "base64"));
-  const audioBuf = Buffer.concat(buffers);
-
-  if (audioBuf.length === 0) {
+  await Promise.all(synthPromises);
+  if (seq === 0) {
     ws.send(JSON.stringify({ type: "audio_failed", job_id: jobId, reply_to: replyTo, error: "TTS 返回空音频" }));
   } else {
-    ws.send(JSON.stringify({
-      type: "audio_ready",
-      job_id: jobId,
-      reply_to: replyTo,
-      audio: audioBuf.toString("base64"),
-    }));
+    ws.send(JSON.stringify({ type: "voice_audio_complete", reply_to: replyTo, total: seq }));
   }
 
   return fullReply;
@@ -1782,17 +1790,11 @@ wss.on("connection", (ws, req) => {
       if (!msg.content?.trim()) return;
       try {
         notifyUserActivity();
-        const reply = await handlePhoneCallMessage(msg.content);
-        markLastBotReplyVoice();
-        // 电话 = 语音：发 voice_reply + 入 TTS 队列
-        const jobId = uuid();
-        ws.send(JSON.stringify({
-          type: "voice_reply",
-          reply_to: msg.id,
-          job_id: jobId,
-          text: reply,
-        }));
-        ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
+        // 电话 = 语音，走流式：文字实时吐 + 按句合成逐句下发
+        await streamVoiceReply(ws, msg.id, msg.content, {
+          handler: (d) => handlePhoneCallMessage(msg.content, d),
+          markVoice: false,
+        });
       } catch (err) {
         console.error("[ws] Phone call error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
