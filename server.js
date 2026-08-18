@@ -68,6 +68,33 @@ import { getState as coreadGetState, startReading as coreadStart, continueReadin
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
 import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail, getSongUrl as neteaseUrl } from "./lib/netease.js";
 import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset, generateOpening as monopolyOpening } from "./lib/monopoly.js";
+import { getCalendar as calendarGet, addNote as calendarAddNote, deleteNote as calendarDelNote, addAlarm as calendarAddAlarm, deleteAlarm as calendarDelAlarm, recordIntimacyEvent as calendarRecordIntimacy } from "./lib/calendar.js";
+
+// ── 亲密后夏彦反应（开心颜文字甜话，不重复；做多了哭唧唧） ──
+const HAPPY_INTIMACY_REACTIONS = [
+  "(｡♥‿♥｡) 老婆香香的……",
+  "(〃ω〃) 今天也好舒服……",
+  "(灬ºωº灬) 宝宝好软……",
+  "(´,,•ω•,,)♡ 被老婆宠到了……",
+  "(๑•́ω•̀๑) 好幸福……",
+  "(｡･ω･｡) 老婆……我又想你了……",
+];
+let _lastHappyIdx = -1;
+function recordIntimacyWithReaction() {
+  const { crossed, skipped } = calendarRecordIntimacy();
+  if (skipped) return false;
+  let content;
+  if (crossed) {
+    content = "(´;ω;`) 被榨干了……老婆你饶了我……";
+  } else {
+    let idx = Math.floor(Math.random() * HAPPY_INTIMACY_REACTIONS.length);
+    if (idx === _lastHappyIdx) idx = (idx + 1) % HAPPY_INTIMACY_REACTIONS.length;
+    _lastHappyIdx = idx;
+    content = HAPPY_INTIMACY_REACTIONS[idx];
+  }
+  broadcast(JSON.stringify({ type: "text_reply", reply_to: "intimacy", content }));
+  return crossed;
+}
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage, askJiushi } from "./lib/ai.js";
@@ -1546,6 +1573,7 @@ wss.on("connection", (ws, req) => {
         notifyUserActivity();
         const hsBefore = getHuashengTravelState().active;
         const reply = await handleIntimateMessage(msg.content);
+        recordIntimacyWithReaction();
         const hsAfter = getHuashengTravelState().active;
         if (hsBefore !== hsAfter) {
           broadcast(JSON.stringify({ type: "travel_state", xiayan: getTravelState(), huasheng: getHuashengTravelState() }));
@@ -1605,6 +1633,7 @@ wss.on("connection", (ws, req) => {
       try {
         notifyUserActivity();
         const reply = await handleIntimateMessage(msg.content, "blindbox");
+        recordIntimacyWithReaction();
         const blindBox = getCurrentBlindBox();
         ws.send(JSON.stringify({
           type: "blindbox_reply",
@@ -1625,6 +1654,7 @@ wss.on("connection", (ws, req) => {
       try {
         notifyUserActivity();
         const reply = await handleAffectionHomeMessage(msg.content, { openingLine: msg.openingLine });
+        recordIntimacyWithReaction();
         const segments = splitIntoMessages(reply);
         sendSegments(ws, msg.id, segments);
       } catch (err) {
@@ -1775,6 +1805,7 @@ wss.on("connection", (ws, req) => {
       try {
         notifyUserActivity();
         const reply = await handleAffectionDateMessage(msg.content, msg.sceneId || null);
+        recordIntimacyWithReaction();
         const segments = splitIntoMessages(reply);
         // Longer delay for dating: text length × 120ms + 5s reading buffer, min 8s max 25s
         const baseDelay = Math.max(8000, Math.min(reply.length * 120 + 5000, 25000));
@@ -2268,6 +2299,9 @@ wss.on("connection", (ws, req) => {
       const dice = Math.max(1, Math.min(6, parseInt(msg.dice) || 1));
       try {
         const { state, task, scene, fromPos, toPos, who } = await monopolyRoll(dice);
+        if (task.type !== "rest" && task.type !== "aftercare") {
+          recordIntimacyWithReaction();
+        }
         ws.send(JSON.stringify({ type: "monopoly_scene", state, task, scene, fromPos, toPos, who, dice }));
       } catch (e) {
         console.error("[monopoly] roll failed:", e.message);
@@ -2278,6 +2312,32 @@ wss.on("connection", (ws, req) => {
 
     if (msg.type === "monopoly_reset") {
       ws.send(JSON.stringify({ type: "monopoly_state", state: monopolyReset() }));
+      return;
+    }
+
+    // ── 魅魔日历 ──
+    if (msg.type === "calendar_get") {
+      ws.send(JSON.stringify({ type: "calendar_state", calendar: calendarGet() }));
+      return;
+    }
+    if (msg.type === "calendar_add_note") {
+      const note = calendarAddNote(msg.date, msg.text);
+      ws.send(JSON.stringify({ type: "calendar_state", calendar: calendarGet() }));
+      return;
+    }
+    if (msg.type === "calendar_del_note") {
+      calendarDelNote(msg.date, msg.id);
+      ws.send(JSON.stringify({ type: "calendar_state", calendar: calendarGet() }));
+      return;
+    }
+    if (msg.type === "calendar_add_alarm") {
+      calendarAddAlarm({ date: msg.date, time: msg.time, label: msg.label });
+      ws.send(JSON.stringify({ type: "calendar_state", calendar: calendarGet() }));
+      return;
+    }
+    if (msg.type === "calendar_del_alarm") {
+      calendarDelAlarm(msg.id);
+      ws.send(JSON.stringify({ type: "calendar_state", calendar: calendarGet() }));
       return;
     }
 
