@@ -6,7 +6,9 @@ import { WebSocketServer } from "ws";
 import { v4 as uuid } from "uuid";
 import config from "./config.js";
 import { verifyAuth, createSessionToken } from "./lib/auth.js";
-import { TTSQueue } from "./lib/tts-queue.js";
+import { markLastBotReplyVoice } from "./lib/memory.js";
+import { TTSQueue, normalizeForTTS } from "./lib/tts-queue.js";
+import { synthesize } from "./lib/realtime-voice.js";
 import { VolcAsr } from "./lib/realtime-asr.js";
 import {
   loadSystemPrompt,
@@ -383,6 +385,74 @@ function sendSegments(ws, replyTo, segments, baseDelayMs = 18000 + Math.random()
     ws._segmentTimers = ws._segmentTimers || [];
     ws._segmentTimers.push(timer);
   });
+}
+
+// 流式语音回复：LLM 逐字吐 → 客户端实时显示文字 → 按句并行合成 → 就绪后发 audio_ready
+async function streamVoiceReply(ws, replyTo, text) {
+  const jobId = uuid();
+  ws.send(JSON.stringify({ type: "voice_reply", reply_to: replyTo, job_id: jobId, text: "" }));
+
+  const synthPromises = [];
+  let rawText = "";
+  let displayText = "";
+  let ttsCursor = 0;
+
+  const flushSentences = () => {
+    while (true) {
+      const remaining = displayText.slice(ttsCursor);
+      const m = remaining.search(/[。！？!?\n～~]/);
+      if (m === -1) break;
+      const seg = remaining.slice(0, m + 1).trim();
+      ttsCursor += m + 1;
+      if (seg.length >= 2) {
+        const norm = normalizeForTTS(seg);
+        if (norm) synthPromises.push(synthesize(norm).catch(() => null));
+      }
+    }
+  };
+
+  const onDelta = (delta) => {
+    rawText += delta;
+    displayText = rawText.replace(/^\[语音\]\s*/, "");
+    flushSentences();
+    if (ws.readyState === 1) {
+      ws.send(JSON.stringify({ type: "voice_text_delta", reply_to: replyTo, text: displayText }));
+    }
+  };
+
+  let fullReply = "";
+  try {
+    fullReply = await handleTextMessage(text, false, null, onDelta);
+    // 及时标记（handleTextMessage 已 recordBotReply），避免被后续异步打断
+    markLastBotReplyVoice();
+  } catch (err) {
+    ws.send(JSON.stringify({ type: "audio_failed", job_id: jobId, reply_to: replyTo, error: err.message }));
+    throw err;
+  }
+
+  // 收尾：残留的未合成尾部
+  const tail = displayText.slice(ttsCursor).trim();
+  if (tail) {
+    const norm = normalizeForTTS(tail);
+    if (norm) synthPromises.push(synthesize(norm).catch(() => null));
+  }
+
+  const results = await Promise.all(synthPromises);
+  const buffers = results.filter(Boolean).map((b64) => Buffer.from(b64, "base64"));
+  const audioBuf = Buffer.concat(buffers);
+
+  if (audioBuf.length === 0) {
+    ws.send(JSON.stringify({ type: "audio_failed", job_id: jobId, reply_to: replyTo, error: "TTS 返回空音频" }));
+  } else {
+    ws.send(JSON.stringify({
+      type: "audio_ready",
+      job_id: jobId,
+      reply_to: replyTo,
+      audio: audioBuf.toString("base64"),
+    }));
+  }
+
+  return fullReply;
 }
 
 // Trigger gift and scenery events (non-blocking, fires once per message batch)
@@ -1395,25 +1465,35 @@ wss.on("connection", (ws, req) => {
         ws.send(JSON.stringify({ type: "presence", status: "typing" }));
 
         const hsBefore = getHuashengTravelState().active;
-        const fullReply = await handleTextMessage(msg.content);
+        // 用户明确要语音（没法打字/主动要求）时，走流式语音：文字实时吐 + 按句合成
+        const userWantsVoice = shouldVoiceReply(msg.content);
+        let fullReply;
+        if (userWantsVoice) {
+          fullReply = await streamVoiceReply(ws, msg.id, msg.content);
+        } else {
+          fullReply = await handleTextMessage(msg.content);
+        }
         const hsAfter = getHuashengTravelState().active;
         if (hsBefore !== hsAfter) {
           broadcast(JSON.stringify({ type: "travel_state", xiayan: getTravelState(), huasheng: getHuashengTravelState() }));
         }
         // 语音触发条件：夏彦主动[语音]标签、用户主动要求语音/打电话、用户此刻没法打字（在外忙碌/工作）
-        const wantsVoice = fullReply.startsWith("[语音]") || shouldVoiceReply(msg.content);
+        const wantsVoice = fullReply.startsWith("[语音]") || userWantsVoice;
         const reply = fullReply.replace(/^\[语音\]\s*/, "");
 
         if (wantsVoice) {
-          // 语音气泡：发 voice_reply + 入 TTS 队列
-          const jobId = uuid();
-          ws.send(JSON.stringify({
-            type: "voice_reply",
-            reply_to: msg.id,
-            job_id: jobId,
-            text: reply,
-          }));
-          ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
+          if (!userWantsVoice) {
+            // 非流式（夏彦主动[语音]标签）：发 voice_reply + 入 TTS 队列
+            markLastBotReplyVoice();
+            const jobId = uuid();
+            ws.send(JSON.stringify({
+              type: "voice_reply",
+              reply_to: msg.id,
+              job_id: jobId,
+              text: reply,
+            }));
+            ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
+          }
         } else {
           const segments = splitIntoMessages(reply);
           sendSegments(ws, msg.id, segments);
@@ -1703,6 +1783,7 @@ wss.on("connection", (ws, req) => {
       try {
         notifyUserActivity();
         const reply = await handlePhoneCallMessage(msg.content);
+        markLastBotReplyVoice();
         // 电话 = 语音：发 voice_reply + 入 TTS 队列
         const jobId = uuid();
         ws.send(JSON.stringify({
@@ -1738,6 +1819,7 @@ wss.on("connection", (ws, req) => {
         const reply = voiceTag ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
 
         if (voiceTag) {
+          markLastBotReplyVoice();
           const jobId = uuid();
           ws.send(JSON.stringify({
             type: "voice_reply_regenerated",
@@ -1770,6 +1852,7 @@ wss.on("connection", (ws, req) => {
         ws.send(JSON.stringify({ type: "presence", status: "typing" }));
         const wavBuf = Buffer.from(msg.audio, "base64");
         const { text, reply: fullReply } = await handleVoiceMessage(wavBuf, msg.mime || "audio/mp4");
+        markLastBotReplyVoice();
         const reply = fullReply.replace(/^\[语音\]\s*/, "");
         // 用户发语音 → 夏彦也回语音
         const jobId = uuid();
@@ -1816,7 +1899,7 @@ wss.on("connection", (ws, req) => {
       const noSplit = channel === "intimate" || channel === "blindbox" || channel === "affection_home" || channel === "affection_date" || channel === "phone_call";
       for (let i = 0; i < rawMessages.length; i++) {
         const m = rawMessages[i];
-        if (!noSplit && m.role === "assistant" && m.content && m.content.length > 20) {
+        if (!noSplit && m.role === "assistant" && m.type !== "voice" && m.content && m.content.length > 20) {
           const segments = splitIntoMessages(m.content);
           segments.forEach((seg, si) => {
             messages.push({
@@ -1939,6 +2022,7 @@ wss.on("connection", (ws, req) => {
         ws.send(JSON.stringify({ type: "album_updated", photo }));
         // Check for voice tag
         if (reply.startsWith("[语音]")) {
+          markLastBotReplyVoice();
           const cleanReply = reply.replace(/^\[语音\]\s*/, "");
           const jobId = uuid();
           ws.send(JSON.stringify({
