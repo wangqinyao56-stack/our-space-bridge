@@ -67,7 +67,7 @@ import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus 
 import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport } from "./lib/coread.js";
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
 import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail, getSongUrl as neteaseUrl } from "./lib/netease.js";
-import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset } from "./lib/monopoly.js";
+import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset, generateOpening as monopolyOpening } from "./lib/monopoly.js";
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
 import { recognizeImage, askJiushi } from "./lib/ai.js";
@@ -2258,7 +2258,9 @@ wss.on("connection", (ws, req) => {
 
     // ── 色色大富翁 monopoly ──
     if (msg.type === "monopoly_get") {
-      ws.send(JSON.stringify({ type: "monopoly_state", state: monopolyGetState() }));
+      // 每次打开生成一段开场（随机角度，不固定）
+      const opening = await monopolyOpening();
+      ws.send(JSON.stringify({ type: "monopoly_state", state: monopolyGetState(), opening }));
       return;
     }
 
