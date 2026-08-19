@@ -189,24 +189,16 @@ startProactiveDiscover((moment) => {
 
 // ── Proactive chat (夏彦主动给华生发消息) ──
 startProactiveChat((message) => {
-  const segments = splitIntoMessages(message);
   const replyTo = `proactive_${Date.now()}`;
-  // Send segments to all connected clients
+  // 主动消息一次只发一条，不分段——避免"噼里啪啦"连续气泡打断日常聊天
   for (const [ws, wsState] of clients) {
     if (wsState.authenticated && ws.readyState === 1) {
-      for (let i = 0; i < segments.length; i++) {
-        const delay = i * (6000 + Math.random() * 8000);
-        setTimeout(() => {
-          if (ws.readyState === 1) {
-            ws.send(JSON.stringify({
-              type: "text_reply",
-              reply_to: `${replyTo}_${i}`,
-              content: segments[i],
-              proactive: true,
-            }));
-          }
-        }, delay);
-      }
+      ws.send(JSON.stringify({
+        type: "text_reply",
+        reply_to: replyTo,
+        content: message,
+        proactive: true,
+      }));
     }
   }
   console.log(`[proactive] Broadcast: "${message.slice(0, 60)}..."`);
