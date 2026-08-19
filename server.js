@@ -68,7 +68,7 @@ import { getState as coreadGetState, startReading as coreadStart, continueReadin
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
 import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail, getSongUrl as neteaseUrl } from "./lib/netease.js";
 import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset, generateOpening as monopolyOpening } from "./lib/monopoly.js";
-import { getCalendar as calendarGet, addNote as calendarAddNote, deleteNote as calendarDelNote, addAlarm as calendarAddAlarm, deleteAlarm as calendarDelAlarm, recordIntimacyEvent as calendarRecordIntimacy } from "./lib/calendar.js";
+import { getCalendar as calendarGet, addNote as calendarAddNote, deleteNote as calendarDelNote, addAlarm as calendarAddAlarm, deleteAlarm as calendarDelAlarm, recordEjaculationEvent as calendarRecordEjaculation } from "./lib/calendar.js";
 
 // ── 亲密后夏彦反应（开心颜文字甜话，不重复；做多了哭唧唧） ──
 const HAPPY_INTIMACY_REACTIONS = [
@@ -80,20 +80,17 @@ const HAPPY_INTIMACY_REACTIONS = [
   "(｡･ω･｡) 老婆……我又想你了……",
 ];
 let _lastHappyIdx = -1;
-function recordIntimacyWithReaction() {
-  const { crossed, skipped } = calendarRecordIntimacy();
-  if (skipped) return false;
-  let content;
-  if (crossed) {
-    content = "(´;ω;`) 被榨干了……老婆你饶了我……";
-  } else {
-    let idx = Math.floor(Math.random() * HAPPY_INTIMACY_REACTIONS.length);
-    if (idx === _lastHappyIdx) idx = (idx + 1) % HAPPY_INTIMACY_REACTIONS.length;
-    _lastHappyIdx = idx;
-    content = HAPPY_INTIMACY_REACTIONS[idx];
-  }
-  broadcast(JSON.stringify({ type: "text_reply", reply_to: "intimacy", content }));
-  return crossed;
+function processEjaculationMarker(reply, eventId) {
+  const text = typeof reply === "string" ? reply : "";
+  if (/\[射精\]/.test(text)) recordEjaculationWithReaction(eventId);
+  return text.replace(/\s*\[射精\]\s*/g, " ").trim();
+}
+
+function recordEjaculationWithReaction(eventId) {
+  const { crossed, skipped } = calendarRecordEjaculation(eventId);
+  if (skipped || !crossed) return false;
+  broadcast(JSON.stringify({ type: "text_reply", reply_to: "intimacy", content: "(´;ω;`) 老婆……我真的要被你榨干了……" }));
+  return true;
 }
 import { generateNxxChat, getNxxHistory, saveNvzhuMessage, deleteNxxMessages } from "./lib/nxx-group.js";
 import { importHealthData, getHealthForDate, listHealthDates, getHealthHistory, getHealthSummary, generateDailySummary, getHealthContext } from "./lib/health.js";
@@ -425,7 +422,7 @@ async function streamVoiceReply(ws, replyTo, text, opts = {}) {
       synthesize(t)
         .then((b64) => {
           if (ws.readyState === 1 && b64) {
-            ws.send(JSON.stringify({ type: "voice_audio_chunk", reply_to: replyTo, seq: s, audio: b64 }));
+            ws.send(JSON.stringify({ type: "voice_audio_chunk", reply_to: replyTo, job_id: jobId, seq: s, audio: b64 }));
           }
         })
         .catch((e) => { console.log("[stream-voice] synth fail:", e.message); })
@@ -476,7 +473,7 @@ async function streamVoiceReply(ws, replyTo, text, opts = {}) {
   if (seq === 0) {
     ws.send(JSON.stringify({ type: "audio_failed", job_id: jobId, reply_to: replyTo, error: "TTS 返回空音频" }));
   } else {
-    ws.send(JSON.stringify({ type: "voice_audio_complete", reply_to: replyTo, total: seq }));
+    ws.send(JSON.stringify({ type: "voice_audio_complete", reply_to: replyTo, job_id: jobId, total: seq }));
   }
 
   return fullReply;
@@ -1492,39 +1489,15 @@ wss.on("connection", (ws, req) => {
         ws.send(JSON.stringify({ type: "presence", status: "typing" }));
 
         const hsBefore = getHuashengTravelState().active;
-        // 用户明确要语音（没法打字/主动要求）时，走流式语音：文字实时吐 + 按句合成
-        const userWantsVoice = shouldVoiceReply(msg.content);
-        let fullReply;
-        if (userWantsVoice) {
-          fullReply = await streamVoiceReply(ws, msg.id, msg.content);
-        } else {
-          fullReply = await handleTextMessage(msg.content);
-        }
+        const fullReply = await streamVoiceReply(ws, msg.id, msg.content);
         const hsAfter = getHuashengTravelState().active;
         if (hsBefore !== hsAfter) {
           broadcast(JSON.stringify({ type: "travel_state", xiayan: getTravelState(), huasheng: getHuashengTravelState() }));
         }
-        // 语音触发条件：夏彦主动[语音]标签、用户主动要求语音/打电话、用户此刻没法打字（在外忙碌/工作）
-        const wantsVoice = fullReply.startsWith("[语音]") || userWantsVoice;
         const reply = fullReply.replace(/^\[语音\]\s*/, "");
 
-        if (wantsVoice) {
-          if (!userWantsVoice) {
-            // 非流式（夏彦主动[语音]标签）：发 voice_reply + 入 TTS 队列
-            markLastBotReplyVoice();
-            const jobId = uuid();
-            ws.send(JSON.stringify({
-              type: "voice_reply",
-              reply_to: msg.id,
-              job_id: jobId,
-              text: reply,
-            }));
-            ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
-          }
-        } else {
-          const segments = splitIntoMessages(reply);
-          sendSegments(ws, msg.id, segments);
-        }
+        // 普通聊天统一走即时流式语音，streamVoiceReply 已发送全部语音事件
+        void reply;
 
         // Trigger gift/scenery/decor as side effects (non-blocking)
         triggerMultimediaEvents(ws, msg.id);
@@ -1565,7 +1538,7 @@ wss.on("connection", (ws, req) => {
         notifyUserActivity();
         const hsBefore = getHuashengTravelState().active;
         const reply = await handleIntimateMessage(msg.content);
-        recordIntimacyWithReaction();
+        const cleanReply = processEjaculationMarker(reply, msg.id);
         const hsAfter = getHuashengTravelState().active;
         if (hsBefore !== hsAfter) {
           broadcast(JSON.stringify({ type: "travel_state", xiayan: getTravelState(), huasheng: getHuashengTravelState() }));
@@ -1574,7 +1547,7 @@ wss.on("connection", (ws, req) => {
         ws.send(JSON.stringify({
           type: "intimate_reply",
           reply_to: msg.id,
-          content: reply,
+          content: cleanReply,
           blindBox: blindBox ? { name: blindBox.name } : null,
         }));
 
@@ -1625,12 +1598,12 @@ wss.on("connection", (ws, req) => {
       try {
         notifyUserActivity();
         const reply = await handleIntimateMessage(msg.content, "blindbox");
-        recordIntimacyWithReaction();
+        const cleanReply = processEjaculationMarker(reply, msg.id);
         const blindBox = getCurrentBlindBox();
         ws.send(JSON.stringify({
           type: "blindbox_reply",
           reply_to: msg.id,
-          content: reply,
+          content: cleanReply,
           blindBox: blindBox ? { name: blindBox.name } : null,
         }));
       } catch (err) {
@@ -1646,8 +1619,8 @@ wss.on("connection", (ws, req) => {
       try {
         notifyUserActivity();
         const reply = await handleAffectionHomeMessage(msg.content, { openingLine: msg.openingLine });
-        recordIntimacyWithReaction();
-        const segments = splitIntoMessages(reply);
+        const cleanReply = processEjaculationMarker(reply, msg.id);
+        const segments = splitIntoMessages(cleanReply);
         sendSegments(ws, msg.id, segments);
       } catch (err) {
         console.error("[ws] Affection home error:", err.message);
@@ -1797,10 +1770,10 @@ wss.on("connection", (ws, req) => {
       try {
         notifyUserActivity();
         const reply = await handleAffectionDateMessage(msg.content, msg.sceneId || null);
-        recordIntimacyWithReaction();
-        const segments = splitIntoMessages(reply);
+        const cleanReply = processEjaculationMarker(reply, msg.id);
+        const segments = splitIntoMessages(cleanReply);
         // Longer delay for dating: text length × 120ms + 5s reading buffer, min 8s max 25s
-        const baseDelay = Math.max(8000, Math.min(reply.length * 120 + 5000, 25000));
+        const baseDelay = Math.max(8000, Math.min(cleanReply.length * 120 + 5000, 25000));
         sendSegments(ws, msg.id, segments, baseDelay);
       } catch (err) {
         console.error("[ws] Affection date error:", err.message);
@@ -1839,7 +1812,8 @@ wss.on("connection", (ws, req) => {
         }
         // Route to correct handler
         const handler = msg.channel === "intimate" ? handleIntimateMessage : handleTextMessage;
-        const fullReply = await handler(msg.user_content);
+        const rawReply = await handler(msg.user_content);
+        const fullReply = msg.channel === "intimate" ? processEjaculationMarker(rawReply, msg.reply_to) : rawReply;
         const voiceTag = fullReply.startsWith("[语音]");
         const reply = voiceTag ? fullReply.replace(/^\[语音\]\s*/, "") : fullReply;
 
@@ -1876,23 +1850,19 @@ wss.on("connection", (ws, req) => {
         notifyUserActivity();
         ws.send(JSON.stringify({ type: "presence", status: "typing" }));
         const wavBuf = Buffer.from(msg.audio, "base64");
-        const { text, reply: fullReply } = await handleVoiceMessage(wavBuf, msg.mime || "audio/mp4");
-        markLastBotReplyVoice();
-        const reply = fullReply.replace(/^\[语音\]\s*/, "");
-        // 用户发语音 → 夏彦也回语音
-        const jobId = uuid();
-        ws.send(JSON.stringify({
-          type: "voice_reply",
-          reply_to: msg.id,
-          job_id: jobId,
-          text: reply,
-        }));
-        ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
-
+        let recognizedText = "";
+        const { text, reply: fullReply } = await handleVoiceMessage(
+          wavBuf,
+          msg.mime || "audio/mp4",
+          (recognized, isVoice) => {
+            recognizedText = recognized;
+            return streamVoiceReply(ws, msg.id, recognized, { markVoice: true });
+          }
+        );
         ws.send(JSON.stringify({
           type: "voice_transcribed",
           reply_to: msg.id,
-          text: text,
+          text,
         }));
       } catch (err) {
         console.error("[ws] Voice error:", err.message);
@@ -2291,10 +2261,7 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "monopoly_roll") {
       const dice = Math.max(1, Math.min(6, parseInt(msg.dice) || 1));
       try {
-        const { state, task, scene, fromPos, toPos, who } = await monopolyRoll(dice);
-        if (task.type !== "rest" && task.type !== "aftercare") {
-          recordIntimacyWithReaction();
-        }
+        const { task, scene, fromPos, toPos, who, state } = await monopolyRoll(dice);
         ws.send(JSON.stringify({ type: "monopoly_scene", state, task, scene, fromPos, toPos, who, dice }));
       } catch (e) {
         console.error("[monopoly] roll failed:", e.message);
