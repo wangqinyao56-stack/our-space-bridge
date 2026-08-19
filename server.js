@@ -2030,6 +2030,7 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "image") {
       if (!msg.base64 || !msg.mime) return;
       try {
+        notifyUserActivity();
         // Auto-save to album
         const photo = addPhoto(msg.base64, msg.mime, "me");
         // Recognize image content with 火山方舟 vision model
@@ -2679,6 +2680,7 @@ wss.on("connection", (ws, req) => {
 
     if (msg.type === "sticker") {
       if (!msg.sticker_id) return;
+      notifyUserActivity();
       // Broadcast sticker to partner only (NOT back to sender)
       const stickerMsg = JSON.stringify({
         type: "sticker",
