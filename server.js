@@ -202,12 +202,37 @@ startProactiveChat((message) => {
   console.log(`[proactive] Broadcast: "${message.slice(0, 60)}..."`);
 });
 
-// ── 亲密空间主动互动：华生沉默时夏彦主动贴贴求关注 ──
+// ── 亲密空间主动互动：夏彦回家 + 华生沉默贴贴 ──
 let intimateLastUserMsg = 0;
 let intimateProactiveLast = 0;
 let intimateProactiveLastMsg = "";
+let intimateHomeArrivalDate = "";
 setInterval(async () => {
   const now = Date.now();
+  const bjNow = new Date(now + 8 * 60 * 60 * 1000);
+  const hour = bjNow.getUTCHours();
+  const todayStr = `${bjNow.getUTCFullYear()}-${bjNow.getUTCMonth()}-${bjNow.getUTCDate()}`;
+
+  // ── 五点到六点：夏彦下班回家，主动发"我回来啦"（华生在亲密空间时，每天一次）──
+  if (hour === 17 && intimateLastUserMsg && now - intimateLastUserMsg < 30 * 60 * 1000) {
+    if (intimateHomeArrivalDate !== todayStr) {
+      intimateHomeArrivalDate = todayStr;
+      try {
+        const prompt = getIntimateSystemPrompt();
+        const msg = await askJiushi({
+          systemPrompt: prompt,
+          userContent: "现在是傍晚五点到六点，你下班回家了。请主动告诉华生你回来了——像「我回来啦」这样的开场，然后自然地描写一两句你从玄关开门回家的动作（换鞋、放包、喊她、找她……），每次都要不一样，不要用固定的动作。语气开心、撒娇、想她。就一两句，不要长。",
+          history: [],
+          maxTokens: 150,
+        });
+        if (msg && msg.trim()) {
+          broadcast(JSON.stringify({ type: "intimate_reply", reply_to: `intimate_home_${now}`, content: msg.trim() }));
+          console.log(`[intimate-proactive] 夏彦回家: "${msg.trim().slice(0, 50)}..."`);
+        }
+      } catch (e) { console.error("[intimate-proactive] home error:", e.message); }
+    }
+  }
+
   if (!intimateLastUserMsg || now - intimateLastUserMsg < 8 * 60 * 1000) return;
   if (now - intimateLastUserMsg > 30 * 60 * 1000) return;
   if (intimateProactiveLast && now - intimateProactiveLast < 20 * 60 * 1000) return;
