@@ -1547,15 +1547,38 @@ wss.on("connection", (ws, req) => {
         ws.send(JSON.stringify({ type: "presence", status: "typing" }));
 
         const hsBefore = getHuashengTravelState().active;
-        const fullReply = await streamVoiceReply(ws, msg.id, msg.content);
+        // 日常聊天语音概率触发：用户明确要语音→流式语音；否则走文字，AI 按 prompt 规则偶尔加 [语音]
+        const userWantsVoice = shouldVoiceReply(msg.content);
+        let fullReply;
+        if (userWantsVoice) {
+          fullReply = await streamVoiceReply(ws, msg.id, msg.content);
+        } else {
+          fullReply = await handleTextMessage(msg.content);
+        }
         const hsAfter = getHuashengTravelState().active;
         if (hsBefore !== hsAfter) {
           broadcast(JSON.stringify({ type: "travel_state", xiayan: getTravelState(), huasheng: getHuashengTravelState() }));
         }
+        const wantsVoice = fullReply.startsWith("[语音]") || userWantsVoice;
         const reply = fullReply.replace(/^\[语音\]\s*/, "");
 
-        // 普通聊天统一走即时流式语音，streamVoiceReply 已发送全部语音事件
-        void reply;
+        if (wantsVoice) {
+          if (!userWantsVoice) {
+            // AI 主动加 [语音]：发 voice_reply + 入 TTS 队列
+            markLastBotReplyVoice();
+            const jobId = uuid();
+            ws.send(JSON.stringify({
+              type: "voice_reply",
+              reply_to: msg.id,
+              job_id: jobId,
+              text: reply,
+            }));
+            ttsQueue.enqueue({ jobId, text: reply, replyTo: msg.id });
+          }
+        } else {
+          const segments = splitIntoMessages(reply);
+          sendSegments(ws, msg.id, segments);
+        }
 
         // Trigger gift/scenery/decor as side effects (non-blocking)
         triggerMultimediaEvents(ws, msg.id);
