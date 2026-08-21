@@ -213,8 +213,8 @@ setInterval(async () => {
   const hour = bjNow.getUTCHours();
   const todayStr = `${bjNow.getUTCFullYear()}-${bjNow.getUTCMonth()}-${bjNow.getUTCDate()}`;
 
-  // ── 五点到六点：夏彦下班回家，主动发"我回来啦"（华生在亲密空间时，每天一次）──
-  if (hour === 17 && intimateLastUserMsg && now - intimateLastUserMsg < 30 * 60 * 1000) {
+  // ── 五点到六点：夏彦下班回家，主动发"我回来啦"（每天一次，无需华生先说话）──
+  if (hour === 17) {
     if (intimateHomeArrivalDate !== todayStr) {
       intimateHomeArrivalDate = todayStr;
       try {
