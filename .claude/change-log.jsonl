@@ -10,3 +10,6 @@
 {"time":"2026-08-21 17:30","repo":"our-space","file":"server.js","desc":"五到六点我回来啦去掉intimateLastUserMsg<30min条件,17点自动发(每天一次)"}
 {"time":"2026-08-22 00:49","repo":"our-space","file":"lib/message-router.js","desc":"删除所有系统提示里的具体日期/月份/星期(现在是北京时间8月22日这类),改成只报时分+禁止报日期;新一天强制规则改为允许自然回忆过去但不延续昨天话题"}
 {"time":"2026-08-22 00:49","repo":"our-space","file":"server.js","desc":"streamVoiceReply传isVoice透传:语音消息按[语音]记录历史(对齐App合并键,修自动转文字重复发送)+语音回复用语音prompt+合成加2次重试防后半句丢音频"}
+{"time":"2026-08-22 02:14","repo":"our-space","file":"system-prompt.md","desc":"夏彦厨艺追加阶段性进步:蒸煮加热半成品冻品(饺子汤圆冷冻速食)没问题但仅限于此,真菜仍只会番茄炒蛋+蟹酿橙(仅改主prompt+存档,微信bot不动)"}
+{"time":"2026-08-22 02:30","repo":"our-space","file":"system-prompt-intimate.md","desc":"夏彦射精不规律+延长时间(主动忍着)专攻她反复高潮;追加抱着走来走去操/快射就停摸阴蒂到喷再操/玩具嘴换方式;反复高潮被玩儿被支配但只限动作支配,语言性格不变"}
+{"time":"2026-08-22 02:32","repo":"our-space","file":"system-prompt-sentinel.md","desc":"向哨同步:夏彦射精不规律+主动延长专攻她反复高潮到喷;抱着走来走去操/快射就停摸阴蒂到喷再操/玩具嘴;反复高潮被支配但只限动作支配,语言性格不变"}
