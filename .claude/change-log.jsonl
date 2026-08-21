@@ -1,0 +1,12 @@
+{"time":"2026-08-16 01:23","repo":"our-space","file":"lib/body-state.js","desc":"新建身体状态引擎:7驱动力(同步率/感官负荷/屏障/失控/精神力/污染/体力)统一模型+deriveFrenzy派生失控度+summary阈值判定"}
+{"time":"2026-08-16 01:23","repo":"our-space","file":"lib/sentinel-guide.js","desc":"向哨上下文用bodyStateSummary替换扁平失控值行,注入身体状态判定"}
+{"time":"2026-08-18 02:11","repo":"our-space-app","file":"src/components/VoiceRecordButton.tsx","desc":"录音前加麦克风运行时权限请求,修复录音按键失败"}
+{"time":"2026-08-21 16:39","repo":"our-space","file":"lib/petname.js","desc":"新建爱称记忆模块:识别华生对夏彦的心肝儿/老公等固定称呼+去重+跨频道注入prompt,别再每次当第一次"}
+{"time":"2026-08-21 16:39","repo":"our-space","file":"lib/message-router.js","desc":"主聊+亲密空间接入爱称检测/注入,亲密空间注入情感记忆breath+Hindsight召回+参与情感提取"}
+{"time":"2026-08-21 16:39","repo":"our-space","file":"system-prompt-intimate.md","desc":"被说爱/被叫爱称改为高兴+热情+撒娇回应,禁止突然安静只叫名字不说话"}
+{"time":"2026-08-21 17:00","repo":"our-space","file":"lib/message-router.js","desc":"修复聊天出现日期:新增stripDateTags删除AI回显的[8月20日]历史日期标签,主聊+亲密空间都接"}
+{"time":"2026-08-21 17:30","repo":"our-space","file":"lib/proactive-chat.js","desc":"主动聊天降频:冷却4h→6h/日上限5→3/追问3-5轮→1-2轮,且generateProactiveMessage只喂今天的消息(过滤跨天历史)"}
+{"time":"2026-08-21 17:30","repo":"our-space","file":"lib/message-router.js","desc":"居家温存handleAffectionHomeMessage补注入亲密空间上下文,动作可接她最新状态"}
+{"time":"2026-08-21 17:30","repo":"our-space","file":"server.js","desc":"五到六点我回来啦去掉intimateLastUserMsg<30min条件,17点自动发(每天一次)"}
+{"time":"2026-08-22 00:49","repo":"our-space","file":"lib/message-router.js","desc":"删除所有系统提示里的具体日期/月份/星期(现在是北京时间8月22日这类),改成只报时分+禁止报日期;新一天强制规则改为允许自然回忆过去但不延续昨天话题"}
+{"time":"2026-08-22 00:49","repo":"our-space","file":"server.js","desc":"streamVoiceReply传isVoice透传:语音消息按[语音]记录历史(对齐App合并键,修自动转文字重复发送)+语音回复用语音prompt+合成加2次重试防后半句丢音频"}

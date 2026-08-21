@@ -464,7 +464,7 @@ function sendSegments(ws, replyTo, segments, baseDelayMs = 18000 + Math.random()
 // 流式语音回复：LLM 逐字吐 → 客户端实时显示文字 → 按句合成，每句就绪立刻发 voice_audio_chunk
 // opts.handler 可替换回复生成函数（电话用 handlePhoneCallMessage）；opts.markVoice 控制是否标记聊天历史为语音
 async function streamVoiceReply(ws, replyTo, text, opts = {}) {
-  const { handler = null, markVoice = true } = opts;
+  const { handler = null, markVoice = true, isVoice = false } = opts;
   const jobId = uuid();
   ws.send(JSON.stringify({ type: "voice_reply", reply_to: replyTo, job_id: jobId, text: "" }));
 
@@ -474,10 +474,22 @@ async function streamVoiceReply(ws, replyTo, text, opts = {}) {
   let ttsCursor = 0;
   let seq = 0;
 
+  const synthWithRetry = async (t, retries = 2) => {
+    try {
+      return await synthesize(t);
+    } catch (e) {
+      if (retries > 0) {
+        await new Promise((r) => setTimeout(r, 600));
+        return synthWithRetry(t, retries - 1);
+      }
+      throw e;
+    }
+  };
+
   const queueSynth = (t) => {
     const s = seq++;
     synthPromises.push(
-      synthesize(t)
+      synthWithRetry(t)
         .then((b64) => {
           if (ws.readyState === 1 && b64) {
             ws.send(JSON.stringify({ type: "voice_audio_chunk", reply_to: replyTo, job_id: jobId, seq: s, audio: b64 }));
@@ -512,7 +524,7 @@ async function streamVoiceReply(ws, replyTo, text, opts = {}) {
 
   let fullReply = "";
   try {
-    fullReply = await (handler || ((d) => handleTextMessage(text, false, null, d)))(onDelta);
+    fullReply = await (handler || ((d) => handleTextMessage(text, isVoice, null, d)))(onDelta);
     // 及时标记（handleTextMessage 已 recordBotReply），避免被后续异步打断；电话不写聊天历史，跳过
     if (markVoice) markLastBotReplyVoice();
   } catch (err) {
@@ -1938,7 +1950,7 @@ wss.on("connection", (ws, req) => {
           msg.mime || "audio/mp4",
           (recognized, isVoice) => {
             recognizedText = recognized;
-            return streamVoiceReply(ws, msg.id, recognized, { markVoice: true });
+            return streamVoiceReply(ws, msg.id, recognized, { markVoice: true, isVoice });
           }
         );
         ws.send(JSON.stringify({
