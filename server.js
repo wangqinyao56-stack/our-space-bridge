@@ -1370,7 +1370,7 @@ wss.on("connection", (ws, req) => {
     if (recentMsgs.length > 30) recentMsgs.shift();
   });
 
-  ws.on("message", async (data) => {
+  ws.on("message", (data) => {
     let msg;
     try {
       msg = JSON.parse(data.toString());
@@ -1379,6 +1379,13 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    // 串行化：同一连接的消息排队处理，避免并发生成导致回复互相穿插/两条内容混在一起
+    ws._msgChain = (ws._msgChain || Promise.resolve())
+      .then(() => processWsMessage(ws, msg))
+      .catch((err) => console.error("[ws] message handler error:", err));
+  });
+
+  async function processWsMessage(ws, msg) {
     // Log ALL messages before auth check
     recentMsgs.push({ ts: new Date().toISOString(), type: msg.type, hasId: !!msg.id, auth: clients.get(ws)?.authenticated ?? false, conn: clients.get(ws)?.connId });
     if (recentMsgs.length > 30) recentMsgs.shift();
@@ -1988,7 +1995,8 @@ wss.on("connection", (ws, req) => {
       const noSplit = channel === "intimate" || channel === "blindbox" || channel === "affection_home" || channel === "affection_date" || channel === "phone_call";
       for (let i = 0; i < rawMessages.length; i++) {
         const m = rawMessages[i];
-        if (!noSplit && m.role === "assistant" && m.type !== "voice" && m.content && m.content.length > 20) {
+        const ts = m.time || Date.now();
+        if (!noSplit && !m.proactive && m.role === "assistant" && m.type !== "voice" && m.content && m.content.length > 20) {
           const segments = splitIntoMessages(m.content);
           segments.forEach((seg, si) => {
             messages.push({
@@ -1997,7 +2005,7 @@ wss.on("connection", (ws, req) => {
               type: "text",
               content: seg,
               status: "delivered",
-              timestamp: Date.now() - (rawMessages.length - i) * 1000 + si,
+              timestamp: ts + si,
             });
           });
         } else {
@@ -2007,7 +2015,7 @@ wss.on("connection", (ws, req) => {
             type: "text",
             content: m.content,
             status: "delivered",
-            timestamp: Date.now() - (rawMessages.length - i) * 1000,
+            timestamp: ts,
           });
         }
       }
@@ -2757,7 +2765,7 @@ wss.on("connection", (ws, req) => {
       }
       // Let 夏彦 see the sticker so he can react naturally with text, not echo sticker back
       try {
-        const reply = await handleTextMessage(`华生发了一个表情包。不要评价这个表情包本身——不要说你发了个xx表情、这个表情好可爱之类的话。就当没看到表情包，继续聊之前的话题或者自然地开启新话题。`);
+        const reply = await handleTextMessage(`华生发了一个表情包。不要评价这个表情包本身——不要说你发了个xx表情、这个表情好可爱之类的话。就当没看到表情包，继续聊之前的话题或者自然地开启新话题。`, false, null, null, true);
         const segments = splitIntoMessages(reply);
         sendSegments(ws, msg.id, segments);
         tryGetSceneImage(reply).then((img) => {
@@ -3157,7 +3165,7 @@ wss.on("connection", (ws, req) => {
     }
 
     ws.send(JSON.stringify({ type: "error", message: `Unknown message type: ${msg.type}` }));
-  });
+  }
 
   ws.on("close", () => {
     console.log(`[ws] Disconnected: ${ip}`);
