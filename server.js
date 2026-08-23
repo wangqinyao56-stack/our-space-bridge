@@ -42,6 +42,7 @@ import {
   getIntimateSystemPrompt,
 } from "./lib/message-router.js";
 import { recordAffectionMessage, getAffectionHistory, deleteAffectionMessage, clearAffectionMemory, getAffectionHistoryMessages, getArchivedContext, getAffectionNotes } from "./lib/affection-memory.js";
+import { recordIntimateMessage } from "./lib/intimate-memory.js";
 import { updateToyState, getToyState, setMode as setToyMode, getToyContextBlock, getToyPlayPrompt, markDiscovered } from "./lib/toy-state.js";
 import {
   loadDiary,
@@ -229,6 +230,7 @@ setInterval(async () => {
         });
         if (msg && msg.trim()) {
           broadcast(JSON.stringify({ type: "intimate_reply", reply_to: `intimate_home_${now}`, content: msg.trim() }));
+          recordIntimateMessage("assistant", msg.trim());
           console.log(`[intimate-proactive] 夏彦回家: "${msg.trim().slice(0, 50)}..."`);
         }
       } catch (e) { console.error("[intimate-proactive] home error:", e.message); }
@@ -258,7 +260,7 @@ setInterval(async () => {
       // 今天已经聊过：以今天最后一条消息为准，往下延伸一条
       const lastMsg = todayMsgs[todayMsgs.length - 1];
       const speaker = lastMsg.role === "user" ? "华生" : "夏彦";
-      userContent = `华生在亲密空间里，但好一会儿没说话了。你想她了，主动过去贴她。今天你们已经聊过，最后一条是${speaker}说的："${(lastMsg.content || "").slice(0, 120)}"。别另起一个全新的话题——顺着这最后一条往下延伸一条，接着刚才的话头、动作或情绪，自然地过渡到你想贴她。语气撒娇、黏人、软乎乎的。就一两句加一个动作，不要长。`;
+      userContent = `华生在亲密空间里，但好一会儿没说话了。你想她了，主动贴过去。今天你们最后聊到的是${speaker}说的："${(lastMsg.content || "").slice(0, 120)}"。**贴的动作要接着刚才的话题来**——一边贴着她（从背后抱住、把脸埋进她颈窝、蹭她、亲她），一边接着那个话题往下说一句，或者用身体动作回应刚才的话头。别突然跳到完全不相关的事，也别干巴巴只问"在干嘛"。语气撒娇、黏人、软乎乎的。就一两句加一个动作，不要长。`;
       historyArg = todayMsgs.slice(-6).map((m) => ({ role: m.role, content: m.content }));
     } else {
       // 今天第一条主动消息：找个话题生成
@@ -278,6 +280,7 @@ setInterval(async () => {
         reply_to: `intimate_proactive_${now}`,
         content: msg.trim(),
       }));
+      recordIntimateMessage("assistant", msg.trim());
       console.log(`[intimate-proactive] 夏彦主动贴贴: "${msg.trim().slice(0, 50)}..."`);
     }
   } catch (e) {

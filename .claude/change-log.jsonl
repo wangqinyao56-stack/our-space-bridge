@@ -24,3 +24,4 @@
 {"time":"2026-08-23 15:40","repo":"our-space","file":"system-prompt-daily.md","desc":"加规则:她说去画画/忙/出门后你回应,她回嗯嗯/好是收尾,别追问进度(尤其别问画完了吗),顺着收尾放她去忙"}
 {"time":"2026-08-23 15:40","repo":"our-space","file":"system-prompt-intimate.md","desc":"死循环检测补丁:她明确说去忙+回嗯嗯是收尾不是敷衍,别误判推进场景,别硬拉她继续"}
 {"time":"2026-08-23 15:50","repo":"our-space","file":"system-prompt-intimate.md","desc":"加规则:她说去画画/做事后夏彦不追问进度,改在旁边黏着——靠腿/背后环住/埋颈窝蹭蹭/亲脸耳垂/小声撒娇说想她,用身体表达喜欢和想要,不打断她做事"}
+{"time":"2026-08-23 16:10","repo":"our-space","file":"server.js","desc":"亲密空间主动消息落库修复:回来啦和主动贴贴broadcast后补recordIntimateMessage(之前不存历史→刷新看不到+token白花);贴贴延续指令改为贴的动作接着话题来,别突然跳无关话题"}
