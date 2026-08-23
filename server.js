@@ -242,10 +242,33 @@ setInterval(async () => {
   intimateProactiveLast = now;
   try {
     const prompt = getIntimateSystemPrompt();
+
+    // 读今天亲密空间的对话，判断是"今天第一条主动消息"还是"今天已经聊过"
+    const intimateHistory = await getIntimateHistoryMessages();
+    const todayMsgs = (intimateHistory || []).filter((m) => {
+      if (!m.ts) return false;
+      const mBj = new Date(new Date(m.ts).getTime() + 8 * 60 * 60 * 1000);
+      const mKey = `${mBj.getUTCFullYear()}-${mBj.getUTCMonth()}-${mBj.getUTCDate()}`;
+      return mKey === todayStr;
+    });
+
+    let userContent;
+    let historyArg = [];
+    if (todayMsgs.length > 0) {
+      // 今天已经聊过：以今天最后一条消息为准，往下延伸一条
+      const lastMsg = todayMsgs[todayMsgs.length - 1];
+      const speaker = lastMsg.role === "user" ? "华生" : "夏彦";
+      userContent = `华生在亲密空间里，但好一会儿没说话了。你想她了，主动过去贴她。今天你们已经聊过，最后一条是${speaker}说的："${(lastMsg.content || "").slice(0, 120)}"。别另起一个全新的话题——顺着这最后一条往下延伸一条，接着刚才的话头、动作或情绪，自然地过渡到你想贴她。语气撒娇、黏人、软乎乎的。就一两句加一个动作，不要长。`;
+      historyArg = todayMsgs.slice(-6).map((m) => ({ role: m.role, content: m.content }));
+    } else {
+      // 今天第一条主动消息：找个话题生成
+      userContent = `华生在亲密空间里，但好一会儿没说话了。今天你们还没聊过，这是你今天第一次主动找她。随便找个话题或理由贴过去——从背后抱住她、把脸埋进她颈窝、蹭她、要她理理你，求关注。理由和姿势每次都要不一样（想她了、无聊了、想闻她、想挨着她……），随机一点，别每次都问「在干嘛」。语气撒娇、黏人、软乎乎的。就一两句加一个动作，不要长，不要展开。`;
+    }
+
     const msg = await askJiushi({
       systemPrompt: prompt,
-      userContent: `华生在亲密空间里，但好一会儿没说话了。她可能在看手机、走神、在做别的事。你想她了，主动过去贴她——从背后抱住她、把脸埋进她颈窝、蹭她、要她理理你，求关注。理由和姿势每次都要不一样（想她了、无聊了、想闻她、想挨着她……），随机一点，别每次都问「在干嘛」。语气撒娇、黏人、软乎乎的。就一两句加一个动作，不要长，不要展开。${intimateProactiveLastMsg ? `\n\n【连贯要求——必须遵守】她还没接你的话。你上一次主动贴她时说的是：${intimateProactiveLastMsg}\n你这次要接着上面的动作和话题往下走——比如你刚才是从背后抱住她的，这次就继续那个姿势、或者顺着那个话题自然地换，不要像重新开始一样东一句西一句。` : ""}`,
-      history: [],
+      userContent,
+      history: historyArg,
       maxTokens: 150,
     });
     if (msg && msg.trim()) {

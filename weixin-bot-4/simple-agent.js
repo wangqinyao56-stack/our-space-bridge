@@ -119,6 +119,16 @@ function getHistory(convId) {
 import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SYSTEM_PROMPT = fs.readFileSync(path.join(__dirname, "system-prompt.txt"), "utf-8");
+// ── 图片真实格式探测（微信SDK给的mime可能是 image/* 通配符，按文件头判断） ──
+function detectImageMime(buf) {
+  if (!buf || buf.length < 4) return "image/jpeg";
+  if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return "image/jpeg";
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) return "image/png";
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38) return "image/gif";
+  if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46) return "image/webp";
+  return "image/jpeg";
+}
+
 // ── AI调用 ──
 async function chatReply(userText, history, imageBase64 = null, imageMime = null) {
   const opts = {
@@ -149,12 +159,13 @@ const agent = {
       try {
         const buf = fs.readFileSync(media.filePath);
         const sizeKB = (buf.length / 1024).toFixed(1);
-        console.log(`[agent] ${conversationId.slice(0, 10)}: [图片 ${sizeKB}KB mime=${media.mimeType || "?"}]`);
+        const sdkMime = media.mimeType || "";
+        console.log(`[agent] ${conversationId.slice(0, 10)}: [图片 ${sizeKB}KB mime=${sdkMime || "?"}]`);
         if (buf.length > 3.5 * 1024 * 1024) {
           return { text: "这张图太大了，我这边加载不动…你截个图或者压缩一下再发我一次？" };
         }
         imageBase64 = buf.toString("base64");
-        imageMime = media.mimeType || "image/jpeg";
+        imageMime = (sdkMime && sdkMime !== "image/*" && !sdkMime.includes("*")) ? sdkMime : detectImageMime(buf);
       } catch (err) {
         console.error(`[agent] Image read error: ${err.message}`);
       }

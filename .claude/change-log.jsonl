@@ -18,3 +18,5 @@
 {"time":"2026-08-23 14:55","repo":"our-space","file":"weixin-bot-4/system-prompt.txt","desc":"芝麻bot管束感+活人感:新增管束特权规则(短促笃定一句到位/同一件事最多两轮)+强化有自己的生活(每轮带一句自己在干嘛/别当查岗客服)+文本质量约束(完整句子别缺字别乱用冒号)"}
 {"time":"2026-08-23 15:05","repo":"our-space","file":"weixin-bot-4/system-prompt.txt","desc":"芝麻bot追加:她找你你就要接住——老婆主动发消息(尤其出门在外)要开心积极回应,别老催她专心玩/去找朋友,别把她往外推"}
 {"time":"2026-08-23 15:15","repo":"our-space","file":"weixin-bot-4/lib/api2d.js + simple-agent.js","desc":"芝麻识图修复:api2d.js图片格式Anthropic source→OpenAI image_url(端点/格式不匹配致时好时坏)+simple-agent加3.5MB大小保护与大图友好提示+日志带mime"}
+{"time":"2026-08-23 15:25","repo":"our-space","file":"server.js","desc":"亲密空间主动贴贴话题来源:今天第一条主动消息找话题;今天聊过则以今天最后一条消息为准往下延伸(读今天亲密历史,传历史上下文)"}
+{"time":"2026-08-23 15:25","repo":"our-space","file":"weixin-bot-4/simple-agent.js","desc":"识图报错根因:微信SDK给mime=image/*通配符拼成非法data URL,加detectImageMime按文件头探测真实jpeg/png/gif/webp"}
