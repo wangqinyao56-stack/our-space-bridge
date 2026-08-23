@@ -148,9 +148,13 @@ const agent = {
     if (media?.type === "image" && media.filePath) {
       try {
         const buf = fs.readFileSync(media.filePath);
+        const sizeKB = (buf.length / 1024).toFixed(1);
+        console.log(`[agent] ${conversationId.slice(0, 10)}: [图片 ${sizeKB}KB mime=${media.mimeType || "?"}]`);
+        if (buf.length > 3.5 * 1024 * 1024) {
+          return { text: "这张图太大了，我这边加载不动…你截个图或者压缩一下再发我一次？" };
+        }
         imageBase64 = buf.toString("base64");
         imageMime = media.mimeType || "image/jpeg";
-        console.log(`[agent] ${conversationId.slice(0, 10)}: [图片 ${(buf.length / 1024).toFixed(1)}KB]`);
       } catch (err) {
         console.error(`[agent] Image read error: ${err.message}`);
       }

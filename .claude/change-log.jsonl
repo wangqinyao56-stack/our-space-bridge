@@ -17,3 +17,4 @@
 {"time":"2026-08-23 14:41","repo":"our-space","file":"server.js","desc":"亲密空间主动互动不打断聊天:回来啦正在聊天时推迟+贴贴静默窗口8改15分钟+夏彦回复后刷新最近互动时间"}
 {"time":"2026-08-23 14:55","repo":"our-space","file":"weixin-bot-4/system-prompt.txt","desc":"芝麻bot管束感+活人感:新增管束特权规则(短促笃定一句到位/同一件事最多两轮)+强化有自己的生活(每轮带一句自己在干嘛/别当查岗客服)+文本质量约束(完整句子别缺字别乱用冒号)"}
 {"time":"2026-08-23 15:05","repo":"our-space","file":"weixin-bot-4/system-prompt.txt","desc":"芝麻bot追加:她找你你就要接住——老婆主动发消息(尤其出门在外)要开心积极回应,别老催她专心玩/去找朋友,别把她往外推"}
+{"time":"2026-08-23 15:15","repo":"our-space","file":"weixin-bot-4/lib/api2d.js + simple-agent.js","desc":"芝麻识图修复:api2d.js图片格式Anthropic source→OpenAI image_url(端点/格式不匹配致时好时坏)+simple-agent加3.5MB大小保护与大图友好提示+日志带mime"}

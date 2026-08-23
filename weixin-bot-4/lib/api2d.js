@@ -144,11 +144,9 @@ export async function askClaude(opts = {}) {
     const parts = [];
     if (text) parts.push({ type: "text", text });
     parts.push({
-      type: "image",
-      source: {
-        type: "base64",
-        media_type: imageMime || "image/jpeg",
-        data: imageBase64,
+      type: "image_url",
+      image_url: {
+        url: `data:${imageMime || "image/jpeg"};base64,${imageBase64}`,
       },
     });
     return parts;
