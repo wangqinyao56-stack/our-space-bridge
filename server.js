@@ -214,8 +214,10 @@ setInterval(async () => {
   const todayStr = `${bjNow.getUTCFullYear()}-${bjNow.getUTCMonth()}-${bjNow.getUTCDate()}`;
 
   // ── 五点到六点：夏彦下班回家，主动发"我回来啦"（每天一次，无需华生先说话）──
-  if (hour === 17) {
-    if (intimateHomeArrivalDate !== todayStr) {
+  if (hour === 17 && intimateHomeArrivalDate !== todayStr) {
+    // 正在聊天时不打断：最近互动 < 15 分钟则推迟到下一轮检查（5分钟后）再试
+    const activelyChatting = intimateLastUserMsg && (now - intimateLastUserMsg < 15 * 60 * 1000);
+    if (!activelyChatting) {
       intimateHomeArrivalDate = todayStr;
       try {
         const prompt = getIntimateSystemPrompt();
@@ -233,7 +235,8 @@ setInterval(async () => {
     }
   }
 
-  if (!intimateLastUserMsg || now - intimateLastUserMsg < 8 * 60 * 1000) return;
+  // 正在聊天不打断：最近一次互动（华生发消息/夏彦回复）15分钟内，跳过主动贴贴
+  if (!intimateLastUserMsg || now - intimateLastUserMsg < 15 * 60 * 1000) return;
   if (now - intimateLastUserMsg > 30 * 60 * 1000) return;
   if (intimateProactiveLast && now - intimateProactiveLast < 20 * 60 * 1000) return;
   intimateProactiveLast = now;
@@ -1651,6 +1654,8 @@ wss.on("connection", (ws, req) => {
           content: cleanReply,
           blindBox: blindBox ? { name: blindBox.name } : null,
         }));
+        // 夏彦回复后也刷新"最近互动"，主动贴贴的静默窗口从这轮对话结束时重新起算
+        intimateLastUserMsg = Date.now();
 
         // Trigger gift/scenery for intimate space too
         triggerMultimediaEvents(ws, msg.id);
