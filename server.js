@@ -1694,6 +1694,36 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    // ── 亲密空间图片（识图）──
+    if (msg.type === "intimate_image") {
+      if (!msg.base64 || !msg.mime) return;
+      try {
+        notifyUserActivity();
+        intimateLastUserMsg = Date.now();
+        const imageDesc = await recognizeImage(msg.base64, msg.mime);
+        const textContent = imageDesc
+          ? `[华生发来了一张图片，图片内容是：${imageDesc}]`
+          : `[华生发来了一张图片]`;
+        const reply = await handleIntimateMessage(textContent, "intimate", { imageBase64: msg.base64, imageMime: msg.mime });
+        const cleanReply = processEjaculationMarker(reply, msg.id);
+        const blindBox = getCurrentBlindBox();
+        ws.send(JSON.stringify({
+          type: "intimate_reply",
+          reply_to: msg.id,
+          content: cleanReply,
+          blindBox: blindBox ? { name: blindBox.name } : null,
+        }));
+        intimateLastUserMsg = Date.now();
+        triggerMultimediaEvents(ws, msg.id);
+      } catch (err) {
+        console.error("[ws] Intimate image error:", err.message);
+        intimateDebugLog.push({ timestamp: new Date().toISOString(), stage: "ws_error", error: err.message });
+        if (intimateDebugLog.length > 20) intimateDebugLog.shift();
+        ws.send(JSON.stringify({ type: "error", message: err.message }));
+      }
+      return;
+    }
+
     // ── 小玩具系统 ──
     if (msg.type === "toy_state_change") {
       updateToyState({

@@ -2,6 +2,7 @@ node_modules
 diaries
 .env
 *.log
+pc-web/profile/
 
 # Data files — contain personal info, not for git
 data/
