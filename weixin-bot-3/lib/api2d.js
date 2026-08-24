@@ -166,5 +166,23 @@ export async function askClaude(opts = {}) {
   });
 
   const requestFn = DISABLE_PROXY ? directRequest : proxyRequest;
-  return requestFn({ body, timeoutMs });
+
+  // 429 限流退避重试：玖时提示 quota reset after 1s，撞上限流停一下再试基本就过
+  const MAX_RETRIES = 2;
+  let lastErr;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await requestFn({ body, timeoutMs });
+    } catch (err) {
+      lastErr = err;
+      const isRateLimited = String(err?.message || "").includes("429");
+      if (!isRateLimited || attempt >= MAX_RETRIES) {
+        throw lastErr;
+      }
+      const waitMs = 1500 * (attempt + 1);
+      console.error(`[api2d] 429 限流，${waitMs}ms 后重试 (${attempt + 1}/${MAX_RETRIES})`);
+      await new Promise((r) => setTimeout(r, waitMs));
+    }
+  }
+  throw lastErr;
 }
