@@ -40,6 +40,7 @@ import {
   setTouchFantasyHandler,
   getAffectionHomeSystemPrompt,
   getIntimateSystemPrompt,
+  isDayOffToday,
 } from "./lib/message-router.js";
 import { recordAffectionMessage, getAffectionHistory, deleteAffectionMessage, clearAffectionMemory, getAffectionHistoryMessages, getArchivedContext, getAffectionNotes } from "./lib/affection-memory.js";
 import { recordIntimateMessage } from "./lib/intimate-memory.js";
@@ -215,7 +216,7 @@ setInterval(async () => {
   const todayStr = `${bjNow.getUTCFullYear()}-${bjNow.getUTCMonth()}-${bjNow.getUTCDate()}`;
 
   // ── 五点到六点：夏彦下班回家，主动发"我回来啦"（每天一次，无需华生先说话）──
-  if (hour === 17 && intimateHomeArrivalDate !== todayStr) {
+  if (hour === 17 && !isDayOffToday() && intimateHomeArrivalDate !== todayStr) {
     // 正在聊天时不打断：最近互动 < 15 分钟则推迟到下一轮检查（5分钟后）再试
     const activelyChatting = intimateLastUserMsg && (now - intimateLastUserMsg < 15 * 60 * 1000);
     if (!activelyChatting) {
