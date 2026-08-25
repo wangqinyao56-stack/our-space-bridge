@@ -130,7 +130,7 @@ export async function askClaude(opts = {}) {
     model = JIUSHI_MODEL,
     maxTokens = 800,
     temperature = 0.65,
-    timeoutMs = 60000,
+    timeoutMs = 180000,
     imageBase64,
     imageMime,
   } = opts;
