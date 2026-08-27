@@ -6,7 +6,7 @@ import { WebSocketServer } from "ws";
 import { v4 as uuid } from "uuid";
 import config from "./config.js";
 import { verifyAuth, createSessionToken } from "./lib/auth.js";
-import { markLastBotReplyVoice } from "./lib/memory.js";
+import { markLastBotReplyVoice, recordBotReply } from "./lib/memory.js";
 import { TTSQueue, normalizeForTTS } from "./lib/tts-queue.js";
 import { synthesize } from "./lib/realtime-voice.js";
 import { VolcAsr } from "./lib/realtime-asr.js";
@@ -18,6 +18,7 @@ import {
   getCurrentBlindBox,
   handleAffectionHomeMessage,
   handleAffectionDateMessage,
+  handlePixelHomeMessage,
   handleVoiceMessage,
   getChatHistory,
   getChatHistoryMessages,
@@ -53,11 +54,13 @@ import {
   generateAIReply,
   generateAIReplyToComment,
   startProactiveDiary,
+  summarizePixelChatToDiary,
 } from "./lib/diary.js";
 import { getPetState, interact as petInteract, setName as petSetName, getProactiveReminder, xiayanProactiveInteract, getLogs as getPetLogs, addLog as addPetLog, accompanyXiayan, returnFromAccompany } from "./lib/pet.js";
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
+import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame } from "./lib/pixel-home.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery, confirmReturned } from "./lib/scenery.js";
@@ -201,6 +204,8 @@ startProactiveChat((message) => {
       }));
     }
   }
+  // 远程推送：App 关闭时也能收到主动消息
+  pushToAll("夏彦", message);
   console.log(`[proactive] Broadcast: "${message.slice(0, 60)}..."`);
 });
 
@@ -489,6 +494,11 @@ function sendSegments(ws, replyTo, segments, baseDelayMs = 18000 + Math.random()
     ws._segmentTimers = ws._segmentTimers || [];
     ws._segmentTimers.push(timer);
   });
+  // 远程推送：用户发完放后台也能收到回复
+  const wsState = clients.get(ws);
+  if (wsState?.pushToken) {
+    sendPush(wsState.pushToken, "夏彦", segments.join("").slice(0, 200));
+  }
 }
 
 // 流式语音回复：LLM 逐字吐 → 客户端实时显示文字 → 按句合成，每句就绪立刻发 voice_audio_chunk
@@ -665,6 +675,27 @@ function broadcast(data) {
     if (state.authenticated && ws.readyState === 1) {
       ws.send(data);
     }
+  }
+}
+
+// ── Expo 远程推送：App 关闭也能收到夏彦消息 ──
+async function sendPush(token, title, body) {
+  if (!token) return;
+  try {
+    const res = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: token, title: title || "夏彦", body: (body || "").slice(0, 200), sound: "default" }),
+    });
+    if (!res.ok) console.error(`[push] Expo ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  } catch (e) {
+    console.error("[push] send error:", e.message);
+  }
+}
+
+function pushToAll(title, body) {
+  for (const [, wsState] of clients) {
+    if (wsState.pushToken) sendPush(wsState.pushToken, title, body);
   }
 }
 
@@ -1447,6 +1478,14 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    if (msg.type === "register_push") {
+      if (msg.token) {
+        clients.get(ws).pushToken = msg.token;
+        console.log(`[push] token registered: ${String(msg.token).slice(0, 12)}...`);
+      }
+      return;
+    }
+
     if (msg.type === "nxx_history") {
       const history = getNxxHistory(14);
       ws.send(JSON.stringify({ type: "nxx_history", messages: history }));
@@ -1789,6 +1828,109 @@ wss.on("connection", (ws, req) => {
         console.error("[ws] Affection home error:", err.message);
         ws.send(JSON.stringify({ type: "error", message: err.message }));
       }
+      return;
+    }
+
+    // ── 像素小屋：进小屋查询状态（音乐 + 随机事件 + 纪念日）──
+    if (msg.type === "pixel_home_state") {
+      const state = refreshPixelHomeState();
+      const anniversary = getAnniversaryStatus();
+      ws.send(JSON.stringify({
+        type: "pixel_home_state",
+        music: state.music,
+        event: state.event,
+        anniversary,
+      }));
+      return;
+    }
+
+    // ── 像素小屋：夏彦开场白（点家具/主动打招呼，存入历史并回显）──
+    if (msg.type === "pixel_home_opening") {
+      const content = (msg.content || "").trim();
+      if (content) {
+        recordBotReply(content, "text", { channel: "pixel_home" });
+        ws.send(JSON.stringify({ type: "text_reply", reply_to: msg.id || "", content }));
+      }
+      return;
+    }
+
+    // ── 像素小屋：文字聊天 ──
+    if (msg.type === "pixel_home") {
+      if (!msg.content?.trim()) return;
+      try {
+        notifyUserActivity();
+        const reply = await handlePixelHomeMessage(msg.content, { openingLine: msg.openingLine });
+        const segments = splitIntoMessages(reply);
+        sendSegments(ws, msg.id, segments);
+      } catch (err) {
+        console.error("[ws] Pixel home error:", err.message);
+        ws.send(JSON.stringify({ type: "error", message: err.message }));
+      }
+      return;
+    }
+
+    // ── 像素小屋：语音聊天 ──
+    if (msg.type === "pixel_home_voice") {
+      if (!msg.audio) return;
+      try {
+        notifyUserActivity();
+        ws.send(JSON.stringify({ type: "presence", status: "typing" }));
+        const wavBuf = Buffer.from(msg.audio, "base64");
+        const { text } = await handleVoiceMessage(
+          wavBuf,
+          msg.mime || "audio/mp4",
+          (recognized, isVoice) => {
+            return streamVoiceReply(ws, msg.id, recognized, {
+              markVoice: true,
+              isVoice,
+              handler: (d) => handlePixelHomeMessage(recognized, { onStreamDelta: d }),
+            });
+          }
+        );
+        ws.send(JSON.stringify({ type: "voice_transcribed", reply_to: msg.id, text }));
+      } catch (err) {
+        console.error("[ws] Pixel home voice error:", err.message);
+        ws.send(JSON.stringify({ type: "error", message: err.message }));
+      }
+      return;
+    }
+
+    // ── 像素小屋：离开 → 日记总结 + 结束小游戏 ──
+    if (msg.type === "pixel_home_end") {
+      summarizePixelChatToDiary().catch((err) => console.error("[diary] Pixel home summary error:", err.message));
+      endGame();
+      return;
+    }
+
+    // ── 陈列柜：小留言条 ──
+    if (msg.type === "pixel_note_list") {
+      ws.send(JSON.stringify({ type: "pixel_note_list", notes: listNotes() }));
+      return;
+    }
+    if (msg.type === "pixel_note_add") {
+      const note = addNote(msg.author || "user", msg.content);
+      if (note) broadcast(JSON.stringify({ type: "pixel_note_added", note }));
+      return;
+    }
+
+    // ── 纪念日 ──
+    if (msg.type === "pixel_anniversary_set") {
+      const anniversary = setAnniversary(msg.date);
+      ws.send(JSON.stringify({ type: "pixel_anniversary_set", anniversary }));
+      return;
+    }
+
+    // ── 双人小游戏 ──
+    if (msg.type === "pixel_game_start") {
+      const game = startGame(msg.game);
+      if (game) {
+        recordBotReply(game.opening, "text", { channel: "pixel_home" });
+        ws.send(JSON.stringify({ type: "text_reply", reply_to: msg.id || "", content: game.opening }));
+      }
+      return;
+    }
+    if (msg.type === "pixel_game_end") {
+      endGame();
       return;
     }
 

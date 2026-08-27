@@ -30,3 +30,16 @@
 {"time":"2026-08-27 15:24","repo":"our-space","file":"system-prompt-intimate.md","desc":"降骑乘+性偏好:新增她不喜欢骑乘(默认不用骑乘位除非她主动要),强化反复高潮次数越多越兴奋/被掌控/喜欢给你口交嗦射;删姿势列表3处骑乘+骰子游戏骑乘;口交章节补她给你口交嗦射;禁止回音强化动作复读"}
 {"time":"2026-08-27 15:24","repo":"our-space","file":"system-prompt.md","desc":"同步降骑乘+性偏好+回音:374/436/439行骑乘改被动姿势,亲密关系补性偏好,禁止回音补动作复读"}
 {"time":"2026-08-27 15:24","repo":"our-space","file":"character-xiayan.md(F:/Claude-memory)","desc":"角色存档同步:亲密关系骑乘改被动+补性偏好+禁止回音补动作复读,与system-prompt.md一致"}
+{"time":"2026-08-27 16:10","repo":"our-space-app","file":"assets/home-pixel/*","desc":"生成像素风小房子素材:10家具(f-sofa/bed/bookshelf/plant/lamp/desk/rug/cat/window/clock)+5夏彦姿势(x-stand/sit/lie/read/wait)+空房间背景room-bg,即梦Seedream+ffmpeg白底抠图"}
+{"time":"2026-08-27 16:10","repo":"our-space-app","file":"src/state/home-state-store.ts","desc":"房间state扩展:FURNITURE_CATALOG换像素图+slot百分比定位+COZY_LEVELS温馨值等级+XIAYAN_SPRITES多姿势+XIAYAN_SLOT+XIAYAN_TAP点夏彦反应"}
+{"time":"2026-08-27 16:10","repo":"our-space-app","file":"src/screens/XiaYanHomeScreen.tsx","desc":"重写房间界面:像素房间场景+家具绝对定位实装+夏彦小人呼吸起伏/切姿势/点按互动+温馨值显示+家具店toggle"}
+{"time":"2026-08-27 17:20","repo":"our-space-app","file":"assets/home-pixel/x-walk-*.png","desc":"用用户给的夏彦行走图(1080x2459,3x4格)提取12帧,Python PIL flood-fill去灰底,正面3帧(r0c0/r0c1/r0c2)作夏彦立绘,替换掉不像的AI生成x-stand/sit/read/wait/lie"}
+{"time":"2026-08-27 17:20","repo":"our-space-app","file":"src/state/home-state-store.ts","desc":"夏彦立绘换行走图:XIAYAN_SPRITES多姿势删除,改XIAYAN_WALK_FRAMES正面三帧;XIAYAN_SLOT改bottom脚踩地板(top:44改bottom:8),新增XIAYAN_ASPECT=614/360"}
+{"time":"2026-08-27 17:20","repo":"our-space-app","file":"src/screens/XiaYanHomeScreen.tsx","desc":"夏彦修复:pose随机切姿势改frame循环(650ms三帧原地轻动),容器高=宽*XIAYAN_ASPECT并bottom锚定,resizeMode改stretch,修复飘在半空+立绘不像夏彦"}
+{"time":"2026-08-27 22:55","files":["src/state/home-state-store.ts","src/screens/XiaYanHomeScreen.tsx"],"desc":"像素小屋大改：去掉家具拆分/装修交互，改成4个房间完整像素场景(卧室/客厅/浴室/游戏厅，柔化降饱和) + 夏彦4帧蹦跶动画叠加 + 房间tab切换 + 点夏彦反应 + 时间状态"}
+{"time":"2026-08-28 00:05","files":["src/screens/XiaYanHomeScreen.tsx"],"desc":"修复夏彦飘房顶(bottom定位反向，改100-xiayanBottom)；动画改蹦跶式(快跳+弹跳落地，幅度-18，帧同步320ms)"}
+{"time":"2026-08-28 00:20","files":["src/screens/XiaYanHomeScreen.tsx"],"desc":"蹦跶节奏调慢(帧320->500ms,跳450/480ms)，修正跳太快"}
+{"time":"2026-08-28 02:05","files":["src/state/home-state-store.ts","src/screens/XiaYanHomeScreen.tsx"],"desc":"夏彦改成侧面8帧走路动画，在地板上左右来回走动(30%-70%)+掉头镜像翻转；正面4帧蹦跶保留备选"}
+{"time":"2026-08-28 02:30","files":["src/screens/XiaYanHomeScreen.tsx"],"desc":"夏彦改回正面4帧蹦跶+左右来回移动(30-70%)，加回bob上下跳(-14px)，去掉侧面帧和镜像翻转"}
+{"time":"2026-08-28 03:00","files":["App.tsx","src/services/notifications.ts","src/screens/ChatScreen.tsx"],"desc":"客户端接入Expo推送:registerForPush+上报register_push+通知点击跳聊天+前台去重(setForegroundState)+发送HTTP兜底"}
+{"time":"2026-08-28 03:00","files":["server.js"],"desc":"服务端接入Expo推送:sendPush/pushToAll调exp.host+register_push存token+主动消息和聊天回复都推"}
