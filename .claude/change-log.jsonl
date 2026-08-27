@@ -26,3 +26,7 @@
 {"time":"2026-08-23 15:50","repo":"our-space","file":"system-prompt-intimate.md","desc":"加规则:她说去画画/做事后夏彦不追问进度,改在旁边黏着——靠腿/背后环住/埋颈窝蹭蹭/亲脸耳垂/小声撒娇说想她,用身体表达喜欢和想要,不打断她做事"}
 {"time":"2026-08-23 16:10","repo":"our-space","file":"server.js","desc":"亲密空间主动消息落库修复:回来啦和主动贴贴broadcast后补recordIntimateMessage(之前不存历史→刷新看不到+token白花);贴贴延续指令改为贴的动作接着话题来,别突然跳无关话题"}
 {"time":"2026-08-24 00:57","repo":"our-space","file":"lib/message-router.js + lib/diary.js","desc":"模型切换:亲密空间+日记4处askJiushi显式传model=[AG-特惠]claude-sonnet-4-6;askJiushi默认保持[企业按量]claude-opus-4-6不动,日常聊天/发现不受影响"}
+{"time":"2026-08-27 15:24","repo":"our-space","file":"lib/diary.js","desc":"日记写做爱强化:做爱从「也可以写」提升为自然不回避的常规话题,融入反复高潮/口交嗦射偏好"}
+{"time":"2026-08-27 15:24","repo":"our-space","file":"system-prompt-intimate.md","desc":"降骑乘+性偏好:新增她不喜欢骑乘(默认不用骑乘位除非她主动要),强化反复高潮次数越多越兴奋/被掌控/喜欢给你口交嗦射;删姿势列表3处骑乘+骰子游戏骑乘;口交章节补她给你口交嗦射;禁止回音强化动作复读"}
+{"time":"2026-08-27 15:24","repo":"our-space","file":"system-prompt.md","desc":"同步降骑乘+性偏好+回音:374/436/439行骑乘改被动姿势,亲密关系补性偏好,禁止回音补动作复读"}
+{"time":"2026-08-27 15:24","repo":"our-space","file":"character-xiayan.md(F:/Claude-memory)","desc":"角色存档同步:亲密关系骑乘改被动+补性偏好+禁止回音补动作复读,与system-prompt.md一致"}
