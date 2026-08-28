@@ -60,7 +60,7 @@ import { getPetState, interact as petInteract, setName as petSetName, getProacti
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
-import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence } from "./lib/pixel-home.js";
+import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence, handleRestReminder, clearRestReminder, clearMusicSwitch } from "./lib/pixel-home.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery, confirmReturned } from "./lib/scenery.js";
@@ -681,11 +681,12 @@ function broadcast(data) {
 // 像素小屋：华生空闲一段时间后，夏彦主动搭话
 let pixelProactiveTimer = null;
 const PIXEL_PROACTIVE_LINES = [
-  "在干嘛呀？",
-  "想我了吗？",
-  "累了就过来歇会儿，我陪你。",
-  "要不要一起做点什么？",
-  "怎么这么安静，是不是忙得把我忘了？",
+  "宝宝，累不累？过来靠一会儿？",
+  "老婆～我有点想你了，过来抱一下？",
+  "要不要吃水果？我去给你切点。",
+  "我忙完啦，你在忙什么？",
+  "过来，挨着我坐一会儿。",
+  "渴不渴？给你倒了杯水。",
 ];
 function resetPixelProactiveTimer() {
   if (pixelProactiveTimer) clearTimeout(pixelProactiveTimer);
@@ -701,7 +702,7 @@ function resetPixelProactiveTimer() {
       }));
     }
     resetPixelProactiveTimer();
-  }, 60000 + Math.random() * 60000);
+  }, 180000 + Math.random() * 180000);
 }
 function clearPixelProactiveTimer() {
   if (pixelProactiveTimer) { clearTimeout(pixelProactiveTimer); pixelProactiveTimer = null; }
@@ -1910,6 +1911,7 @@ wss.on("connection", (ws, req) => {
       try {
         notifyUserActivity();
         resetPixelProactiveTimer();
+        handleRestReminder(msg.content);
         const reply = await handlePixelHomeMessage(msg.content, { openingLine: msg.openingLine });
         const segments = splitIntoMessages(reply);
         sendSegments(ws, msg.id, segments);
@@ -1953,6 +1955,8 @@ wss.on("connection", (ws, req) => {
       summarizePixelChatToDiary().catch((err) => console.error("[diary] Pixel home summary error:", err.message));
       endGame();
       clearPixelProactiveTimer();
+      clearRestReminder();
+      clearMusicSwitch();
       return;
     }
 
