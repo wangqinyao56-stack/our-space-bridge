@@ -6,7 +6,7 @@ import { WebSocketServer } from "ws";
 import { v4 as uuid } from "uuid";
 import config from "./config.js";
 import { verifyAuth, createSessionToken } from "./lib/auth.js";
-import { markLastBotReplyVoice, recordBotReply } from "./lib/memory.js";
+import { markLastBotReplyVoice, recordBotReply, getChannelHistoryMessages } from "./lib/memory.js";
 import { TTSQueue, normalizeForTTS } from "./lib/tts-queue.js";
 import { synthesize } from "./lib/realtime-voice.js";
 import { VolcAsr } from "./lib/realtime-asr.js";
@@ -694,10 +694,12 @@ function resetPixelProactiveTimer() {
     // 只有夏彦没在忙、且跟华生在同一房间（立绘可见）时才主动搭话，避免"说话但人没出现"
     const p = getPixelHomePresence();
     if (p && !p.busy && p.xiayanRoomIdx === p.huashengRoomIdx) {
+      const content = PIXEL_PROACTIVE_LINES[Math.floor(Math.random() * PIXEL_PROACTIVE_LINES.length)];
+      recordBotReply(content, "text", { channel: "pixel_home", proactive: true });
       broadcast(JSON.stringify({
         type: "text_reply",
         reply_to: "",
-        content: PIXEL_PROACTIVE_LINES[Math.floor(Math.random() * PIXEL_PROACTIVE_LINES.length)],
+        content,
         proactive: true,
       }));
     }
@@ -712,7 +714,11 @@ function clearPixelProactiveTimer() {
 setPixelHomeEmitter((data) => {
   try {
     const msg = JSON.parse(data);
-    if (msg.type === "text_reply" && msg.proactive) resetPixelProactiveTimer();
+    if (msg.type === "text_reply") {
+      // 夏彦主动说的话（探望/忙完/去忙/休息提醒/换歌）也记入小屋历史，退出再进不丢
+      recordBotReply(msg.content, "text", { channel: "pixel_home", proactive: !!msg.proactive });
+      if (msg.proactive) resetPixelProactiveTimer();
+    }
   } catch {}
   broadcast(data);
 });
@@ -2248,6 +2254,8 @@ wss.on("connection", (ws, req) => {
       } else if (channel === "phone_call") {
         // Phone calls don't persist server-side history yet
         rawMessages = [];
+      } else if (channel === "pixel_home") {
+        rawMessages = getChannelHistoryMessages("pixel_home");
       } else {
         rawMessages = await getChatHistoryMessages(traveling);
       }
