@@ -43,3 +43,4 @@
 {"time":"2026-08-28 02:30","files":["src/screens/XiaYanHomeScreen.tsx"],"desc":"夏彦改回正面4帧蹦跶+左右来回移动(30-70%)，加回bob上下跳(-14px)，去掉侧面帧和镜像翻转"}
 {"time":"2026-08-28 03:00","files":["App.tsx","src/services/notifications.ts","src/screens/ChatScreen.tsx"],"desc":"客户端接入Expo推送:registerForPush+上报register_push+通知点击跳聊天+前台去重(setForegroundState)+发送HTTP兜底"}
 {"time":"2026-08-28 03:00","files":["server.js"],"desc":"服务端接入Expo推送:sendPush/pushToAll调exp.host+register_push存token+主动消息和聊天回复都推"}
+{"time":"2026-08-28 17:50","files":["lib/pixel-home.js","lib/message-router.js"],"desc":"对话驱动移动:夏彦在聊天里说[去:房间名]标记时立绘+状态栏同步移动(moveXiayanToRoom/resolveRoomId)，prompt新增行动标记规则"}
