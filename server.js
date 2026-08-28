@@ -825,7 +825,7 @@ const server = http.createServer(async (req, res) => {
   // Health check
   if (req.method === "GET" && req.url === "/api/ping") {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, clients: clients.size, tts_queue: ttsQueue.length, version: "2026-07-19-v13", recent: recentMsgs.slice(-10) }));
+    res.end(JSON.stringify({ ok: true, clients: clients.size, tts_queue: ttsQueue.length, version: "2026-08-29-coread", recent: recentMsgs.slice(-10) }));
     return;
   }
 
