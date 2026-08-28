@@ -2255,7 +2255,8 @@ wss.on("connection", (ws, req) => {
         // Phone calls don't persist server-side history yet
         rawMessages = [];
       } else if (channel === "pixel_home") {
-        rawMessages = getChannelHistoryMessages("pixel_home");
+        // 只显示当天消息（记录全保留，跨天清空显示重新聊）
+        rawMessages = getChannelHistoryMessages("pixel_home", null, true);
       } else {
         rawMessages = await getChatHistoryMessages(traveling);
       }
