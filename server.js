@@ -60,7 +60,7 @@ import { getPetState, interact as petInteract, setName as petSetName, getProacti
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
-import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame } from "./lib/pixel-home.js";
+import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, clearHomeTimers } from "./lib/pixel-home.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery, confirmReturned } from "./lib/scenery.js";
@@ -676,6 +676,34 @@ function broadcast(data) {
       ws.send(data);
     }
   }
+}
+
+// 像素小屋：把忙碌状态机（探望/忙完移动）产生的推送广播出去
+setPixelHomeEmitter(broadcast);
+
+// 像素小屋：华生空闲一段时间后，夏彦主动搭话
+let pixelProactiveTimer = null;
+const PIXEL_PROACTIVE_LINES = [
+  "在干嘛呀？",
+  "想我了吗？",
+  "累了就过来歇会儿，我陪你。",
+  "要不要一起做点什么？",
+  "怎么这么安静，是不是忙得把我忘了？",
+];
+function resetPixelProactiveTimer() {
+  if (pixelProactiveTimer) clearTimeout(pixelProactiveTimer);
+  pixelProactiveTimer = setTimeout(() => {
+    broadcast(JSON.stringify({
+      type: "text_reply",
+      reply_to: "",
+      content: PIXEL_PROACTIVE_LINES[Math.floor(Math.random() * PIXEL_PROACTIVE_LINES.length)],
+      proactive: true,
+    }));
+    resetPixelProactiveTimer();
+  }, 60000 + Math.random() * 60000);
+}
+function clearPixelProactiveTimer() {
+  if (pixelProactiveTimer) { clearTimeout(pixelProactiveTimer); pixelProactiveTimer = null; }
 }
 
 // ── Expo 远程推送：App 关闭也能收到夏彦消息 ──
@@ -1831,7 +1859,7 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
-    // ── 像素小屋：进小屋查询状态（音乐 + 随机事件 + 纪念日）──
+    // ── 像素小屋：进小屋查询状态（音乐 + 随机事件 + 纪念日 + 夏彦房间 + 北京时间）──
     if (msg.type === "pixel_home_state") {
       const state = refreshPixelHomeState();
       const anniversary = getAnniversaryStatus();
@@ -1840,7 +1868,17 @@ wss.on("connection", (ws, req) => {
         music: state.music,
         event: state.event,
         anniversary,
+        xiayanRoom: state.xiayanRoom,
+        hour: state.hour,
       }));
+      resetPixelProactiveTimer();
+      return;
+    }
+
+    // ── 像素小屋：华生切房间（服务端记录位置，驱动夏彦忙完过来/中途探望）──
+    if (msg.type === "pixel_home_room") {
+      setHuashengRoom(msg.room);
+      resetPixelProactiveTimer();
       return;
     }
 
@@ -1851,6 +1889,7 @@ wss.on("connection", (ws, req) => {
         recordBotReply(content, "text", { channel: "pixel_home" });
         ws.send(JSON.stringify({ type: "text_reply", reply_to: msg.id || "", content }));
       }
+      resetPixelProactiveTimer();
       return;
     }
 
@@ -1859,6 +1898,7 @@ wss.on("connection", (ws, req) => {
       if (!msg.content?.trim()) return;
       try {
         notifyUserActivity();
+        resetPixelProactiveTimer();
         const reply = await handlePixelHomeMessage(msg.content, { openingLine: msg.openingLine });
         const segments = splitIntoMessages(reply);
         sendSegments(ws, msg.id, segments);
@@ -1874,6 +1914,7 @@ wss.on("connection", (ws, req) => {
       if (!msg.audio) return;
       try {
         notifyUserActivity();
+        resetPixelProactiveTimer();
         ws.send(JSON.stringify({ type: "presence", status: "typing" }));
         const wavBuf = Buffer.from(msg.audio, "base64");
         const { text } = await handleVoiceMessage(
@@ -1895,10 +1936,12 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
-    // ── 像素小屋：离开 → 日记总结 + 结束小游戏 ──
+    // ── 像素小屋：离开 → 日记总结 + 结束小游戏 + 清理定时器 ──
     if (msg.type === "pixel_home_end") {
       summarizePixelChatToDiary().catch((err) => console.error("[diary] Pixel home summary error:", err.message));
       endGame();
+      clearHomeTimers();
+      clearPixelProactiveTimer();
       return;
     }
 
