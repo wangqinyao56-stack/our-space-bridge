@@ -60,7 +60,7 @@ import { getPetState, interact as petInteract, setName as petSetName, getProacti
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
-import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, clearHomeTimers } from "./lib/pixel-home.js";
+import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, clearHomeTimers, getPixelHomePresence } from "./lib/pixel-home.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery, confirmReturned } from "./lib/scenery.js";
@@ -678,9 +678,6 @@ function broadcast(data) {
   }
 }
 
-// 像素小屋：把忙碌状态机（探望/忙完移动）产生的推送广播出去
-setPixelHomeEmitter(broadcast);
-
 // 像素小屋：华生空闲一段时间后，夏彦主动搭话
 let pixelProactiveTimer = null;
 const PIXEL_PROACTIVE_LINES = [
@@ -693,18 +690,31 @@ const PIXEL_PROACTIVE_LINES = [
 function resetPixelProactiveTimer() {
   if (pixelProactiveTimer) clearTimeout(pixelProactiveTimer);
   pixelProactiveTimer = setTimeout(() => {
-    broadcast(JSON.stringify({
-      type: "text_reply",
-      reply_to: "",
-      content: PIXEL_PROACTIVE_LINES[Math.floor(Math.random() * PIXEL_PROACTIVE_LINES.length)],
-      proactive: true,
-    }));
+    // 只有夏彦没在忙、且跟华生在同一房间（立绘可见）时才主动搭话，避免"说话但人没出现"
+    const p = getPixelHomePresence();
+    if (p && !p.busy && p.xiayanRoomIdx === p.huashengRoomIdx) {
+      broadcast(JSON.stringify({
+        type: "text_reply",
+        reply_to: "",
+        content: PIXEL_PROACTIVE_LINES[Math.floor(Math.random() * PIXEL_PROACTIVE_LINES.length)],
+        proactive: true,
+      }));
+    }
     resetPixelProactiveTimer();
   }, 60000 + Math.random() * 60000);
 }
 function clearPixelProactiveTimer() {
   if (pixelProactiveTimer) { clearTimeout(pixelProactiveTimer); pixelProactiveTimer = null; }
 }
+
+// 状态机（探望/忙完/去忙）主动说话时，同步重置空闲搭话定时器，避免两条主动消息重叠、反复触发
+setPixelHomeEmitter((data) => {
+  try {
+    const msg = JSON.parse(data);
+    if (msg.type === "text_reply" && msg.proactive) resetPixelProactiveTimer();
+  } catch {}
+  broadcast(data);
+});
 
 // ── Expo 远程推送：App 关闭也能收到夏彦消息 ──
 async function sendPush(token, title, body) {
