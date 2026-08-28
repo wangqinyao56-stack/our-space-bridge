@@ -60,7 +60,7 @@ import { getPetState, interact as petInteract, setName as petSetName, getProacti
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
-import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, clearHomeTimers, getPixelHomePresence } from "./lib/pixel-home.js";
+import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence } from "./lib/pixel-home.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery, confirmReturned } from "./lib/scenery.js";
@@ -1879,6 +1879,7 @@ wss.on("connection", (ws, req) => {
         event: state.event,
         anniversary,
         xiayanRoom: state.xiayanRoom,
+        huashengRoom: state.huashengRoom,
         hour: state.hour,
       }));
       resetPixelProactiveTimer();
@@ -1946,11 +1947,11 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
-    // ── 像素小屋：离开 → 日记总结 + 结束小游戏 + 清理定时器 ──
+    // ── 像素小屋：离开 → 日记总结 + 结束小游戏 + 清理主动搭话定时器 ──
+    // 注意：不清 home session——中途退出再进来要保持状态（夏彦在哪忙什么、华生在哪都不重置）
     if (msg.type === "pixel_home_end") {
       summarizePixelChatToDiary().catch((err) => console.error("[diary] Pixel home summary error:", err.message));
       endGame();
-      clearHomeTimers();
       clearPixelProactiveTimer();
       return;
     }
