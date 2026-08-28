@@ -70,7 +70,7 @@ import { startProactiveChat, notifyUserActivity, getProactiveState, scheduleOutR
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
-import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport } from "./lib/coread.js";
+import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport, listBooks as coreadListBooks, readChunk as coreadReadChunk } from "./lib/coread.js";
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
 import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail, getSongUrl as neteaseUrl } from "./lib/netease.js";
 import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset, generateOpening as monopolyOpening } from "./lib/monopoly.js";
@@ -952,6 +952,36 @@ const server = http.createServer(async (req, res) => {
           "Accept-Ranges": "bytes",
         });
         fs.createReadStream(asset.path).pipe(res);
+      } else {
+        res.writeHead(404);
+        res.end("Not found");
+      }
+    } catch (e) {
+      res.writeHead(500);
+      res.end(e.message);
+    }
+    return;
+  }
+
+  // ── 朗读音频（coread 合成的 mp3）──
+  if (req.method === "GET" && req.url?.startsWith("/api/coread/audio/")) {
+    try {
+      const rawFile = req.url.replace("/api/coread/audio/", "").split("?")[0];
+      const file = decodeURIComponent(rawFile);
+      if (!file || file.includes("..") || file.includes("/") || file.includes("\\")) {
+        res.writeHead(400); res.end("Bad file"); return;
+      }
+      const audioDir = path.join(process.env.DATA_DIR || ".", "coread", "audio");
+      const fp = path.join(audioDir, file);
+      if (fs.existsSync(fp)) {
+        const stat = fs.statSync(fp);
+        res.writeHead(200, {
+          "Content-Type": "audio/mpeg",
+          "Content-Length": stat.size,
+          "Cache-Control": "public, max-age=86400",
+          "Accept-Ranges": "bytes",
+        });
+        fs.createReadStream(fp).pipe(res);
       } else {
         res.writeHead(404);
         res.end("Not found");
@@ -2556,6 +2586,28 @@ wss.on("connection", (ws, req) => {
 
     if (msg.type === "coread_suggest") {
       ws.send(JSON.stringify({ type: "coread_suggested", book: await coreadPickBook() }));
+      return;
+    }
+
+    // ── 像素小屋书库 + 夏彦朗读（纯念 TTS）──
+    if (msg.type === "coread_list") {
+      ws.send(JSON.stringify({ type: "coread_books", books: coreadListBooks() }));
+      return;
+    }
+
+    if (msg.type === "coread_read") {
+      if (!msg.bookId) { ws.send(JSON.stringify({ type: "coread_error", message: "缺少 bookId" })); return; }
+      try {
+        const r = await coreadReadChunk(msg.bookId, msg.idx);
+        if (r.error) {
+          ws.send(JSON.stringify({ type: "coread_error", message: r.error }));
+          return;
+        }
+        ws.send(JSON.stringify({ type: "coread_read_chunk", ...r }));
+      } catch (e) {
+        console.error("[coread] read failed:", e.message);
+        ws.send(JSON.stringify({ type: "coread_error", message: "朗读合成失败，稍后再试" }));
+      }
       return;
     }
 
