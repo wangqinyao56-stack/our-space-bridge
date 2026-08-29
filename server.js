@@ -70,7 +70,7 @@ import { startProactiveChat, notifyUserActivity, getProactiveState, scheduleOutR
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
-import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport, listBooks as coreadListBooks, readChunk as coreadReadChunk } from "./lib/coread.js";
+import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport, listBooks as coreadListBooks, readText as coreadReadText, getChapter as coreadGetChapter, replyComment as coreadReplyComment } from "./lib/coread.js";
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
 import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail, getSongUrl as neteaseUrl } from "./lib/netease.js";
 import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset, generateOpening as monopolyOpening } from "./lib/monopoly.js";
@@ -2595,19 +2595,37 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
-    if (msg.type === "coread_read") {
-      if (!msg.bookId) { ws.send(JSON.stringify({ type: "coread_error", message: "缺少 bookId" })); return; }
+    if (msg.type === "coread_read_text") {
+      if (!msg.text?.trim()) { ws.send(JSON.stringify({ type: "coread_error", message: "没有要朗读的内容" })); return; }
       try {
-        const r = await coreadReadChunk(msg.bookId, msg.idx);
-        if (r.error) {
-          ws.send(JSON.stringify({ type: "coread_error", message: r.error }));
-          return;
-        }
+        const r = await coreadReadText(msg.text);
+        if (r.error) { ws.send(JSON.stringify({ type: "coread_error", message: r.error })); return; }
         ws.send(JSON.stringify({ type: "coread_read_chunk", ...r }));
       } catch (e) {
         console.error("[coread] read failed:", e.message);
         ws.send(JSON.stringify({ type: "coread_error", message: "朗读合成失败，稍后再试" }));
       }
+      return;
+    }
+
+    if (msg.type === "coread_get_chapter") {
+      if (!msg.bookId) { ws.send(JSON.stringify({ type: "coread_error", message: "缺少 bookId" })); return; }
+      try {
+        const r = await coreadGetChapter(msg.bookId, msg.chapterIdx ?? 0);
+        if (r.error) { ws.send(JSON.stringify({ type: "coread_error", message: r.error })); return; }
+        ws.send(JSON.stringify({ type: "coread_chapter", ...r }));
+      } catch (e) {
+        console.error("[coread] getChapter failed:", e.message);
+        ws.send(JSON.stringify({ type: "coread_error", message: "章节加载失败，稍后再试" }));
+      }
+      return;
+    }
+
+    if (msg.type === "coread_comment_reply") {
+      if (!msg.bookId || !msg.commentId) { ws.send(JSON.stringify({ type: "coread_error", message: "缺少参数" })); return; }
+      const r = coreadReplyComment(msg.bookId, msg.commentId, msg.text);
+      if (r.error) { ws.send(JSON.stringify({ type: "coread_error", message: r.error })); return; }
+      ws.send(JSON.stringify({ type: "coread_comment_updated", comment: r.comment }));
       return;
     }
 
