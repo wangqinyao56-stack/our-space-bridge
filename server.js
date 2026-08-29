@@ -60,7 +60,7 @@ import { getPetState, interact as petInteract, setName as petSetName, getProacti
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
-import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence, handleRestReminder, clearRestReminder, clearMusicSwitch, setReading, getReadingContext, clearReadingContext, markGreeted, noteHuashengSpoke } from "./lib/pixel-home.js";
+import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence, handleRestReminder, clearRestReminder, clearMusicSwitch, setReading, getReadingContext, clearReadingContext, markGreeted, noteHuashengSpoke, getGreetingAudio } from "./lib/pixel-home.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery, confirmReturned } from "./lib/scenery.js";
@@ -1023,6 +1023,36 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── 小屋打招呼语音（greetN.mp3，云端存储）──
+  if (req.method === "GET" && req.url?.startsWith("/api/pixel-home/greet/")) {
+    try {
+      const rawFile = req.url.replace("/api/pixel-home/greet/", "").split("?")[0];
+      const file = decodeURIComponent(rawFile);
+      if (!file || file.includes("..") || file.includes("/") || file.includes("\\")) {
+        res.writeHead(400); res.end("Bad file"); return;
+      }
+      const audioDir = path.join(process.env.DATA_DIR || ".", "pixel-home", "greet");
+      const fp = path.join(audioDir, file);
+      if (fs.existsSync(fp)) {
+        const stat = fs.statSync(fp);
+        res.writeHead(200, {
+          "Content-Type": "audio/mpeg",
+          "Content-Length": stat.size,
+          "Cache-Control": "public, max-age=86400",
+          "Accept-Ranges": "bytes",
+        });
+        fs.createReadStream(fp).pipe(res);
+      } else {
+        res.writeHead(404);
+        res.end("Not found");
+      }
+    } catch (e) {
+      res.writeHead(500);
+      res.end(e.message);
+    }
+    return;
+  }
+
   // ── Admin upload ──
   if (req.method === "POST" && req.url?.startsWith("/api/admin/upload")) {
     try {
@@ -1035,7 +1065,7 @@ const server = http.createServer(async (req, res) => {
       req.on("data", c => chunks.push(c));
       req.on("end", () => {
         const buf = Buffer.concat(chunks);
-        const isBgUpload = name.startsWith("dating-bgs/") || name.startsWith("home-bgs/") || name.startsWith("home-sprites/") || name.startsWith("coread/");
+        const isBgUpload = name.startsWith("dating-bgs/") || name.startsWith("home-bgs/") || name.startsWith("home-sprites/") || name.startsWith("coread/") || name.startsWith("pixel-home/");
         const dest = path.join(process.env.DATA_DIR || "data", isBgUpload ? "" : "audio", name);
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         fs.writeFileSync(dest, buf);
@@ -1948,6 +1978,7 @@ wss.on("connection", (ws, req) => {
         xiayanRoom: state.xiayanRoom,
         huashengRoom: state.huashengRoom,
         greeted: state.greeted,
+        greetAudio: getGreetingAudio(),
         hour: state.hour,
       }));
       resetPixelProactiveTimer();
