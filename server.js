@@ -70,7 +70,7 @@ import { startProactiveChat, notifyUserActivity, getProactiveState, scheduleOutR
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
-import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport, listBooks as coreadListBooks, readText as coreadReadText, readChapterAudio as coreadReadChapter, getChapter as coreadGetChapter, replyComment as coreadReplyComment } from "./lib/coread.js";
+import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport, listBooks as coreadListBooks, listCategories as coreadListCategories, createCategory as coreadCreateCategory, deleteBook as coreadDeleteBook, moveBook as coreadMoveBook, readText as coreadReadText, readChapterAudio as coreadReadChapter, getChapter as coreadGetChapter, replyComment as coreadReplyComment } from "./lib/coread.js";
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
 import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail, getSongUrl as neteaseUrl } from "./lib/netease.js";
 import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset, generateOpening as monopolyOpening } from "./lib/monopoly.js";
@@ -2621,7 +2621,28 @@ wss.on("connection", (ws, req) => {
 
     // ── 像素小屋书库 + 夏彦朗读（纯念 TTS）──
     if (msg.type === "coread_list") {
-      ws.send(JSON.stringify({ type: "coread_books", books: coreadListBooks() }));
+      ws.send(JSON.stringify({ type: "coread_books", books: coreadListBooks(), categories: coreadListCategories() }));
+      return;
+    }
+
+    if (msg.type === "coread_create_category") {
+      const r = coreadCreateCategory(msg.name);
+      if (r.error) { ws.send(JSON.stringify({ type: "coread_error", message: r.error })); return; }
+      ws.send(JSON.stringify({ type: "coread_categories", categories: r.categories }));
+      return;
+    }
+
+    if (msg.type === "coread_delete_book") {
+      const r = coreadDeleteBook(msg.bookId);
+      if (r.error) { ws.send(JSON.stringify({ type: "coread_error", message: r.error })); return; }
+      ws.send(JSON.stringify({ type: "coread_books", books: r.books, categories: coreadListCategories() }));
+      return;
+    }
+
+    if (msg.type === "coread_move_book") {
+      const r = coreadMoveBook(msg.bookId, msg.category);
+      if (r.error) { ws.send(JSON.stringify({ type: "coread_error", message: r.error })); return; }
+      ws.send(JSON.stringify({ type: "coread_books", books: r.books, categories: coreadListCategories() }));
       return;
     }
 
