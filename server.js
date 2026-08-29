@@ -60,7 +60,7 @@ import { getPetState, interact as petInteract, setName as petSetName, getProacti
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
-import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence, handleRestReminder, clearRestReminder, clearMusicSwitch } from "./lib/pixel-home.js";
+import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence, handleRestReminder, clearRestReminder, clearMusicSwitch, setReading, getReadingContext, clearReadingContext, markGreeted } from "./lib/pixel-home.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery, confirmReturned } from "./lib/scenery.js";
@@ -1947,9 +1947,15 @@ wss.on("connection", (ws, req) => {
         anniversary,
         xiayanRoom: state.xiayanRoom,
         huashengRoom: state.huashengRoom,
+        greeted: state.greeted,
         hour: state.hour,
       }));
       resetPixelProactiveTimer();
+      return;
+    }
+
+    if (msg.type === "pixel_home_greeted") {
+      markGreeted();
       return;
     }
 
@@ -2643,6 +2649,22 @@ wss.on("connection", (ws, req) => {
       const r = coreadMoveBook(msg.bookId, msg.category);
       if (r.error) { ws.send(JSON.stringify({ type: "coread_error", message: r.error })); return; }
       ws.send(JSON.stringify({ type: "coread_books", books: r.books, categories: coreadListCategories() }));
+      return;
+    }
+
+    if (msg.type === "coread_reading_start") {
+      setReading(true, { bookTitle: msg.bookTitle, chapterTitle: msg.chapterTitle, chapterIdx: msg.chapterIdx, excerpt: msg.excerpt });
+      return;
+    }
+
+    if (msg.type === "coread_reading_stop") {
+      setReading(false);
+      const ctx = getReadingContext();
+      if (ctx?.bookTitle) {
+        const line = `华生，今天《${ctx.bookTitle}》就读到这里吗？`;
+        recordBotReply(line, "text", { channel: "pixel_home", proactive: true });
+        broadcast(JSON.stringify({ type: "text_reply", reply_to: "", content: line, proactive: true }));
+      }
       return;
     }
 
