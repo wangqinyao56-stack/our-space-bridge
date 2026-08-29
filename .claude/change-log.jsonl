@@ -47,3 +47,9 @@
 {"time":"2026-08-28 17:55","repo":"our-space","file":"lib/pixel-home.js,lib/message-router.js,lib/memory.js,server.js","desc":"像素小屋聊天历史持久化：memory加getChannelHistoryMessages，get_history支持pixel_home频道，主动消息(探望/忙完/去忙/休息/换歌/空闲搭话)也记入历史"}
 {"time":"2026-08-28 18:08","repo":"our-space","file":"lib/memory.js,server.js","desc":"像素小屋历史每天显示清空：getChannelHistoryMessages加todayOnly参数，get_history pixel_home只返回当天消息(记录全保留)"}
 {"time":"2026-08-28 20:50","repo":"our-space","file":"lib/coread.js,server.js","desc":"像素小屋书库+夏彦朗读：coread加books书库(importBook追加不覆盖)+listBooks+readChunk(synthesizeBuffer合成mp3存data/coread/audio+更新chapter进度)，server.js加coread_list/coread_read WS+GET /api/coread/audio/:file端点"}
+{"time":"2026-08-30 02:05","repo":"our-space","file":"lib/companion.js","desc":"新建陪伴监督状态机:25+5后台计时,focus/break到期生成夏彦提醒,follow-up催,画稿提取写小纸条"}
+{"time":"2026-08-30 02:05","repo":"our-space","file":"server.js","desc":"接线companion:setCompanionCallback广播+pushToAll,WS companion_start/stop/state,text分支触发+noteUserReply+maybeRecordTask"}
+{"time":"2026-08-30 02:05","repo":"our-space","file":"lib/message-router.js","desc":"handleTextMessage注入陪伴监督上下文(动态import companion避免循环依赖)"}
+{"time":"2026-08-30 02:05","repo":"our-space","file":"lib/todo.js","desc":"checkDayChange跨天给me的pending today待办加carriedOver+getChatReminder优先显示昨天没做完"}
+{"time":"2026-08-30 02:05","repo":"our-space","file":"system-prompt.md","desc":"加陪伴铁律:不突然走开/走开说一声/她说陪我了别走/画稿时温柔提醒休息问进度"}
+{"time":"2026-08-30 02:05","repo":"our-space-app","file":"src/screens/ChatScreen.tsx","desc":"聊天页header加陪伴中开关,companion_start/stop+companion_state同步"}

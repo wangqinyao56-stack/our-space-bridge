@@ -75,6 +75,7 @@ import { getState as duettoGetState, shareSong as duettoShare, discuss as duetto
 import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail, getSongUrl as neteaseUrl } from "./lib/netease.js";
 import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset, generateOpening as monopolyOpening } from "./lib/monopoly.js";
 import { getCalendar as calendarGet, addNote as calendarAddNote, deleteNote as calendarDelNote, addAlarm as calendarAddAlarm, deleteAlarm as calendarDelAlarm, recordEjaculationEvent as calendarRecordEjaculation } from "./lib/calendar.js";
+import { setCompanionCallback, startCompanion, stopCompanion, noteUserReply as companionNoteUserReply, getCompanionState, maybeRecordTask } from "./lib/companion.js";
 
 // ── 亲密后夏彦反应（开心颜文字甜话，不重复；做多了哭唧唧） ──
 const HAPPY_INTIMACY_REACTIONS = [
@@ -207,6 +208,23 @@ startProactiveChat((message) => {
   // 远程推送：App 关闭时也能收到主动消息
   pushToAll("夏彦", message);
   console.log(`[proactive] Broadcast: "${message.slice(0, 60)}..."`);
+});
+
+// ── 陪伴监督模式：夏彦后台计时，到点提醒休息/继续（同样走聊天 + 远程推送）──
+setCompanionCallback((message) => {
+  const replyTo = `companion_${Date.now()}`;
+  for (const [ws, wsState] of clients) {
+    if (wsState.authenticated && ws.readyState === 1) {
+      ws.send(JSON.stringify({
+        type: "text_reply",
+        reply_to: replyTo,
+        content: message,
+        proactive: true,
+      }));
+    }
+  }
+  pushToAll("夏彦", message);
+  console.log(`[companion] Broadcast: "${message.slice(0, 60)}..."`);
 });
 
 // ── 亲密空间主动互动：夏彦回家 + 华生沉默贴贴 ──
@@ -1750,6 +1768,13 @@ wss.on("connection", (ws, req) => {
         }
 
         notifyUserActivity();
+        companionNoteUserReply();
+        // 陪伴触发：华生说"陪我/开始画稿/开始工作"等 → 夏彦进入陪伴监督
+        if (/陪我|开始画稿|我画稿|开始工作|我要工作|开始画画|陪我画画|开始赶稿|开始写/.test(msg.content)) {
+          startCompanion();
+        }
+        // 画稿/工作内容自动记进小纸条（异步，不阻塞回复）
+        maybeRecordTask(msg.content);
 
         // ── 出门时间追踪 ──
         const userMsg = msg.content;
@@ -2587,6 +2612,22 @@ wss.on("connection", (ws, req) => {
       if (!msg.id) return;
       deleteTodo(msg.id);
       ws.send(JSON.stringify({ type: "todo_updated", todo: null, todos: getTodos() }));
+      return;
+    }
+
+    // ── 陪伴监督 ──
+    if (msg.type === "companion_start") {
+      startCompanion();
+      ws.send(JSON.stringify({ type: "companion_state", ...getCompanionState() }));
+      return;
+    }
+    if (msg.type === "companion_stop") {
+      stopCompanion();
+      ws.send(JSON.stringify({ type: "companion_state", ...getCompanionState() }));
+      return;
+    }
+    if (msg.type === "companion_state") {
+      ws.send(JSON.stringify({ type: "companion_state", ...getCompanionState() }));
       return;
     }
 
