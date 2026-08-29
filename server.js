@@ -60,7 +60,7 @@ import { getPetState, interact as petInteract, setName as petSetName, getProacti
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
-import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence, handleRestReminder, clearRestReminder, clearMusicSwitch, setReading, getReadingContext, clearReadingContext, markGreeted } from "./lib/pixel-home.js";
+import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence, handleRestReminder, clearRestReminder, clearMusicSwitch, setReading, getReadingContext, clearReadingContext, markGreeted, noteHuashengSpoke } from "./lib/pixel-home.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery, confirmReturned } from "./lib/scenery.js";
@@ -1984,6 +1984,7 @@ wss.on("connection", (ws, req) => {
         notifyUserActivity();
         resetPixelProactiveTimer();
         handleRestReminder(msg.content);
+        noteHuashengSpoke();
         const reply = await handlePixelHomeMessage(msg.content, { openingLine: msg.openingLine });
         const segments = splitIntoMessages(reply);
         sendSegments(ws, msg.id, segments);
@@ -2000,6 +2001,7 @@ wss.on("connection", (ws, req) => {
       try {
         notifyUserActivity();
         resetPixelProactiveTimer();
+        noteHuashengSpoke();
         ws.send(JSON.stringify({ type: "presence", status: "typing" }));
         const wavBuf = Buffer.from(msg.audio, "base64");
         const { text } = await handleVoiceMessage(
