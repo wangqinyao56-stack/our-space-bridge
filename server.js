@@ -70,7 +70,7 @@ import { startProactiveChat, notifyUserActivity, getProactiveState, scheduleOutR
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
-import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport, listBooks as coreadListBooks, readText as coreadReadText, getChapter as coreadGetChapter, replyComment as coreadReplyComment } from "./lib/coread.js";
+import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport, listBooks as coreadListBooks, readText as coreadReadText, readChapterAudio as coreadReadChapter, getChapter as coreadGetChapter, replyComment as coreadReplyComment } from "./lib/coread.js";
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
 import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail, getSongUrl as neteaseUrl } from "./lib/netease.js";
 import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset, generateOpening as monopolyOpening } from "./lib/monopoly.js";
@@ -993,6 +993,36 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── 共读成品章节音频（VoxCPM 预生成 chNNN.mp3，云端存储）──
+  if (req.method === "GET" && req.url?.startsWith("/api/coread/book-audio/")) {
+    try {
+      const rawFile = req.url.replace("/api/coread/book-audio/", "").split("?")[0];
+      const file = decodeURIComponent(rawFile);
+      if (!file || file.includes("..") || file.includes("/") || file.includes("\\")) {
+        res.writeHead(400); res.end("Bad file"); return;
+      }
+      const audioDir = path.join(process.env.DATA_DIR || ".", "coread", "book-audio");
+      const fp = path.join(audioDir, file);
+      if (fs.existsSync(fp)) {
+        const stat = fs.statSync(fp);
+        res.writeHead(200, {
+          "Content-Type": "audio/mpeg",
+          "Content-Length": stat.size,
+          "Cache-Control": "public, max-age=86400",
+          "Accept-Ranges": "bytes",
+        });
+        fs.createReadStream(fp).pipe(res);
+      } else {
+        res.writeHead(404);
+        res.end("Not found");
+      }
+    } catch (e) {
+      res.writeHead(500);
+      res.end(e.message);
+    }
+    return;
+  }
+
   // ── Admin upload ──
   if (req.method === "POST" && req.url?.startsWith("/api/admin/upload")) {
     try {
@@ -1005,7 +1035,7 @@ const server = http.createServer(async (req, res) => {
       req.on("data", c => chunks.push(c));
       req.on("end", () => {
         const buf = Buffer.concat(chunks);
-        const isBgUpload = name.startsWith("dating-bgs/") || name.startsWith("home-bgs/") || name.startsWith("home-sprites/");
+        const isBgUpload = name.startsWith("dating-bgs/") || name.startsWith("home-bgs/") || name.startsWith("home-sprites/") || name.startsWith("coread/");
         const dest = path.join(process.env.DATA_DIR || "data", isBgUpload ? "" : "audio", name);
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         fs.writeFileSync(dest, buf);
@@ -2605,6 +2635,14 @@ wss.on("connection", (ws, req) => {
         console.error("[coread] read failed:", e.message);
         ws.send(JSON.stringify({ type: "coread_error", message: "朗读合成失败，稍后再试" }));
       }
+      return;
+    }
+
+    if (msg.type === "coread_read_chapter") {
+      if (!msg.bookId) { ws.send(JSON.stringify({ type: "coread_error", message: "缺少 bookId" })); return; }
+      const r = coreadReadChapter(msg.bookId, msg.chapterIdx ?? 0);
+      if (r.error) { ws.send(JSON.stringify({ type: "coread_error", message: r.error })); return; }
+      ws.send(JSON.stringify({ type: "coread_read_chunk", ...r }));
       return;
     }
 
