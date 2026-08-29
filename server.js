@@ -1776,7 +1776,12 @@ wss.on("connection", (ws, req) => {
         if (userWantsVoice) {
           fullReply = await streamVoiceReply(ws, msg.id, msg.content);
         } else {
-          fullReply = await handleTextMessage(msg.content);
+          let chatContent = msg.content;
+          if (msg.quote?.content) {
+            const who = msg.quote.from === "xiayan" ? "你刚才说" : "我之前说";
+            chatContent = `（我是在回复${who}的这句话：「${msg.quote.content}」）${msg.content}`;
+          }
+          fullReply = await handleTextMessage(chatContent);
         }
         const hsAfter = getHuashengTravelState().active;
         if (hsBefore !== hsAfter) {
@@ -2016,7 +2021,7 @@ wss.on("connection", (ws, req) => {
         resetPixelProactiveTimer();
         handleRestReminder(msg.content);
         noteHuashengSpoke();
-        const reply = await handlePixelHomeMessage(msg.content, { openingLine: msg.openingLine });
+        const reply = await handlePixelHomeMessage(msg.content, { openingLine: msg.openingLine, quote: msg.quote });
         const segments = splitIntoMessages(reply);
         sendSegments(ws, msg.id, segments);
       } catch (err) {
