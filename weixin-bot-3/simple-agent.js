@@ -15,6 +15,7 @@ import os from "node:os";
 import fs from "node:fs";
 
 import { askClaude } from "./lib/api2d.js";
+import { getBreathContext, parseMemoryTags, onChatTurn, shouldExtract, runExtraction } from "./lib/emotional-memory.js";
 
 // ── 账号加载 ──
 // Docker/Sealos: 读环境变量
@@ -169,9 +170,26 @@ const agent = {
     try {
       const history = getHistory(conversationId);
       reply = await chatReply(userText, history, imageBase64, imageMime);
+
+      // 提取 [记]...[/记] 记忆标记
+      const tagResult = parseMemoryTags(reply);
+      if (tagResult.count > 0) {
+        reply = tagResult.text;
+        console.log(`[emotional-memory] Stored ${tagResult.count} tagged memories`);
+      }
+
       console.log(`[agent] 夏彦: "${reply.slice(0, 60)}"`);
       addToHistory(conversationId, "user", userText || "[图片]");
       addToHistory(conversationId, "assistant", reply);
+
+      // 长期记忆自动提取（非阻塞，便宜模型）
+      onChatTurn();
+      if (shouldExtract()) {
+        const recent = getHistory(conversationId)
+          .map((m) => (m.role === "user" ? "苹果梗：" : "夏彦：") + m.content)
+          .join("\n");
+        runExtraction(recent).catch(() => {});
+      }
     } catch (err) {
       console.error(`[agent] AI error: ${err.message}`);
       return { text: "稍等…信号不太好。" };

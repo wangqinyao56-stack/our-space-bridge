@@ -15,6 +15,7 @@ import os from "node:os";
 import fs from "node:fs";
 
 import { askClaude } from "./lib/api2d.js";
+import { getBreathContext, parseMemoryTags, onChatTurn, shouldExtract, runExtraction } from "./lib/emotional-memory.js";
 
 // ── 账号加载 ──
 // Docker/Sealos: 读环境变量
@@ -121,8 +122,17 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SYSTEM_PROMPT = fs.readFileSync(path.join(__dirname, "system-prompt.txt"), "utf-8");
 // ── AI调用 ──
 async function chatReply(userText, history, imageBase64 = null, imageMime = null) {
+  let systemPrompt = SYSTEM_PROMPT;
+
+  // 长期情感记忆浮现
+  const breathCtx = getBreathContext();
+  if (breathCtx) systemPrompt += breathCtx;
+
+  // 记忆标记指令
+  systemPrompt += "\n\n**【记忆标记】如果你和华生聊到了值得长期记住的事（重要的承诺、她的喜恶、情绪节点、关系里程碑），在回复的单独一行用 [记]标题|正文[/记] 写下来，系统会存进你的长期记忆。不要滥用，只在真正重要时用。这个标记不会显示给华生。**";
+
   const opts = {
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt,
     userContent: userText || "请描述一下这张图片",
     temperature: 0.65,
     maxTokens: 800,
@@ -169,9 +179,26 @@ const agent = {
     try {
       const history = getHistory(conversationId);
       reply = await chatReply(userText, history, imageBase64, imageMime);
+
+      // 提取 [记]...[/记] 记忆标记
+      const tagResult = parseMemoryTags(reply);
+      if (tagResult.count > 0) {
+        reply = tagResult.text;
+        console.log(`[emotional-memory] Stored ${tagResult.count} tagged memories`);
+      }
+
       console.log(`[agent] 夏彦2号: "${reply.slice(0, 60)}"`);
       addToHistory(conversationId, "user", userText || "[图片]");
       addToHistory(conversationId, "assistant", reply);
+
+      // 长期记忆自动提取（非阻塞，便宜模型）
+      onChatTurn();
+      if (shouldExtract()) {
+        const recent = getHistory(conversationId)
+          .map((m) => (m.role === "user" ? "华生：" : "夏彦：") + m.content)
+          .join("\n");
+        runExtraction(recent).catch(() => {});
+      }
     } catch (err) {
       console.error(`[agent] AI error: ${err.message}`);
       return { text: "稍等…信号不太好。" };
