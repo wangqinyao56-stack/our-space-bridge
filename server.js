@@ -703,6 +703,7 @@ function broadcast(data) {
 
 // 像素小屋：华生空闲一段时间后，夏彦主动搭话
 let pixelProactiveTimer = null;
+let huashengInPixelHome = false; // 华生当前是否在小屋页面（没点开小屋就不主动搭话）
 const PIXEL_PROACTIVE_LINES = [
   "宝宝，累不累？过来靠一会儿？",
   "老婆～我有点想你了，过来抱一下？",
@@ -714,6 +715,8 @@ const PIXEL_PROACTIVE_LINES = [
 function resetPixelProactiveTimer() {
   if (pixelProactiveTimer) clearTimeout(pixelProactiveTimer);
   pixelProactiveTimer = setTimeout(() => {
+    // 华生没在小屋页面时不搭话、也不再定时——避免她没点开小屋时刷屏
+    if (!huashengInPixelHome) { pixelProactiveTimer = null; return; }
     // 只有夏彦没在忙、且跟华生在同一房间（立绘可见）时才主动搭话，避免"说话但人没出现"
     const p = getPixelHomePresence();
     if (p && !p.busy && p.xiayanRoomIdx === p.huashengRoomIdx) {
@@ -2016,6 +2019,7 @@ wss.on("connection", (ws, req) => {
         greetAudio: getGreetingAudio(),
         hour: state.hour,
       }));
+      huashengInPixelHome = true;
       resetPixelProactiveTimer();
       return;
     }
@@ -2094,6 +2098,7 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "pixel_home_end") {
       summarizePixelChatToDiary().catch((err) => console.error("[diary] Pixel home summary error:", err.message));
       endGame();
+      huashengInPixelHome = false;
       clearPixelProactiveTimer();
       clearRestReminder();
       clearMusicSwitch();
