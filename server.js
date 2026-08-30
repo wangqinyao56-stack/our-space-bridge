@@ -61,7 +61,7 @@ import { getPetState, interact as petInteract, setName as petSetName, getProacti
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
-import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence, handleRestReminder, clearRestReminder, clearMusicSwitch, setReading, getReadingContext, clearReadingContext, markGreeted, noteHuashengSpoke, getGreetingAudio } from "./lib/pixel-home.js";
+import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence, handleRestReminder, clearRestReminder, clearMusicSwitch, setReading, getReadingContext, clearReadingContext, markGreeted, noteHuashengSpoke, getGreetingAudio, detectHuashengAway, getHuashengAway } from "./lib/pixel-home.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery, confirmReturned } from "./lib/scenery.js";
@@ -717,7 +717,7 @@ function resetPixelProactiveTimer() {
     if (!huashengInPixelHome) { pixelProactiveTimer = null; return; }
     // 只有夏彦没在忙、且跟华生在同一房间（立绘可见）时才主动搭话，避免"说话但人没出现"
     const p = getPixelHomePresence();
-    if (p && !p.busy && !p.sleeping && p.xiayanRoomIdx === p.huashengRoomIdx) {
+    if (p && !p.busy && !p.sleeping && !getHuashengAway() && p.xiayanRoomIdx === p.huashengRoomIdx) {
       const content = PIXEL_PROACTIVE_LINES[Math.floor(Math.random() * PIXEL_PROACTIVE_LINES.length)];
       recordBotReply(content, "text", { channel: "pixel_home", proactive: true });
       broadcast(JSON.stringify({
@@ -2053,6 +2053,7 @@ wss.on("connection", (ws, req) => {
         notifyUserActivity();
         resetPixelProactiveTimer();
         handleRestReminder(msg.content);
+        detectHuashengAway(msg.content);
         noteHuashengSpoke();
         const reply = await handlePixelHomeMessage(msg.content, { openingLine: msg.openingLine, quote: msg.quote });
         const segments = splitIntoMessages(reply);
