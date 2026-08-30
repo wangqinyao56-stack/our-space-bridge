@@ -705,12 +705,10 @@ function broadcast(data) {
 let pixelProactiveTimer = null;
 let huashengInPixelHome = false; // 华生当前是否在小屋页面（没点开小屋就不主动搭话）
 const PIXEL_PROACTIVE_LINES = [
-  "宝宝，累不累？过来靠一会儿？",
-  "老婆～我有点想你了，过来抱一下？",
-  "要不要吃水果？我去给你切点。",
-  "我忙完啦，你在忙什么？",
-  "过来，挨着我坐一会儿。",
-  "渴不渴？给你倒了杯水。",
+  "（把切好的水果轻轻放在你手边，没说话）",
+  "（给你续了杯热茶，悄悄放在桌上）",
+  "（在你旁边坐下，安静地陪着你，不打扰）",
+  "（从背后轻轻抱了你一下，又松开，继续去忙）",
 ];
 function resetPixelProactiveTimer() {
   if (pixelProactiveTimer) clearTimeout(pixelProactiveTimer);
@@ -730,7 +728,7 @@ function resetPixelProactiveTimer() {
       }));
     }
     resetPixelProactiveTimer();
-  }, 180000 + Math.random() * 180000);
+  }, 1800000 + Math.random() * 1800000); // 30-60分钟，别频繁打扰她
 }
 function clearPixelProactiveTimer() {
   if (pixelProactiveTimer) { clearTimeout(pixelProactiveTimer); pixelProactiveTimer = null; }
