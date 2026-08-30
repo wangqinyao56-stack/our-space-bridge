@@ -55,6 +55,7 @@ import {
   generateAIReplyToComment,
   startProactiveDiary,
   summarizePixelChatToDiary,
+  summarizeIntimateToDiary,
 } from "./lib/diary.js";
 import { getPetState, interact as petInteract, setName as petSetName, getProactiveReminder, xiayanProactiveInteract, getLogs as getPetLogs, addLog as addPetLog, accompanyXiayan, returnFromAccompany } from "./lib/pet.js";
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
@@ -95,6 +96,10 @@ function processEjaculationMarker(reply, eventId) {
 
 function recordEjaculationWithReaction(eventId) {
   const { crossed, skipped } = calendarRecordEjaculation(eventId);
+  if (!skipped) {
+    // 每次真正射精（非去重跳过）都考虑写做爱事后谈日记（内部按天节流）
+    summarizeIntimateToDiary().catch((err) => console.error("[diary] Intimate summary error:", err.message));
+  }
   if (skipped || !crossed) return false;
   broadcast(JSON.stringify({ type: "text_reply", reply_to: "intimacy", content: "(´;ω;`) 老婆……我真的要被你榨干了……" }));
   return true;
