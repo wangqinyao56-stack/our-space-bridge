@@ -719,7 +719,7 @@ function resetPixelProactiveTimer() {
     if (!huashengInPixelHome) { pixelProactiveTimer = null; return; }
     // 只有夏彦没在忙、且跟华生在同一房间（立绘可见）时才主动搭话，避免"说话但人没出现"
     const p = getPixelHomePresence();
-    if (p && !p.busy && p.xiayanRoomIdx === p.huashengRoomIdx) {
+    if (p && !p.busy && !p.sleeping && p.xiayanRoomIdx === p.huashengRoomIdx) {
       const content = PIXEL_PROACTIVE_LINES[Math.floor(Math.random() * PIXEL_PROACTIVE_LINES.length)];
       recordBotReply(content, "text", { channel: "pixel_home", proactive: true });
       broadcast(JSON.stringify({
@@ -2018,6 +2018,7 @@ wss.on("connection", (ws, req) => {
         greeted: state.greeted,
         greetAudio: getGreetingAudio(),
         hour: state.hour,
+        sleeping: state.hour >= 23 || state.hour < 7,
       }));
       huashengInPixelHome = true;
       resetPixelProactiveTimer();
