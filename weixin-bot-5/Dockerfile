@@ -5,6 +5,9 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --production
 
+COPY patch-sdk.mjs .
+RUN node patch-sdk.mjs
+
 COPY lib/ ./lib/
 COPY simple-agent.js .
 COPY system-prompt.txt .

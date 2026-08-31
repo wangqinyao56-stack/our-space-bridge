@@ -167,20 +167,19 @@ export async function askClaude(opts = {}) {
 
   const requestFn = DISABLE_PROXY ? directRequest : proxyRequest;
 
-  // 429 限流退避重试：玖时提示 quota reset after 1s，撞上限流停一下再试基本就过
-  const MAX_RETRIES = 2;
+  // 通道不稳定退避重试：玖时偶发 429 限流/超时/5xx/连接抖动，停一下重试基本能过
+  const MAX_RETRIES = 3;
   let lastErr;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       return await requestFn({ body, timeoutMs });
     } catch (err) {
       lastErr = err;
-      const isRateLimited = String(err?.message || "").includes("429");
-      if (!isRateLimited || attempt >= MAX_RETRIES) {
-        throw lastErr;
-      }
-      const waitMs = 1500 * (attempt + 1);
-      console.error(`[api2d] 429 限流，${waitMs}ms 后重试 (${attempt + 1}/${MAX_RETRIES})`);
+      if (attempt >= MAX_RETRIES) throw lastErr;
+      const msg = String(err?.message || "");
+      const isRateLimited = msg.includes("429");
+      const waitMs = (isRateLimited ? 1500 : 2500) * (attempt + 1);
+      console.error(`[api2d] 通道${isRateLimited ? "限流" : "异常"}(${msg.slice(0, 60)})，${waitMs}ms 后重试 (${attempt + 1}/${MAX_RETRIES})`);
       await new Promise((r) => setTimeout(r, waitMs));
     }
   }
