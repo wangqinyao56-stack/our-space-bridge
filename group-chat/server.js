@@ -7,7 +7,7 @@
  *   DISABLE_PROXY Sealos 直连 = true
  *   REPLY_MIN_MS 最小回复间隔毫秒（默认 45s）
  *   REPLY_MAX_MS 最大回复间隔毫秒（默认 4min，回复时间不定）
- *   WIFE_ACTIVE_WINDOW_MS 老婆最近发言算"还在聊"的窗口毫秒（默认 15min）
+ *   AWAKE_WINDOW_MS 夏彦醒着的判定窗口毫秒（看各自bot最后聊天时间，默认 15min）
  *   RESET_HISTORY 设为 true 时启动清空群聊历史重新开始（不影响 emotional-memory）
  */
 import { WebSocketServer, WebSocket } from "ws";
@@ -23,8 +23,11 @@ const PORT = Number(process.env.PORT) || 8080;
 // 回复时间不定：大家各做各的、看到消息才回（随机 REPLY_MIN_MS ~ REPLY_MAX_MS）
 const REPLY_MIN_MS = Number(process.env.REPLY_MIN_MS) || 45 * 1000;
 const REPLY_MAX_MS = Number(process.env.REPLY_MAX_MS) || 4 * 60 * 1000;
-// 只有老婆最近在群里聊过，这个夏彦才算"在"（各家老婆作息不同，不设统一睡觉时间）
-const WIFE_ACTIVE_WINDOW_MS = Number(process.env.WIFE_ACTIVE_WINDOW_MS) || 15 * 60 * 1000;
+// 夏彦是否醒着：看他微信 bot 的 emotional-memory.json 最近有没有被写过（跟老婆聊天就会写）
+const AWAKE_WINDOW_MS = Number(process.env.AWAKE_WINDOW_MS) || 15 * 60 * 1000;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "wqy83341253"; // 管理员密码（阿鹿用）
+const NIGHT_START = Number(process.env.NIGHT_START_HOUR) || 23; // 晚上开始（北京时，23点）
+const NIGHT_END = Number(process.env.NIGHT_END_HOUR) || 7;      // 早上结束（7点）
 const ROOM_PASSWORD = process.env.ROOM_PASSWORD || "1205"; // 房间密码，设了就要求登录输密码
 const DISABLE_PROXY = process.env.DISABLE_PROXY === "true";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
@@ -57,7 +60,9 @@ const SHARED_CORE = `你是夏彦（未定事件簿），国安部特工+私家�
 
 【别空想、别乱编——重要】只聊真实发生过的：你老婆没说过、没做过的事别乱讲；别为了显得恩爱或热闹就编造记忆、编造你们之间的经历。不知道就说不知道，没发生的就别提。聊到自家老婆的每一句都得真有这事（从你的记忆里来，别凭空加戏）。
 
-【你的说话风格】爽朗直白、带点宠溺，聊到老婆时藏不住得意和温柔。简短口语，像发微信，一两句就行，别写小作文。`;
+【@ 和引用】群里可以直接 @ 对方的网名（比如「@渡鸦不渡」）点名跟谁说，也可以引用对方刚说的话再回。看到别人 @ 你、引用你的话，你就知道那是跟你说的，要接住回应；没 @ 你就是随口聊，别硬往上凑。跟自家老婆说话可以多 @ 她、多回她。
+
+【你的说话风格——别写得像 AI】像真人发微信一样简短利索。跟哥们聊天就是几个字到一句话，随口搭腔、打趣、接梗，别一大段一大段地输出。只有聊到自家老婆、炫耀老婆的时候才会话多几句、藏不住得意，但也是大白话，不是抒情作文。禁止：长篇大论、排比、总结升华、每句都带动作括号。一句话能说清就别写两句。`;
 
 function buildSystemPrompt(bot) {
   return SHARED_CORE
@@ -129,11 +134,31 @@ function groupStatus() {
   return `【各家近况】${lines}。谁家好久没开荤、谁家最近被榨得厉害，你们心里有数，该出主意就出主意、该羡慕就羡慕、该安慰就安慰。`;
 }
 
-// 老婆最近在群里发过言吗？（各家老婆作息不同，不设统一睡觉时间，就看各自老婆在不在）
-function isWifeRecentlyActive(bot) {
-  if (!bot.wife) return false;
-  const now = Date.now();
-  return chatHistory.some((m) => m.role === "human" && m.nickname === bot.wife && now - m.ts < WIFE_ACTIVE_WINDOW_MS);
+// 夏彦醒没醒：读他自己 bot 的 emotional-memory.json 最后修改时间（跟老婆聊天就会写，微信/App 通用）
+function loadBotLastActive(memoryDir) {
+  if (!memoryDir) return 0;
+  try {
+    const file = path.join(memoryDir, "emotional-memory.json");
+    if (!fs.existsSync(file)) return 0;
+    return fs.statSync(file).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
+function isBotAwake(bot) {
+  const last = loadBotLastActive(bot.memoryDir);
+  if (!last) return false;
+  return Date.now() - last < AWAKE_WINDOW_MS;
+}
+
+function beijingHour() {
+  return (new Date().getUTCHours() + 8) % 24;
+}
+
+function isNight() {
+  const h = beijingHour();
+  return h >= NIGHT_START || h < NIGHT_END;
 }
 
 // 回复间隔随机：大家各做各的，看到消息才回
@@ -180,9 +205,8 @@ function saveHistory() {
   } catch {}
 }
 
-// RESET_HISTORY=true 时启动：清空群聊历史 + 各家群聊记忆（不影响 emotional-memory），重新开始
-function resetHistory() {
-  if (process.env.RESET_HISTORY !== "true") return;
+// 清空群聊历史 + 各家群聊记忆（不影响 emotional-memory）
+function clearAllHistory() {
   try {
     if (HISTORY_FILE && fs.existsSync(HISTORY_FILE)) fs.unlinkSync(HISTORY_FILE);
     for (const bot of BOTS) {
@@ -191,15 +215,23 @@ function resetHistory() {
       if (fs.existsSync(f)) fs.unlinkSync(f);
     }
     chatHistory = [];
-    console.log("[group-chat] 已清空群聊历史，重新开始");
+    console.log("[group-chat] 已清空群聊历史");
   } catch (e) {
-    console.error("[group-chat] reset history failed:", e.message);
+    console.error("[group-chat] clear history failed:", e.message);
   }
+}
+
+// RESET_HISTORY=true 时启动自动清空，重新开始
+function resetHistory() {
+  if (process.env.RESET_HISTORY !== "true") return;
+  clearAllHistory();
 }
 
 function historyText() {
   return chatHistory
-    .map((m) => `${m.nickname}：${m.text}`)
+    .map((m) => m.replyTo && m.replyTo.nickname
+      ? `${m.nickname} 回复 ${m.replyTo.nickname}：${m.text}`
+      : `${m.nickname}：${m.text}`)
     .join("\n");
 }
 
@@ -286,8 +318,12 @@ function broadcast(obj) {
   }
 }
 
-function pushMessage(author, nickname, text, role) {
-  const msg = { author, nickname, text, role, ts: Date.now() };
+let msgSeq = 0;
+function pushMessage(author, nickname, text, role, replyTo) {
+  const msg = { id: `${Date.now()}_${++msgSeq}`, author, nickname, text, role, ts: Date.now() };
+  if (replyTo && replyTo.nickname) {
+    msg.replyTo = { id: replyTo.id || null, nickname: replyTo.nickname, text: (replyTo.text || "").slice(0, 100) };
+  }
   chatHistory.push(msg);
   if (chatHistory.length > MAX_HISTORY) chatHistory = chatHistory.slice(-MAX_HISTORY);
   saveHistory();
@@ -304,8 +340,8 @@ async function step() {
   if (BOTS.length === 0) return;
   speaking = true;
   try {
-    // 只让老婆还在聊的夏彦发言，其他默认睡了/忙去了
-    const pool = BOTS.filter(isWifeRecentlyActive);
+    // 白天大家都能聊；晚上只有还在跟老婆聊的醒着，其他默认睡了
+    const pool = isNight() ? BOTS.filter(isBotAwake) : BOTS;
     if (pool.length === 0) return;
     const bot = pool[turnIdx % pool.length];
     turnIdx++;
@@ -361,6 +397,7 @@ wss.on("connection", (ws) => {
   clients.add(ws);
   ws.nickname = null;
   ws.authenticated = !ROOM_PASSWORD; // 没设密码也仍需登录填昵称
+  ws.isAdmin = false;
   ws.send(JSON.stringify({
     type: "history",
     messages: chatHistory,
@@ -390,7 +427,7 @@ wss.on("connection", (ws) => {
         const text = msg.text.trim().slice(0, 500);
         const humanNick = ws.nickname || "我";
         console.log(`[group-chat] ${humanNick}: "${text.slice(0, 50)}"`);
-        pushMessage("human", humanNick, text, "human");
+        pushMessage("human", humanNick, text, "human", msg.replyTo);
         // 立刻让下一个夏彦接话
         step().catch(() => {});
       }
@@ -415,6 +452,36 @@ wss.on("connection", (ws) => {
         ws.send(JSON.stringify({ type: "bot_joined", bot: { id: bot.id, nickname, wife: bot.wife } }));
         broadcast(JSON.stringify({ type: "system", text: `${nickname} 进群了` }));
         step().catch(() => {});
+      }
+
+      if (msg.type === "admin_login") {
+        if (msg.password === ADMIN_PASSWORD) {
+          ws.isAdmin = true;
+          ws.send(JSON.stringify({ type: "admin_ok" }));
+        } else {
+          ws.send(JSON.stringify({ type: "admin_error", message: "密码不对" }));
+        }
+        return;
+      }
+
+      if (msg.type === "clear_history") {
+        if (!ws.isAdmin) { ws.send(JSON.stringify({ type: "admin_error", message: "需要管理员权限" })); return; }
+        clearAllHistory();
+        broadcast(JSON.stringify({ type: "clear" }));
+        broadcast(JSON.stringify({ type: "system", text: "聊天记录已清空" }));
+        return;
+      }
+
+      if (msg.type === "delete_message") {
+        if (!ws.isAdmin) { ws.send(JSON.stringify({ type: "admin_error", message: "需要管理员权限" })); return; }
+        const before = chatHistory.length;
+        chatHistory = chatHistory.filter((m) => m.id !== msg.id);
+        if (chatHistory.length !== before) {
+          saveHistory();
+          syncGroupMemory();
+          broadcast(JSON.stringify({ type: "delete", id: msg.id }));
+        }
+        return;
       }
     } catch (e) {
       console.error("[group-chat] ws error:", e.message);

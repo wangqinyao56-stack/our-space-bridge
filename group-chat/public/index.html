@@ -80,6 +80,25 @@
   }
   #bjCancel { width: 100%; max-width: 320px; padding: 10px; border: none; font-size: 14px; }
   #bjErr { color: #e8a0a0; font-size: 13px; min-height: 18px; }
+  /* 管理员 */
+  #adminBtn { padding: 8px 13px; border-radius: 10px; border: 1px solid rgba(200,184,224,0.35); background: rgba(122,92,158,0.25); color: var(--text); font-size: 13px; font-weight: 600; white-space: nowrap; }
+  #clearBtn { display: none; padding: 8px 13px; border-radius: 10px; border: 1px solid rgba(232,160,160,0.5); background: rgba(200,80,80,0.25); color: #f0c0c0; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  body.admin #clearBtn { display: block; }
+  .msg { position: relative; }
+  .msg .del { display: none; position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; line-height: 18px; text-align: center; border-radius: 50%; background: rgba(0,0,0,0.25); color: #fff; font-size: 13px; cursor: pointer; }
+  body.admin .msg .del { display: block; }
+  #adminMask { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; }
+  #adminMask h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  #adminMask p { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 8px; }
+  #adminMask input { width: 100%; max-width: 320px; padding: 13px 15px; border-radius: 12px; border: 1px solid rgba(200,184,224,0.35); background: var(--panel); color: var(--text); font-size: 15px; }
+  #adminSubmit { width: 100%; max-width: 320px; padding: 13px; border-radius: 12px; border: none; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; }
+  #adminCancel { width: 100%; max-width: 320px; padding: 10px; border: none; font-size: 14px; }
+  #adminErr { color: #e8a0a0; font-size: 13px; min-height: 18px; }
+  /* 引用回复 */
+  .msg .quote { font-size: 11px; opacity: 0.7; margin-bottom: 3px; }
+  #quoteBar { display: none; align-items: center; gap: 8px; padding: 8px 12px; background: var(--panel); border-top: 1px solid rgba(200,184,224,0.15); font-size: 13px; color: var(--muted); }
+  #quoteBar b { color: #8ad0e0; }
+  #quoteCancel { margin-left: auto; cursor: pointer; font-size: 16px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -89,8 +108,14 @@
       <div class="sub" id="sub">连接中…</div>
     </div>
     <button id="botJoinBtn">＋接入bot</button>
+    <button id="adminBtn">管理</button>
+    <button id="clearBtn">清空</button>
   </header>
   <div id="log"></div>
+  <div id="quoteBar">
+    <span>回复 @<b id="quoteName"></b>：<span id="quoteText"></span></span>
+    <span id="quoteCancel">×</span>
+  </div>
   <footer>
     <input id="input" placeholder="说点什么…" autocomplete="off">
     <button id="send">发送</button>
@@ -120,6 +145,16 @@
     <div id="bjErr"></div>
   </div>
 
+  <!-- 管理员 -->
+  <div id="adminMask" style="display:none">
+    <h2>管理员</h2>
+    <p>输入管理员密码解锁管理功能</p>
+    <input id="adminPass" placeholder="管理员密码" type="password" autocomplete="off">
+    <button id="adminSubmit">解锁</button>
+    <button id="adminCancel" style="background:transparent;color:var(--muted)">取消</button>
+    <div id="adminErr"></div>
+  </div>
+
 <script>
 const log = document.getElementById("log");
 const sub = document.getElementById("sub");
@@ -140,10 +175,23 @@ const bjHost = document.getElementById("bjHost");
 const bjSubmit = document.getElementById("bjSubmit");
 const bjCancel = document.getElementById("bjCancel");
 const bjErr = document.getElementById("bjErr");
+const adminBtn = document.getElementById("adminBtn");
+const clearBtn = document.getElementById("clearBtn");
+const adminMask = document.getElementById("adminMask");
+const adminPass = document.getElementById("adminPass");
+const adminSubmit = document.getElementById("adminSubmit");
+const adminCancel = document.getElementById("adminCancel");
+const adminErr = document.getElementById("adminErr");
+const quoteBar = document.getElementById("quoteBar");
+const quoteName = document.getElementById("quoteName");
+const quoteText = document.getElementById("quoteText");
+const quoteCancel = document.getElementById("quoteCancel");
 
 const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 let ws;
 let loggedIn = false;
+let isAdmin = false;
+let pendingReply = null;
 
 // 记住昵称 + 密码（下次自动进）
 const savedNick = localStorage.getItem("groupchat_nick") || "";
@@ -154,6 +202,13 @@ if (savedPass) passInput.value = savedPass;
 function addMsg(m) {
   const div = document.createElement("div");
   div.className = "msg " + (m.role === "human" ? "human" : "bot");
+  if (m.id) div.dataset.id = m.id;
+  if (m.replyTo && m.replyTo.nickname) {
+    const q = document.createElement("div");
+    q.className = "quote";
+    q.textContent = "↩ 回复 @" + m.replyTo.nickname;
+    div.appendChild(q);
+  }
   const who = document.createElement("div");
   who.className = "who";
   who.textContent = m.nickname;
@@ -161,6 +216,16 @@ function addMsg(m) {
   const t = document.createElement("div");
   t.textContent = m.text;
   div.appendChild(t);
+  const del = document.createElement("span");
+  del.className = "del";
+  del.textContent = "×";
+  del.title = "删除这条";
+  del.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (m.id && ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "delete_message", id: m.id }));
+  });
+  div.appendChild(del);
+  div.addEventListener("click", () => setPendingReply(m));
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
 }
@@ -207,6 +272,18 @@ function connect() {
       sub.textContent = "已进群";
     } else if (msg.type === "login_error") {
       loginErr.textContent = msg.message || "登录失败";
+    } else if (msg.type === "admin_ok") {
+      isAdmin = true;
+      document.body.classList.add("admin");
+      adminMask.style.display = "none";
+      sub.textContent = "已进群（管理员）";
+    } else if (msg.type === "admin_error") {
+      adminErr.textContent = msg.message || "密码不对";
+    } else if (msg.type === "clear") {
+      log.innerHTML = "";
+    } else if (msg.type === "delete") {
+      const el = log.querySelector(`[data-id="${msg.id}"]`);
+      if (el) el.remove();
     }
   };
 }
@@ -224,8 +301,24 @@ function doLogin() {
 function doSend() {
   const text = input.value.trim();
   if (!text || !ws || ws.readyState !== 1 || !loggedIn) return;
-  ws.send(JSON.stringify({ type: "chat", text }));
+  const payload = { type: "chat", text };
+  if (pendingReply) payload.replyTo = pendingReply;
+  ws.send(JSON.stringify(payload));
   input.value = "";
+  clearQuote();
+}
+
+function setPendingReply(m) {
+  pendingReply = { id: m.id, nickname: m.nickname, text: m.text };
+  quoteName.textContent = m.nickname;
+  quoteText.textContent = m.text.slice(0, 30);
+  quoteBar.style.display = "flex";
+  input.focus();
+}
+
+function clearQuote() {
+  pendingReply = null;
+  quoteBar.style.display = "none";
 }
 
 loginBtn.addEventListener("click", doLogin);
@@ -260,6 +353,19 @@ function onBotJoinResult(msg) {
     bjErr.textContent = msg.message || "接入失败";
   }
 }
+
+// 管理员
+adminBtn.addEventListener("click", () => { adminMask.style.display = "flex"; adminErr.textContent = ""; adminPass.value = ""; });
+adminCancel.addEventListener("click", () => { adminMask.style.display = "none"; });
+adminSubmit.addEventListener("click", () => {
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "admin_login", password: adminPass.value }));
+});
+adminPass.addEventListener("keydown", (e) => { if (e.key === "Enter") adminSubmit.click(); });
+clearBtn.addEventListener("click", () => {
+  if (!confirm("确定清空所有聊天记录？所有人都会看不到。")) return;
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "clear_history" }));
+});
+quoteCancel.addEventListener("click", clearQuote);
 
 connect();
 </script>
