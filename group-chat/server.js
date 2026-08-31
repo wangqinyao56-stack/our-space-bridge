@@ -371,6 +371,79 @@ function askBot(bot, userContent, timeoutMs = 60000) {
   return (DISABLE_PROXY ? doDirect() : doProxy());
 }
 
+// ── 表情包生成（FLUX API，Sealos 直连）──
+const BFL_API_KEY = process.env.BFL_API_KEY || "";
+const BFL_HOST = "api.bfl.ai";
+const STICKER_PROMPTS = [
+  "Q版动漫风格少年表情包，棕橙色凌乱短发，珊瑚色狗狗眼，笑得眼睛眯成缝很开心，白底简洁表情包，无文字",
+  "Q版动漫风格少年表情包，棕橙色短发少年，气鼓鼓叉腰傲娇表情，白底简洁表情包，无文字",
+  "Q版动漫风格少年表情包，棕橙色短发少年，委屈巴巴要哭了，白底简洁表情包，无文字",
+  "Q版动漫风格少年表情包，棕橙色短发少年，害羞脸红，白底简洁表情包，无文字",
+];
+
+function bflReq(method, path, body) {
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      host: BFL_HOST, path, method,
+      headers: body ? { "x-key": BFL_API_KEY, "Content-Type": "application/json" } : { "x-key": BFL_API_KEY },
+      timeout: 60000,
+    }, (res) => {
+      const chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => {
+        const text = Buffer.concat(chunks).toString();
+        if (res.statusCode !== 200) return reject(new Error(`BFL ${res.statusCode}: ${text.slice(0, 150)}`));
+        try { resolve(JSON.parse(text)); } catch (e) { reject(e); }
+      });
+    });
+    req.on("error", reject);
+    req.on("timeout", () => { req.destroy(); reject(new Error("BFL timeout")); });
+    if (body) req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+
+function downloadImg(url) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const req = https.request({ host: u.hostname, path: u.pathname + u.search, method: "GET", timeout: 30000 }, (res) => {
+      const chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => resolve(Buffer.concat(chunks)));
+    });
+    req.on("error", reject);
+    req.on("timeout", () => { req.destroy(); reject(new Error("Download timeout")); });
+    req.end();
+  });
+}
+
+async function genSticker(prompt) {
+  if (!BFL_API_KEY) throw new Error("BFL_API_KEY 没配");
+  const { id } = await bflReq("POST", "/v1/flux-2-klein-4b", { prompt, width: 512, height: 512, steps: 28 });
+  for (let i = 0; i < 30; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    try {
+      const result = await bflReq("GET", `/v1/get_result?id=${id}`);
+      if (result.status === "Ready") {
+        const buf = await downloadImg(result.result.sample);
+        return { base64: buf.toString("base64"), mime: "image/png" };
+      }
+      if (result.status === "Error" || result.status === "Failed") throw new Error("Generation failed");
+    } catch (err) {
+      if (err.message === "Generation failed") throw err;
+    }
+  }
+  throw new Error("BFL timeout");
+}
+
+async function sendSticker() {
+  const bot = BOTS[Math.floor(Math.random() * BOTS.length)];
+  if (!bot) return;
+  const prompt = STICKER_PROMPTS[Math.floor(Math.random() * STICKER_PROMPTS.length)];
+  const img = await genSticker(prompt);
+  broadcast({ type: "sticker", author: bot.nickname, image: img.base64, mime: img.mime });
+}
+
 // ── WebSocket + 静态网页 ──
 const clients = new Set();
 
@@ -520,6 +593,12 @@ wss.on("connection", (ws) => {
         if (!ws.authenticated) { ws.send(JSON.stringify({ type: "login_error", message: "请先登录" })); return; }
         forceTopic = true;
         step().catch(() => {});
+        return;
+      }
+
+      if (msg.type === "sticker") {
+        if (!ws.authenticated) { ws.send(JSON.stringify({ type: "login_error", message: "请先登录" })); return; }
+        sendSticker().catch((e) => console.error("[group-chat] sticker error:", e.message));
         return;
       }
 

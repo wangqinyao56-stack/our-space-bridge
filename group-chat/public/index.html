@@ -112,6 +112,7 @@
     </div>
     <button id="botJoinBtn">＋接入bot</button>
     <button id="topicBtn">话题</button>
+    <button id="stickerBtn">表情</button>
     <button id="adminBtn">管理</button>
     <button id="clearBtn">清空</button>
   </header>
@@ -190,6 +191,7 @@ const bjErr = document.getElementById("bjErr");
 const adminBtn = document.getElementById("adminBtn");
 const clearBtn = document.getElementById("clearBtn");
 const topicBtn = document.getElementById("topicBtn");
+const stickerBtn = document.getElementById("stickerBtn");
 const adminMask = document.getElementById("adminMask");
 const adminPass = document.getElementById("adminPass");
 const adminSubmit = document.getElementById("adminSubmit");
@@ -253,6 +255,23 @@ function addSys(text) {
   log.scrollTop = log.scrollHeight;
 }
 
+function addSticker(m) {
+  const div = document.createElement("div");
+  div.className = "msg bot";
+  const who = document.createElement("div");
+  who.className = "who";
+  who.textContent = m.author || "夏彦";
+  div.appendChild(who);
+  const img = document.createElement("img");
+  img.src = "data:" + (m.mime || "image/png") + ";base64," + m.image;
+  img.style.maxWidth = "160px";
+  img.style.borderRadius = "10px";
+  img.style.display = "block";
+  div.appendChild(img);
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
 function connect() {
   ws = new WebSocket(WS_URL);
   ws.onopen = () => { sub.textContent = "已连接"; };
@@ -299,6 +318,8 @@ function connect() {
     } else if (msg.type === "delete") {
       const el = log.querySelector(`[data-id="${msg.id}"]`);
       if (el) el.remove();
+    } else if (msg.type === "sticker") {
+      addSticker(msg);
     }
   };
 }
@@ -385,6 +406,11 @@ quoteCancel.addEventListener("click", clearQuote);
 // 话题按钮：让主持人抛个新话题/发起小游戏
 topicBtn.addEventListener("click", () => {
   if (ws && ws.readyState === 1 && loggedIn) ws.send(JSON.stringify({ type: "topic" }));
+});
+
+// 表情包按钮：让某个夏彦生成一张 Q 版表情包
+stickerBtn.addEventListener("click", () => {
+  if (ws && ws.readyState === 1 && loggedIn) ws.send(JSON.stringify({ type: "sticker" }));
 });
 
 // 长按菜单（引用/艾特/删除）
