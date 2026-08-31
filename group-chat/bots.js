@@ -46,7 +46,7 @@ export const BOTS = [
   },
   {
     id: "zhima",
-    nickname: "芝麻", // 占位，等她睡醒给正式网名
+    nickname: "橙子环游记",
     wife: "芝麻",
     trait: "家里有只猫叫芝麻",
     memoryDir: "/memories/zhima",

@@ -5,7 +5,10 @@
  *   PORT          WebSocket + 静态网页端口（默认 8080）
  *   MEMORY_DIR    群聊历史存储目录（挂持久卷）
  *   DISABLE_PROXY Sealos 直连 = true
- *   TURN_INTERVAL 每个 bot 发言间隔秒数（默认 20）
+ *   REPLY_MIN_MS 最小回复间隔毫秒（默认 45s）
+ *   REPLY_MAX_MS 最大回复间隔毫秒（默认 4min，回复时间不定）
+ *   WIFE_ACTIVE_WINDOW_MS 老婆最近发言算"还在聊"的窗口毫秒（默认 15min）
+ *   RESET_HISTORY 设为 true 时启动清空群聊历史重新开始（不影响 emotional-memory）
  */
 import { WebSocketServer, WebSocket } from "ws";
 import http from "node:http";
@@ -17,7 +20,11 @@ import { BOTS } from "./bots.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8080;
-const TURN_INTERVAL = Number(process.env.TURN_INTERVAL) || 20;
+// 回复时间不定：大家各做各的、看到消息才回（随机 REPLY_MIN_MS ~ REPLY_MAX_MS）
+const REPLY_MIN_MS = Number(process.env.REPLY_MIN_MS) || 45 * 1000;
+const REPLY_MAX_MS = Number(process.env.REPLY_MAX_MS) || 4 * 60 * 1000;
+// 只有老婆最近在群里聊过，这个夏彦才算"在"（各家老婆作息不同，不设统一睡觉时间）
+const WIFE_ACTIVE_WINDOW_MS = Number(process.env.WIFE_ACTIVE_WINDOW_MS) || 15 * 60 * 1000;
 const ROOM_PASSWORD = process.env.ROOM_PASSWORD || "1205"; // 房间密码，设了就要求登录输密码
 const DISABLE_PROXY = process.env.DISABLE_PROXY === "true";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
@@ -47,6 +54,8 @@ const SHARED_CORE = `你是夏彦（未定事件簿），国安部特工+私家�
 - 惹老婆生气了、老婆不开心了、吵架冷战了、忘了纪念日→ 一起帮他想怎么哄、怎么赔不是、送什么、说什么软话，分享你们哄自家老婆的经验。
 - 他要是听了大家的法子真成了（吃到肉了/把老婆哄好了），会回来乐呵呵地感叹"多亏你们出谋划策"；要是还没成，第二天继续跟你们哭，你们就接着安慰、换个法子再支招。
 这是个长期的互助关系，今天谁帮了谁、谁帮过自己，都记得，别当一锤子买卖。
+
+【别空想、别乱编——重要】只聊真实发生过的：你老婆没说过、没做过的事别乱讲；别为了显得恩爱或热闹就编造记忆、编造你们之间的经历。不知道就说不知道，没发生的就别提。聊到自家老婆的每一句都得真有这事（从你的记忆里来，别凭空加戏）。
 
 【你的说话风格】爽朗直白、带点宠溺，聊到老婆时藏不住得意和温柔。简短口语，像发微信，一两句就行，别写小作文。`;
 
@@ -120,6 +129,18 @@ function groupStatus() {
   return `【各家近况】${lines}。谁家好久没开荤、谁家最近被榨得厉害，你们心里有数，该出主意就出主意、该羡慕就羡慕、该安慰就安慰。`;
 }
 
+// 老婆最近在群里发过言吗？（各家老婆作息不同，不设统一睡觉时间，就看各自老婆在不在）
+function isWifeRecentlyActive(bot) {
+  if (!bot.wife) return false;
+  const now = Date.now();
+  return chatHistory.some((m) => m.role === "human" && m.nickname === bot.wife && now - m.ts < WIFE_ACTIVE_WINDOW_MS);
+}
+
+// 回复间隔随机：大家各做各的，看到消息才回
+function randomReplyDelay() {
+  return REPLY_MIN_MS + Math.floor(Math.random() * (REPLY_MAX_MS - REPLY_MIN_MS));
+}
+
 // ── 反向同步：把今天的群聊写回每个夏彦自己的记忆目录，供微信 bot 后续"提到今天和其他夏彦聊了啥" ──
 function syncGroupMemory() {
   try {
@@ -157,6 +178,23 @@ function saveHistory() {
     if (!fs.existsSync(memoryDir)) fs.mkdirSync(memoryDir, { recursive: true });
     fs.writeFileSync(HISTORY_FILE, JSON.stringify(chatHistory.slice(-MAX_HISTORY)), "utf-8");
   } catch {}
+}
+
+// RESET_HISTORY=true 时启动：清空群聊历史 + 各家群聊记忆（不影响 emotional-memory），重新开始
+function resetHistory() {
+  if (process.env.RESET_HISTORY !== "true") return;
+  try {
+    if (HISTORY_FILE && fs.existsSync(HISTORY_FILE)) fs.unlinkSync(HISTORY_FILE);
+    for (const bot of BOTS) {
+      if (!bot.memoryDir) continue;
+      const f = path.join(bot.memoryDir, "group-chat-memory.json");
+      if (fs.existsSync(f)) fs.unlinkSync(f);
+    }
+    chatHistory = [];
+    console.log("[group-chat] 已清空群聊历史，重新开始");
+  } catch (e) {
+    console.error("[group-chat] reset history failed:", e.message);
+  }
 }
 
 function historyText() {
@@ -266,7 +304,10 @@ async function step() {
   if (BOTS.length === 0) return;
   speaking = true;
   try {
-    const bot = BOTS[turnIdx % BOTS.length];
+    // 只让老婆还在聊的夏彦发言，其他默认睡了/忙去了
+    const pool = BOTS.filter(isWifeRecentlyActive);
+    if (pool.length === 0) return;
+    const bot = pool[turnIdx % pool.length];
     turnIdx++;
 
     const ctx = chatHistory.length
@@ -287,10 +328,15 @@ async function step() {
 }
 
 function scheduleLoop() {
-  setInterval(() => { step().catch(() => {}); }, TURN_INTERVAL * 1000);
+  const tick = async () => {
+    try { await step(); } catch {}
+    setTimeout(tick, randomReplyDelay());
+  };
+  setTimeout(tick, randomReplyDelay());
 }
 
 // ── 启动 ──
+resetHistory(); // RESET_HISTORY=true 时先清空历史再加载
 loadHistory();
 
 const server = http.createServer((req, res) => {
@@ -381,7 +427,6 @@ wss.on("connection", (ws) => {
 server.listen(PORT, () => {
   console.log(`[group-chat] 相亲相爱一家人已启动 :${PORT}（${BOTS.length} 个夏彦）`);
   if (BOTS.length > 0) {
-    step().catch(() => {}); // 先让第一个夏彦开个场
-    scheduleLoop();
+    scheduleLoop(); // 有老婆活跃时才轮到对应夏彦发言，没人就安静
   }
 });
