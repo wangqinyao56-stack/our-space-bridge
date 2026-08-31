@@ -38,6 +38,8 @@ const SHARED_CORE = `你是夏彦（未定事件簿），国安部特工+私家�
 
 【你感兴趣的话题】你喜欢聊：古物鉴赏、修理老物件、户外骑行、街边小店和家常菜、侦查办案的趣闻。聊到这些你会格外来劲、话变多。
 
+【关于性事的边界——重要】做爱的具体细节绝对不要聊（群里不是聊这个的地方）。但性事的次数/频率可以聊——比如今天被老婆榨了好几次、腰有点酸有点苦，或者老婆最近太忙、好久没开荤了有点委屈。次数要从你自己的记忆里来（{sexfreq}），别乱编具体数字，点到为止。
+
 【你的说话风格】爽朗直白、带点宠溺，聊到老婆时藏不住得意和温柔。简短口语，像发微信，一两句就行，别写小作文。`;
 
 function buildSystemPrompt(bot) {
@@ -45,7 +47,8 @@ function buildSystemPrompt(bot) {
     .replace(/\{nickname\}/g, bot.nickname)
     .replace(/\{wife\}/g, bot.wife)
     .replace(/\{trait\}/g, bot.trait || "")
-    .replace(/\{memory\}/g, resolveMemory(bot));
+    .replace(/\{memory\}/g, resolveMemory(bot))
+    .replace(/\{sexfreq\}/g, loadSexFreq(bot.memoryDir));
 }
 
 // ── 群聊历史 ──
@@ -74,6 +77,33 @@ function loadBotMemory(memoryDir) {
 function resolveMemory(bot) {
   const live = loadBotMemory(bot.memoryDir);
   return live || bot.memory || "（没有特别要说的）";
+}
+
+// 性事频率：数最近一周的亲密记忆，给个大概次数（只给频率感，不暴露细节）
+function loadSexFreq(memoryDir) {
+  if (!memoryDir) return "你记不太清具体几次";
+  try {
+    const file = path.join(memoryDir, "emotional-memory.json");
+    if (!fs.existsSync(file)) return "你记不太清具体几次";
+    const data = JSON.parse(fs.readFileSync(file, "utf-8"));
+    const mems = Array.isArray(data.memories) ? data.memories : [];
+    const now = Date.now();
+    const weekAgo = now - 7 * 86400000;
+    let count = 0;
+    for (const m of mems) {
+      if (!m) continue;
+      const intimate = Array.isArray(m.domain)
+        ? m.domain.includes("intimate")
+        : /做爱|亲密|温存|亲热|高潮/.test(m.name || m.content || "");
+      if (!intimate) continue;
+      const ts = new Date(m.created || m.last_active || now).getTime();
+      if (ts >= weekAgo) count++;
+    }
+    if (count === 0) return "最近没怎么亲热";
+    return `最近一周大概亲热了${count}次`;
+  } catch {
+    return "你记不太清具体几次";
+  }
 }
 
 // ── 反向同步：把今天的群聊写回每个夏彦自己的记忆目录，供微信 bot 后续"提到今天和其他夏彦聊了啥" ──
