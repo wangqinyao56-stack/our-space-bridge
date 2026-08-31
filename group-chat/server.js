@@ -343,9 +343,14 @@ function pushMessage(author, nickname, text, role, replyTo) {
 // ── 编排：轮流让某个夏彦接话 ──
 let turnIdx = 0;
 let speaking = false;
+let pendingWife = null;
 
 async function step(preferNick) {
-  if (speaking) return;
+  if (speaking) {
+    // 正有夏彦在生成回复、老婆又说话了：记下来，这轮结束立刻回她
+    if (preferNick) pendingWife = preferNick;
+    return;
+  }
   if (BOTS.length === 0) return;
   speaking = true;
   try {
@@ -374,6 +379,11 @@ async function step(preferNick) {
     console.error("[group-chat] step error:", e.message);
   } finally {
     speaking = false;
+    if (pendingWife) {
+      const n = pendingWife;
+      pendingWife = null;
+      step(n).catch(() => {});
+    }
   }
 }
 
