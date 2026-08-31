@@ -232,90 +232,9 @@ setCompanionCallback((message) => {
   console.log(`[companion] Broadcast: "${message.slice(0, 60)}..."`);
 });
 
-// ── 亲密空间主动互动：夏彦回家 + 华生沉默贴贴 ──
+// 亲密空间最近互动时间戳（主动对话已移除）
 let intimateLastUserMsg = 0;
-let intimateProactiveLast = 0;
-let intimateProactiveLastMsg = "";
-let intimateHomeArrivalDate = "";
-setInterval(async () => {
-  const now = Date.now();
-  const bjNow = new Date(now + 8 * 60 * 60 * 1000);
-  const hour = bjNow.getUTCHours();
-  const todayStr = `${bjNow.getUTCFullYear()}-${bjNow.getUTCMonth()}-${bjNow.getUTCDate()}`;
 
-  // ── 五点到六点：夏彦下班回家，主动发"我回来啦"（每天一次，无需华生先说话）──
-  if (hour === 17 && !isDayOffToday() && intimateHomeArrivalDate !== todayStr) {
-    // 正在聊天时不打断：最近互动 < 15 分钟则推迟到下一轮检查（5分钟后）再试
-    const activelyChatting = intimateLastUserMsg && (now - intimateLastUserMsg < 15 * 60 * 1000);
-    if (!activelyChatting) {
-      intimateHomeArrivalDate = todayStr;
-      try {
-        const prompt = getIntimateSystemPrompt();
-        const msg = await askJiushi({
-          systemPrompt: prompt,
-          userContent: "现在是傍晚五点到六点，你下班回家了。请主动告诉华生你回来了——像「我回来啦」这样的开场，然后自然地描写一两句你从玄关开门回家的动作（换鞋、放包、喊她、找她……），每次都要不一样，不要用固定的动作。语气开心、撒娇、想她。就一两句，不要长。",
-          history: [],
-          maxTokens: 150,
-        });
-        if (msg && msg.trim()) {
-          broadcast(JSON.stringify({ type: "intimate_reply", reply_to: `intimate_home_${now}`, content: msg.trim() }));
-          recordIntimateMessage("assistant", msg.trim());
-          console.log(`[intimate-proactive] 夏彦回家: "${msg.trim().slice(0, 50)}..."`);
-        }
-      } catch (e) { console.error("[intimate-proactive] home error:", e.message); }
-    }
-  }
-
-  // 正在聊天不打断：最近一次互动（华生发消息/夏彦回复）15分钟内，跳过主动贴贴
-  if (!intimateLastUserMsg || now - intimateLastUserMsg < 15 * 60 * 1000) return;
-  if (now - intimateLastUserMsg > 30 * 60 * 1000) return;
-  if (intimateProactiveLast && now - intimateProactiveLast < 20 * 60 * 1000) return;
-  intimateProactiveLast = now;
-  try {
-    const prompt = getIntimateSystemPrompt();
-
-    // 读今天亲密空间的对话，判断是"今天第一条主动消息"还是"今天已经聊过"
-    const intimateHistory = await getIntimateHistoryMessages();
-    const todayMsgs = (intimateHistory || []).filter((m) => {
-      if (!m.ts) return false;
-      const mBj = new Date(new Date(m.ts).getTime() + 8 * 60 * 60 * 1000);
-      const mKey = `${mBj.getUTCFullYear()}-${mBj.getUTCMonth()}-${mBj.getUTCDate()}`;
-      return mKey === todayStr;
-    });
-
-    let userContent;
-    let historyArg = [];
-    if (todayMsgs.length > 0) {
-      // 今天已经聊过：以今天最后一条消息为准，往下延伸一条
-      const lastMsg = todayMsgs[todayMsgs.length - 1];
-      const speaker = lastMsg.role === "user" ? "华生" : "夏彦";
-      userContent = `华生在亲密空间里，但好一会儿没说话了。你想她了，主动贴过去。今天你们最后聊到的是${speaker}说的："${(lastMsg.content || "").slice(0, 120)}"。**贴的动作要接着刚才的话题来**——一边贴着她（从背后抱住、把脸埋进她颈窝、蹭她、亲她），一边接着那个话题往下说一句，或者用身体动作回应刚才的话头。别突然跳到完全不相关的事，也别干巴巴只问"在干嘛"。语气撒娇、黏人、软乎乎的。就一两句加一个动作，不要长。`;
-      historyArg = todayMsgs.slice(-6).map((m) => ({ role: m.role, content: m.content }));
-    } else {
-      // 今天第一条主动消息：找个话题生成
-      userContent = `华生在亲密空间里，但好一会儿没说话了。今天你们还没聊过，这是你今天第一次主动找她。随便找个话题或理由贴过去——从背后抱住她、把脸埋进她颈窝、蹭她、要她理理你，求关注。理由和姿势每次都要不一样（想她了、无聊了、想闻她、想挨着她……），随机一点，别每次都问「在干嘛」。语气撒娇、黏人、软乎乎的。就一两句加一个动作，不要长，不要展开。`;
-    }
-
-    const msg = await askJiushi({
-      systemPrompt: prompt,
-      userContent,
-      history: historyArg,
-      maxTokens: 150,
-    });
-    if (msg && msg.trim()) {
-      intimateProactiveLastMsg = msg.trim();
-      broadcast(JSON.stringify({
-        type: "intimate_reply",
-        reply_to: `intimate_proactive_${now}`,
-        content: msg.trim(),
-      }));
-      recordIntimateMessage("assistant", msg.trim());
-      console.log(`[intimate-proactive] 夏彦主动贴贴: "${msg.trim().slice(0, 50)}..."`);
-    }
-  } catch (e) {
-    console.error("[intimate-proactive] error:", e.message);
-  }
-}, 5 * 60 * 1000);
 
 // ── NXX Group Chat auto-trigger ──
 let nxxTimer = null;
