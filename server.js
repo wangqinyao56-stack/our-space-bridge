@@ -71,7 +71,7 @@ import { startProactiveChat, notifyUserActivity, getProactiveState, scheduleOutR
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
-import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport, listBooks as coreadListBooks, listCategories as coreadListCategories, createCategory as coreadCreateCategory, deleteBook as coreadDeleteBook, moveBook as coreadMoveBook, readText as coreadReadText, readChapterAudio as coreadReadChapter, getChapter as coreadGetChapter, replyComment as coreadReplyComment } from "./lib/coread.js";
+import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport, listBooks as coreadListBooks, listCategories as coreadListCategories, createCategory as coreadCreateCategory, deleteBook as coreadDeleteBook, moveBook as coreadMoveBook, readText as coreadReadText, readChapterAudio as coreadReadChapter, saveReadingProgress as coreadSaveProgress, getChapter as coreadGetChapter, replyComment as coreadReplyComment } from "./lib/coread.js";
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
 import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail, getSongUrl as neteaseUrl } from "./lib/netease.js";
 import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset, generateOpening as monopolyOpening } from "./lib/monopoly.js";
@@ -2775,6 +2775,13 @@ wss.on("connection", (ws, req) => {
       const r = coreadReadChapter(msg.bookId, msg.chapterIdx ?? 0);
       if (r.error) { ws.send(JSON.stringify({ type: "coread_error", message: r.error })); return; }
       ws.send(JSON.stringify({ type: "coread_read_chunk", ...r }));
+      return;
+    }
+
+    if (msg.type === "coread_save_progress") {
+      if (!msg.bookId) return;
+      const r = coreadSaveProgress(msg.bookId, msg.chapterIdx ?? 0, msg.positionSeconds ?? 0);
+      if (!r.error) ws.send(JSON.stringify({ type: "coread_progress_saved", ...r }));
       return;
     }
 
