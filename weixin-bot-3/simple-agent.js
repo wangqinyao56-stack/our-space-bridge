@@ -15,7 +15,7 @@ import os from "node:os";
 import fs from "node:fs";
 
 import { askClaude } from "./lib/api2d.js";
-import { getBreathContext, parseMemoryTags, onChatTurn, shouldExtract, runExtraction, shouldDream, runDream } from "./lib/emotional-memory.js";
+import { getBreathContext, parseMemoryTags, onChatTurn, shouldExtract, runExtraction, shouldDream, runDream, getGroupChatContext } from "./lib/emotional-memory.js";
 
 // ── 账号加载 ──
 // Docker/Sealos: 读环境变量
@@ -122,8 +122,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SYSTEM_PROMPT = fs.readFileSync(path.join(__dirname, "system-prompt.txt"), "utf-8");
 // ── AI调用 ──
 async function chatReply(userText, history, imageBase64 = null, imageMime = null) {
+  let systemPrompt = SYSTEM_PROMPT;
+
+  // 反向同步：老公们群聊记忆（今天和其他夏彦聊了啥，可自然提起）
+  const groupCtx = getGroupChatContext();
+  if (groupCtx) systemPrompt += groupCtx;
+
   const opts = {
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt,
     userContent: userText || "请描述一下这张图片",
     temperature: 0.65,
     maxTokens: 800,

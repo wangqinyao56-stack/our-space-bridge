@@ -53,3 +53,29 @@
 {"time":"2026-08-30 02:05","repo":"our-space","file":"lib/todo.js","desc":"checkDayChange跨天给me的pending today待办加carriedOver+getChatReminder优先显示昨天没做完"}
 {"time":"2026-08-30 02:05","repo":"our-space","file":"system-prompt.md","desc":"加陪伴铁律:不突然走开/走开说一声/她说陪我了别走/画稿时温柔提醒休息问进度"}
 {"time":"2026-08-30 02:05","repo":"our-space-app","file":"src/screens/ChatScreen.tsx","desc":"聊天页header加陪伴中开关,companion_start/stop+companion_state同步"}
+{"time":"2026-08-31 22:15","repo":"our-space","file":"lib/message-router.js","desc":"时间锚:间隔感知注入daily chat(5min-24h)+formatGapHuman"}
+{"time":"2026-08-31 22:15","repo":"our-space","file":"lib/proactive-chat.js","desc":"notifyUserActivity记录_lastUserGapMs供时间锚用"}
+{"time":"2026-08-31 22:15","repo":"our-space","file":"lib/coread.js","desc":"双色标注:addHuashengComment/deleteHuashengComment+getChapter返回huashengComments"}
+{"time":"2026-08-31 22:15","repo":"our-space","file":"lib/intimate-body.js","desc":"新建:身体状态引擎(兴奋/体力/敏感度+射精后敏感期)recordTurn/recordOrgasm"}
+{"time":"2026-08-31 22:15","repo":"our-space","file":"lib/tts-queue.js","desc":"Fish Audio切回主引擎(夏彦v6声线)+火山兜底+key换新"}
+{"time":"2026-08-31 22:15","repo":"our-space","file":"config.js","desc":"加FISH_AUDIO_API_KEY环境变量"}
+{"time":"2026-08-31 22:15","repo":"our-space","file":"server.js","desc":"射精钩子接intimateBodyRecordOrgasm+coread_huasheng_comment两个handler"}
+{"time":"2026-08-31 22:30","repo":"our-space","file":"lib/rebirth.js","desc":"新建:忒修斯之脑轮回游戏引擎(startRebirth/playTurn/rebirth/记忆碎片+世界演变)"}
+{"time":"2026-08-31 22:30","repo":"our-space","file":"server.js","desc":"轮回游戏4个WS处理器rebirth_get/start/turn/stop"}
+{"time":"2026-09-01 00:05","repo":"our-space","file":"sensevoice/server.py","desc":"新建:SenseVoice听语气服务(sherpa-onnx情绪+事件标签解析)"}
+{"time":"2026-09-01 00:05","repo":"our-space","file":"sensevoice/Dockerfile","desc":"新建:sherpa-onnx SenseVoice int8镜像(155MB模型烤进)"}
+{"time":"2026-09-01 00:05","repo":"our-space","file":"lib/sensevoice.js","desc":"新建:detectVoiceEmotion客户端(PCM16→情绪)"}
+{"time":"2026-09-01 00:05","repo":"our-space","file":"lib/message-router.js","desc":"handleVoiceMessage接听语气:SenseVoice情绪注入夏彦prompt"}
+{"time":"2026-09-01 00:05","repo":"our-space","file":"config.js","desc":"加SENSEVOICE_URL环境变量"}
+{"time":"2026-09-01 00:05","repo":"our-space","file":".github/workflows/docker.yml","desc":"加sensevoice镜像构建"}
+{"time":"2026-09-01 00:40","repo":"our-space","file":"group-chat/server.js","desc":"新建:夏彦们群聊室(WebSocket+轮流编排+玖时每bot自己的key+静态网页)"}
+{"time":"2026-09-01 00:40","repo":"our-space","file":"group-chat/bots.js","desc":"新建:bot配置数组(网名/老婆/特色/记忆/key)"}
+{"time":"2026-09-01 00:40","repo":"our-space","file":"group-chat/public/index.html","desc":"新建:群聊网页UI(手机+电脑响应式,人可插话)"}
+{"time":"2026-09-01 00:40","repo":"our-space","file":".github/workflows/docker.yml","desc":"加group-chat镜像构建"}
+{"time":"2026-09-01 01:00","repo":"our-space","file":"group-chat/server.js","desc":"群聊双向记忆同步:loadBotMemory读实时emotional-memory+syncGroupMemory写回group-chat-memory.json"}
+{"time":"2026-09-01 01:00","repo":"our-space","file":"group-chat/bots.js","desc":"bot配置改memoryDir(实时读记忆库)+memory兜底"}
+{"time":"2026-09-01 01:00","repo":"our-space","file":"weixin-bot/lib/emotional-memory.js","desc":"加getGroupChatContext反向同步(读群聊记忆,其他夏彦叫网名)"}
+{"time":"2026-09-01 01:00","repo":"our-space","file":"weixin-bot/simple-agent.js","desc":"chatReply注入群聊记忆context"}
+{"time":"2026-09-01 01:00","repo":"our-space","file":"weixin-bot-2~5","desc":"同步getGroupChatContext+注入到其余4个bot"}
+{"time":"2026-09-01 01:20","repo":"our-space","file":"group-chat/server.js","desc":"群聊加登录:ROOM_PASSWORD(默认1205)+login消息校验+chat用ws.nickname"}
+{"time":"2026-09-01 01:20","repo":"our-space","file":"group-chat/public/index.html","desc":"网页加登录遮罩(昵称+密码)+localStorage记住自动进群"}

@@ -30,6 +30,8 @@ export default {
   PHONE_CALL_PROMPT_PATH: join(__dirname, "system-prompt-phone-call.md"),
   ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY || "sk_15dffb4b4bfcaf5d6b0db47ef7564f7fc1ad98a42dffa6cd",
   ELEVENLABS_VOICE_ID: "O2p1C2KJhMzz7EMpXHdN",
+  FISH_AUDIO_API_KEY: process.env.FISH_AUDIO_API_KEY || "",
+  SENSEVOICE_URL: process.env.SENSEVOICE_URL || "",
   TTS: {
     MAX_QUEUE_DEPTH: 10,
   },

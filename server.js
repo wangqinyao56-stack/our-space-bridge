@@ -71,11 +71,13 @@ import { startProactiveChat, notifyUserActivity, getProactiveState, scheduleOutR
 import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.js";
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
-import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport, listBooks as coreadListBooks, listCategories as coreadListCategories, createCategory as coreadCreateCategory, deleteBook as coreadDeleteBook, moveBook as coreadMoveBook, readText as coreadReadText, readChapterAudio as coreadReadChapter, saveReadingProgress as coreadSaveProgress, getChapter as coreadGetChapter, replyComment as coreadReplyComment } from "./lib/coread.js";
+import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport, listBooks as coreadListBooks, listCategories as coreadListCategories, createCategory as coreadCreateCategory, deleteBook as coreadDeleteBook, moveBook as coreadMoveBook, readText as coreadReadText, readChapterAudio as coreadReadChapter, saveReadingProgress as coreadSaveProgress, getChapter as coreadGetChapter, replyComment as coreadReplyComment, addHuashengComment as coreadAddHuashengComment, deleteHuashengComment as coreadDeleteHuashengComment } from "./lib/coread.js";
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
 import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail, getSongUrl as neteaseUrl } from "./lib/netease.js";
 import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset, generateOpening as monopolyOpening } from "./lib/monopoly.js";
 import { getCalendar as calendarGet, addNote as calendarAddNote, deleteNote as calendarDelNote, addAlarm as calendarAddAlarm, deleteAlarm as calendarDelAlarm, recordEjaculationEvent as calendarRecordEjaculation } from "./lib/calendar.js";
+import { recordOrgasm as intimateBodyRecordOrgasm } from "./lib/intimate-body.js";
+import { getRebirthState as rebirthGetState, startRebirth as rebirthStart, playTurn as rebirthPlayTurn, stopRebirth as rebirthStop } from "./lib/rebirth.js";
 import { setCompanionCallback, startCompanion, stopCompanion, noteUserReply as companionNoteUserReply, getCompanionState, maybeRecordTask } from "./lib/companion.js";
 
 // ── 亲密后夏彦反应（开心颜文字甜话，不重复；做多了哭唧唧） ──
@@ -97,6 +99,8 @@ function processEjaculationMarker(reply, eventId) {
 function recordEjaculationWithReaction(eventId) {
   const { crossed, skipped } = calendarRecordEjaculation(eventId);
   if (!skipped) {
+    // 身体状态：夏彦真正射精 → 兴奋回落、体力大降、进入高潮后敏感期
+    intimateBodyRecordOrgasm();
     // 每次真正射精（非去重跳过）都考虑写做爱事后谈日记（内部按天节流）
     summarizeIntimateToDiary().catch((err) => console.error("[diary] Intimate summary error:", err.message));
   }
@@ -2722,6 +2726,57 @@ wss.on("connection", (ws, req) => {
       const r = coreadReplyComment(msg.bookId, msg.commentId, msg.text);
       if (r.error) { ws.send(JSON.stringify({ type: "coread_error", message: r.error })); return; }
       ws.send(JSON.stringify({ type: "coread_comment_updated", comment: r.comment }));
+      return;
+    }
+
+    if (msg.type === "coread_huasheng_comment") {
+      if (!msg.bookId) { ws.send(JSON.stringify({ type: "coread_error", message: "缺少 bookId" })); return; }
+      const r = coreadAddHuashengComment(msg.bookId, msg.chapterIdx ?? 0, msg.sentenceIdx ?? 0, msg.text);
+      if (r.error) { ws.send(JSON.stringify({ type: "coread_error", message: r.error })); return; }
+      ws.send(JSON.stringify({ type: "coread_huasheng_comment_added", huashengComment: r.huashengComment }));
+      return;
+    }
+
+    if (msg.type === "coread_huasheng_comment_delete") {
+      if (!msg.bookId || !msg.commentId) { ws.send(JSON.stringify({ type: "coread_error", message: "缺少参数" })); return; }
+      const r = coreadDeleteHuashengComment(msg.bookId, msg.commentId);
+      if (r.error) { ws.send(JSON.stringify({ type: "coread_error", message: r.error })); return; }
+      ws.send(JSON.stringify({ type: "coread_huasheng_comment_deleted", commentId: msg.commentId }));
+      return;
+    }
+
+    // ── 忒修斯之脑 轮回游戏 ──
+    if (msg.type === "rebirth_get") {
+      ws.send(JSON.stringify({ type: "rebirth_state", state: rebirthGetState() }));
+      return;
+    }
+
+    if (msg.type === "rebirth_start") {
+      try {
+        const r = await rebirthStart();
+        if (r.error) { ws.send(JSON.stringify({ type: "rebirth_error", message: r.error })); return; }
+        ws.send(JSON.stringify({ type: "rebirth_state", state: r.state, opening: r.opening }));
+      } catch (e) {
+        console.error("[rebirth] start failed:", e.message);
+        ws.send(JSON.stringify({ type: "rebirth_error", message: "开局失败，稍后再试" }));
+      }
+      return;
+    }
+
+    if (msg.type === "rebirth_turn") {
+      try {
+        const r = await rebirthPlayTurn();
+        if (r.error) { ws.send(JSON.stringify({ type: "rebirth_error", message: r.error })); return; }
+        ws.send(JSON.stringify({ type: "rebirth_state", state: r.state, narrative: r.narrative, ended: r.ended, rebirth: r.rebirth || null }));
+      } catch (e) {
+        console.error("[rebirth] turn failed:", e.message);
+        ws.send(JSON.stringify({ type: "rebirth_error", message: "这一轮失败，稍后再试" }));
+      }
+      return;
+    }
+
+    if (msg.type === "rebirth_stop") {
+      ws.send(JSON.stringify({ type: "rebirth_state", state: rebirthStop() }));
       return;
     }
 

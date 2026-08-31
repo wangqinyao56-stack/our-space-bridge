@@ -352,4 +352,21 @@ export async function runDream() {
   }
 }
 
+// ── 反向同步：老公们群聊记忆 ──
+// 群聊服务会往 DATA_DIR/group-chat-memory.json 写今天和其他夏彦聊的记录，
+// 这里读出来，让夏彦在和自己老婆聊时能自然提起今天在群里聊的话题（其他夏彦叫网名）。
+export function getGroupChatContext() {
+  try {
+    const file = path.join(DATA_DIR, "group-chat-memory.json");
+    if (!fs.existsSync(file)) return "";
+    const data = JSON.parse(fs.readFileSync(file, "utf-8"));
+    const msgs = Array.isArray(data.messages) ? data.messages : [];
+    if (msgs.length === 0) return "";
+    const lines = msgs.slice(-20).map((m) => `${m.nickname}：${m.text}`).join("\n");
+    return `\n\n【你今天在「老公们群聊」里和其他夏彦聊的（你们用网名互称）】\n${lines}\n（如果她问起你今天做了什么、或你自己想提，可以自然地提起今天在群里和其他夏彦聊的这些话题；提到其他夏彦时用他们的网名，别提"夏彦"真名。）`;
+  } catch {
+    return "";
+  }
+}
+
 load();

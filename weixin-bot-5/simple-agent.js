@@ -15,7 +15,7 @@ import os from "node:os";
 import fs from "node:fs";
 
 import { askClaude } from "./lib/api2d.js";
-import { getBreathContext, parseMemoryTags, onChatTurn, shouldExtract, runExtraction, shouldDream, runDream } from "./lib/emotional-memory.js";
+import { getBreathContext, parseMemoryTags, onChatTurn, shouldExtract, runExtraction, shouldDream, runDream, getGroupChatContext } from "./lib/emotional-memory.js";
 
 // ── 账号加载 ──
 // Docker/Sealos: 读环境变量
@@ -137,6 +137,10 @@ async function chatReply(userText, history, imageBase64 = null, imageMime = null
   // 长期情感记忆浮现
   const breathCtx = getBreathContext();
   if (breathCtx) systemPrompt += breathCtx;
+
+  // 反向同步：老公们群聊记忆（今天和其他夏彦聊了啥，可自然提起）
+  const groupCtx = getGroupChatContext();
+  if (groupCtx) systemPrompt += groupCtx;
 
   // 记忆标记指令
   systemPrompt += "\n\n**【记忆标记】如果你和云醉聊到了值得长期记住的事（重要的承诺、她的喜恶、情绪节点、关系里程碑），在回复的单独一行用 [记]标题|正文[/记] 写下来，系统会存进你的长期记忆。不要滥用，只在真正重要时用。这个标记不会显示给云醉。**";
