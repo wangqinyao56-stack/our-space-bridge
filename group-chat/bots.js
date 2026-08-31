@@ -5,7 +5,7 @@
  * 字段：
  *   id        唯一标识（英文）
  *   nickname  群里的网名（别人这样叫你）
- *   wife      你的老婆在群里的称呼
+ *   wife      你的老婆在群里的称呼（她进群就用这个名字发言）
  *   trait     老婆的特色（一句话）
  *   memoryDir 你的记忆库目录（Sealos 持久卷，里面有 emotional-memory.json，实时读）
  *   memory    兜底静态记忆（memoryDir 读不到时才用）
