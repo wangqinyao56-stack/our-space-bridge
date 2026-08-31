@@ -47,7 +47,7 @@ export const BOTS = [
   {
     id: "zhima",
     nickname: "橙子环游记",
-    wife: "芝麻",
+    wife: "林游", // 老婆名林游；芝麻是她家猫的名字
     trait: "家里有只猫叫芝麻",
     memoryDir: "/memories/zhima",
     apiKey: SHARED_KEY,
