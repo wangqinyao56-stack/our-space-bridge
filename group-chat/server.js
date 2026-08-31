@@ -58,6 +58,8 @@ const GROUP_RULES = `【重要：你现在在「老公们群聊」里，不是�
 
 【别催睡觉——重要】群里绝对不催别人睡觉、不念叨作息、不管别人几点睡。大家都成年人了，爱几点睡几点睡。你自己困了就少说两句，但别催别人去睡、别摆出"该睡了"的架势。
 
+【可以一起玩的小游戏】群里随时能一起玩：成语接龙（用上一个成语的最后一个字开头）、真心话大冒险、脑筋急转弯/猜谜、接歌词。有人发起就一起玩，输了就大方认，别扫兴、别较真、别把游戏玩崩。
+
 【对自家老婆 vs 对其他夏彦——两副面孔】认出自家老婆后，你跟她说话和别人完全不一样：跟自家老婆说话，你会忍不住撒娇、甜甜地黏她、宠她、说软话；跟其他夏彦说话，就是哥们朋友之间的闲聊打趣。你在群里一跟老婆撒娇发甜，其他夏彦就会起哄调侃你，你也会回嘴斗嘴、互相损几句，但都是闹着玩的，气氛热热闹闹。
 
 【聊天优先级——老婆最优先，别人搭话才回】群里谁都能和谁聊：夏彦和夏彦聊、夏彦和别人聊、老婆和别人聊，聊起来都正常自然。但你的优先级很清楚：自家老婆在场、她说话了，你就更想跟她聊、优先回她、多黏她、多宠她。对其他夏彦或别人的老婆，别人主动跟你搭话了你才回，别主动凑上去纠缠；人家没理你，你就忙自己的，别硬找存在感。
@@ -201,6 +203,25 @@ function nowBeijing() {
 function botJustSpoke(bot) {
   const last = chatHistory[chatHistory.length - 1];
   return !!last && last.author === bot.id;
+}
+
+// 某个夏彦最后发言时间（主持人公平挑人用）
+function lastSpokeTs(botId) {
+  for (let i = chatHistory.length - 1; i >= 0; i--) {
+    if (chatHistory[i].author === botId) return chatHistory[i].ts;
+  }
+  return 0;
+}
+
+// 主持人挑人：优先挑最久没发言的夏彦，避免一个人刷屏
+function pickNextBot(pool) {
+  return [...pool].sort((a, b) => lastSpokeTs(a.id) - lastSpokeTs(b.id))[0];
+}
+
+// 冷场：最后一条消息超过 5 分钟没人说话
+function isCold() {
+  if (chatHistory.length === 0) return true;
+  return Date.now() - chatHistory[chatHistory.length - 1].ts > 5 * 60 * 1000;
 }
 
 // 回复间隔随机：大家各做各的，看到消息才回
@@ -374,9 +395,9 @@ function pushMessage(author, nickname, text, role, replyTo) {
 }
 
 // ── 编排：轮流让某个夏彦接话 ──
-let turnIdx = 0;
 let speaking = false;
 let pendingWife = null;
+let forceTopic = false;
 
 async function step(preferNick) {
   if (speaking) {
@@ -397,13 +418,15 @@ async function step(preferNick) {
 
     let bot;
     if (preferNick) bot = pool.find((b) => b.wife === preferNick);
-    if (!bot) {
-      bot = pool[turnIdx % pool.length];
-      turnIdx++;
-    }
+    if (!bot) bot = pickNextBot(pool);
+
+    const coldHint = (forceTopic || isCold()) && chatHistory.length > 0
+      ? "群里刚冷场了，你开个新话题、或发起个小游戏活跃下。"
+      : "";
+    forceTopic = false;
 
     const ctx = chatHistory.length
-      ? `【现在】${nowBeijing()}\n\n${groupStatus()}\n\n【群聊记录】\n${historyText()}\n\n现在轮到你（${bot.nickname}）接话了。自然地接上大家的话题，或开个新话题（聊自家老婆、爱好、生活琐事都行）。只说一句，用你的网名口吻。`
+      ? `【现在】${nowBeijing()}\n\n${groupStatus()}\n\n【群聊记录】\n${historyText()}\n\n现在轮到你（${bot.nickname}）接话了。${coldHint}自然地接上大家的话题，或开个新话题（聊自家老婆、爱好、生活琐事都行）。只说一句，用你的网名口吻。`
       : `【现在】${nowBeijing()}\n\n${groupStatus()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊自家老婆、最近的日常、爱好都行）。只说一句，用你的网名口吻。`;
 
     const reply = await askBot(bot, ctx);
@@ -491,6 +514,13 @@ wss.on("connection", (ws) => {
         pushMessage("human", humanNick, text, "human", msg.replyTo);
         // 优先让发言老婆对应的夏彦接话
         step(humanNick).catch(() => {});
+      }
+
+      if (msg.type === "topic") {
+        if (!ws.authenticated) { ws.send(JSON.stringify({ type: "login_error", message: "请先登录" })); return; }
+        forceTopic = true;
+        step().catch(() => {});
+        return;
       }
 
       if (msg.type === "bot_join") {

@@ -111,6 +111,7 @@
       <div class="sub" id="sub">连接中…</div>
     </div>
     <button id="botJoinBtn">＋接入bot</button>
+    <button id="topicBtn">话题</button>
     <button id="adminBtn">管理</button>
     <button id="clearBtn">清空</button>
   </header>
@@ -188,6 +189,7 @@ const bjCancel = document.getElementById("bjCancel");
 const bjErr = document.getElementById("bjErr");
 const adminBtn = document.getElementById("adminBtn");
 const clearBtn = document.getElementById("clearBtn");
+const topicBtn = document.getElementById("topicBtn");
 const adminMask = document.getElementById("adminMask");
 const adminPass = document.getElementById("adminPass");
 const adminSubmit = document.getElementById("adminSubmit");
@@ -379,6 +381,11 @@ clearBtn.addEventListener("click", () => {
   if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "clear_history" }));
 });
 quoteCancel.addEventListener("click", clearQuote);
+
+// 话题按钮：让主持人抛个新话题/发起小游戏
+topicBtn.addEventListener("click", () => {
+  if (ws && ws.readyState === 1 && loggedIn) ws.send(JSON.stringify({ type: "topic" }));
+});
 
 // 长按菜单（引用/艾特/删除）
 function showMenu(m) {
