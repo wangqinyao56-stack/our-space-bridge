@@ -15,7 +15,7 @@ import os from "node:os";
 import fs from "node:fs";
 
 import { askClaude } from "./lib/api2d.js";
-import { getBreathContext, parseMemoryTags, onChatTurn, shouldExtract, runExtraction } from "./lib/emotional-memory.js";
+import { getBreathContext, parseMemoryTags, onChatTurn, shouldExtract, runExtraction, shouldDream, runDream } from "./lib/emotional-memory.js";
 
 // ── 账号加载 ──
 // Docker/Sealos: 读环境变量
@@ -198,6 +198,10 @@ const agent = {
           .map((m) => (m.role === "user" ? "华生：" : "夏彦：") + m.content)
           .join("\n");
         runExtraction(recent).catch(() => {});
+      }
+      // 做梦消化：定期把已告一段落的记忆标记为已解决（否则做爱/情绪记忆永不消化，一直 breath 浮现）
+      if (shouldDream()) {
+        runDream().catch(() => {});
       }
     } catch (err) {
       console.error(`[agent] AI error: ${err.message}`);
