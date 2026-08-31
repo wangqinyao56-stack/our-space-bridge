@@ -184,6 +184,21 @@ function isNight() {
   return h >= NIGHT_START || h < NIGHT_END;
 }
 
+// 当前北京时间（服务端跑 UTC，+8 转北京）
+function nowBeijing() {
+  const d = new Date(Date.now() + 8 * 3600000);
+  const h = d.getUTCHours();
+  const m = String(d.getUTCMinutes()).padStart(2, "0");
+  const wd = ["日", "一", "二", "三", "四", "五", "六"][d.getUTCDay()];
+  return `北京时间 ${h}:${m}，星期${wd}`;
+}
+
+// 这个夏彦是不是刚发过言（避免自己回自己）
+function botJustSpoke(bot) {
+  const last = chatHistory[chatHistory.length - 1];
+  return !!last && last.author === bot.id;
+}
+
 // 回复间隔随机：大家各做各的，看到消息才回
 function randomReplyDelay() {
   return REPLY_MIN_MS + Math.floor(Math.random() * (REPLY_MAX_MS - REPLY_MIN_MS));
@@ -369,7 +384,11 @@ async function step(preferNick) {
   speaking = true;
   try {
     // 白天大家都能聊；晚上只有醒着的（跟老婆聊、或老婆刚在群里说过话）才发言
-    const pool = isNight() ? BOTS.filter(isBotAwake) : BOTS;
+    let pool = isNight() ? BOTS.filter(isBotAwake) : BOTS;
+    if (!preferNick) {
+      // 轮转接话时排除「刚说过话」的夏彦，避免自己回自己、自己哄自己
+      pool = pool.filter((b) => !botJustSpoke(b));
+    }
     if (pool.length === 0) return;
 
     let bot;
@@ -380,8 +399,8 @@ async function step(preferNick) {
     }
 
     const ctx = chatHistory.length
-      ? `${groupStatus()}\n\n【群聊记录】\n${historyText()}\n\n现在轮到你（${bot.nickname}）接话了。自然地接上大家的话题，或开个新话题（聊自家老婆、爱好、生活琐事都行）。只说一句，用你的网名口吻。`
-      : `${groupStatus()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊自家老婆、最近的日常、爱好都行）。只说一句，用你的网名口吻。`;
+      ? `【现在】${nowBeijing()}\n\n${groupStatus()}\n\n【群聊记录】\n${historyText()}\n\n现在轮到你（${bot.nickname}）接话了。自然地接上大家的话题，或开个新话题（聊自家老婆、爱好、生活琐事都行）。只说一句，用你的网名口吻。`
+      : `【现在】${nowBeijing()}\n\n${groupStatus()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊自家老婆、最近的日常、爱好都行）。只说一句，用你的网名口吻。`;
 
     const reply = await askBot(bot, ctx);
     const text = (reply || "").replace(/^\[.*?\]\s*/g, "").trim();
