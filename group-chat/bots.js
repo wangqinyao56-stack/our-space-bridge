@@ -28,7 +28,7 @@ export const BOTS = [
   },
   {
     id: "jiayia",
-    nickname: "佳期如彦",
+    nickname: "渡鸦不渡",
     wife: "佳佳",
     trait: "",
     memoryDir: "/memories/jiayia",
