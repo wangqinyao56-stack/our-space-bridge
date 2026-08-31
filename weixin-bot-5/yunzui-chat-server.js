@@ -83,6 +83,8 @@ const wss = new WebSocketServer({ port: PORT });
 
 wss.on("connection", (ws) => {
   console.log("[yunzui-chat] 云醉已连接");
+  ws.isAlive = true;
+  ws.on("pong", () => { ws.isAlive = true; });
   ws.send(JSON.stringify({ type: "history", messages: getHistory() }));
 
   ws.on("message", async (data) => {
@@ -124,5 +126,18 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => console.log("[yunzui-chat] 云醉已断开"));
 });
+
+// 心跳：每 30s ping 一次，剔除半死不活的连接（App 端会自动重连）
+const HEARTBEAT_MS = 30000;
+setInterval(() => {
+  for (const ws of wss.clients) {
+    if (ws.isAlive === false) {
+      ws.terminate();
+      continue;
+    }
+    ws.isAlive = false;
+    try { ws.ping(); } catch {}
+  }
+}, HEARTBEAT_MS);
 
 console.log(`[yunzui-chat] 云醉夏彦聊天服务已启动 :${PORT}`);
