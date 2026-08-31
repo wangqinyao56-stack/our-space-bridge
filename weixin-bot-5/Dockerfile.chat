@@ -1,0 +1,18 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package.json ./
+RUN npm install --production
+
+COPY lib/ ./lib/
+COPY yunzui-chat-server.js .
+COPY system-prompt.txt .
+
+ENV DISABLE_PROXY=true
+ENV MEMORY_DIR=/data2
+ENV PORT=8080
+
+EXPOSE 8080
+
+CMD ["node", "yunzui-chat-server.js"]

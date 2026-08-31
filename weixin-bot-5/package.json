@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "qrcode": "^1.5.4",
-    "weixin-agent-sdk": "^0.5.0"
+    "weixin-agent-sdk": "^0.5.0",
+    "ws": "^8.18.0"
   }
 }

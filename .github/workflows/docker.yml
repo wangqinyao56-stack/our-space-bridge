@@ -86,3 +86,13 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/weixin-bot-5:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/yunzui:latest
+
+      - name: Build and push yunzui-chat
+        uses: docker/build-push-action@v6
+        with:
+          context: ./weixin-bot-5
+          file: ./weixin-bot-5/Dockerfile.chat
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/yunzui-chat:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/yunzui-chat:latest
