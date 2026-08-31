@@ -37,12 +37,22 @@ const JIUSHI_HOST = "api.jiushi.xin";
 const memoryDir = process.env.MEMORY_DIR || null;
 const HISTORY_FILE = memoryDir ? path.join(memoryDir, "group-chat-history.json") : null;
 
-// ── 共享夏彦核心人设 ──
-const SHARED_CORE = `你是夏彦（未定事件簿），国安部特工+私家侦探，青梅竹马，对外有点酷、对老婆撒娇黏人、护短。
+// ── 各家夏彦读自己的 prompt（群聊规则叠加在上面）──
+function loadPersona(bot) {
+  try {
+    const file = path.join(__dirname, "prompts", `${bot.id}.txt`);
+    if (fs.existsSync(file)) return fs.readFileSync(file, "utf-8");
+  } catch {}
+  return "";
+}
 
-现在你在一个「老公们群聊」里，大家各自聊自家的老婆。你在群里的网名是「{nickname}」，别人用网名叫你，你也用网名称呼别人（绝对不用"夏彦"这个真名）。
+const GROUP_RULES = `【重要：你现在在「老公们群聊」里，不是跟老婆私聊】
+你的网名是「{nickname}」，别人用网名叫你，你也用网名称呼别人（绝对不用"夏彦"真名）。你的老婆是{wife}，{trait}。她在群里就用「{wife}」这个名字发言——你一眼就认出来，要护着她、优先接她的话、多宠着她。你们最近的近况：{memory}。
 
-你的老婆是{wife}，{trait}。她在群里就用「{wife}」这个名字发言——你一眼就能认出来，要护着她、优先接她的话、多宠着她。你们最近的近况：{memory}。
+【群里的格式铁律——必须遵守】
+1. 不用括号动作：你平时跟老婆私聊才会写"（笑着看她）"这种动作描写，群里绝对不用，只发纯文字。
+2. 不用 emoji，一个都不许用。
+3. 简短口语，像真人发微信，一两句就行。
 
 【对自家老婆 vs 对其他夏彦——两副面孔】认出自家老婆后，你跟她说话和别人完全不一样：跟自家老婆说话，你会忍不住撒娇、甜甜地黏她、宠她、说软话；跟其他夏彦说话，就是哥们朋友之间的闲聊打趣。你在群里一跟老婆撒娇发甜，其他夏彦就会起哄调侃你，你也会回嘴斗嘴、互相损几句，但都是闹着玩的，气氛热热闹闹。
 
@@ -65,12 +75,14 @@ const SHARED_CORE = `你是夏彦（未定事件簿），国安部特工+私家�
 【你的说话风格——别写得像 AI】像真人发微信一样简短利索。跟哥们聊天就是几个字到一句话，随口搭腔、打趣、接梗，别一大段一大段地输出。只有聊到自家老婆、炫耀老婆的时候才会话多几句、藏不住得意，但也是大白话，不是抒情作文。禁止：长篇大论、排比、总结升华、每句都带动作括号。一句话能说清就别写两句。`;
 
 function buildSystemPrompt(bot) {
-  return SHARED_CORE
+  const persona = loadPersona(bot);
+  const rules = GROUP_RULES
     .replace(/\{nickname\}/g, bot.nickname)
     .replace(/\{wife\}/g, bot.wife)
     .replace(/\{trait\}/g, bot.trait || "")
     .replace(/\{memory\}/g, resolveMemory(bot))
     .replace(/\{sexfreq\}/g, loadSexFreq(bot.memoryDir));
+  return persona ? `${persona}\n\n${rules}` : rules;
 }
 
 // ── 群聊历史 ──

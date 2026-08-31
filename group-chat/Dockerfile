@@ -6,6 +6,7 @@ COPY package.json ./
 RUN npm install --omit=dev
 
 COPY server.js bots.js ./
+COPY prompts ./prompts
 COPY public ./public
 
 ENV PORT=8080
