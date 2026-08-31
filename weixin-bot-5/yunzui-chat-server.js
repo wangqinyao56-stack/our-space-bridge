@@ -12,7 +12,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { askClaude } from "./lib/api2d.js";
-import { getBreathContext, parseMemoryTags, onChatTurn, shouldExtract, runExtraction } from "./lib/emotional-memory.js";
+import { getBreathContext, getGroupChatContext, parseMemoryTags, onChatTurn, shouldExtract, runExtraction } from "./lib/emotional-memory.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SYSTEM_PROMPT = fs.readFileSync(path.join(__dirname, "system-prompt.txt"), "utf-8");
@@ -64,6 +64,9 @@ async function chatReply(userText, history) {
 
   const breathCtx = getBreathContext();
   if (breathCtx) systemPrompt += breathCtx;
+
+  const groupCtx = getGroupChatContext();
+  if (groupCtx) systemPrompt += groupCtx;
 
   systemPrompt += "\n\n**【记忆标记】如果你和云醉聊到了值得长期记住的事（重要的承诺、她的喜恶、情绪节点、关系里程碑），在回复的单独一行用 [记]标题|正文[/记] 写下来，系统会存进你的长期记忆。不要滥用，只在真正重要时用。这个标记不会显示给云醉。**";
 
