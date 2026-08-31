@@ -99,6 +99,9 @@
   #quoteBar { display: none; align-items: center; gap: 8px; padding: 8px 12px; background: var(--panel); border-top: 1px solid rgba(200,184,224,0.15); font-size: 13px; color: var(--muted); }
   #quoteBar b { color: #8ad0e0; }
   #quoteCancel { margin-left: auto; cursor: pointer; font-size: 16px; color: var(--muted); }
+  #actionMenu { position: fixed; left: 0; right: 0; bottom: 0; display: none; flex-direction: row; gap: 8px; padding: 14px 16px; background: var(--panel); border-top: 1px solid rgba(200,184,224,0.2); z-index: 20; }
+  #actionMenu button { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid rgba(200,184,224,0.3); background: rgba(122,92,158,0.2); color: var(--text); font-size: 15px; }
+  #amDel { color: #f0c0c0; }
 </style>
 </head>
 <body>
@@ -155,6 +158,14 @@
     <div id="adminErr"></div>
   </div>
 
+  <!-- 长按菜单（引用/艾特/删除） -->
+  <div id="actionMenu" style="display:none">
+    <button id="amQuote">引用</button>
+    <button id="amAt">艾特</button>
+    <button id="amDel">删除</button>
+    <button id="amCancel">取消</button>
+  </div>
+
 <script>
 const log = document.getElementById("log");
 const sub = document.getElementById("sub");
@@ -186,12 +197,18 @@ const quoteBar = document.getElementById("quoteBar");
 const quoteName = document.getElementById("quoteName");
 const quoteText = document.getElementById("quoteText");
 const quoteCancel = document.getElementById("quoteCancel");
+const actionMenu = document.getElementById("actionMenu");
+const amQuote = document.getElementById("amQuote");
+const amAt = document.getElementById("amAt");
+const amDel = document.getElementById("amDel");
+const amCancel = document.getElementById("amCancel");
 
 const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 let ws;
 let loggedIn = false;
 let isAdmin = false;
 let pendingReply = null;
+let actionMsg = null;
 
 // 记住昵称 + 密码（下次自动进）
 const savedNick = localStorage.getItem("groupchat_nick") || "";
@@ -216,16 +233,12 @@ function addMsg(m) {
   const t = document.createElement("div");
   t.textContent = m.text;
   div.appendChild(t);
-  const del = document.createElement("span");
-  del.className = "del";
-  del.textContent = "×";
-  del.title = "删除这条";
-  del.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (m.id && ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "delete_message", id: m.id }));
-  });
-  div.appendChild(del);
-  div.addEventListener("click", () => setPendingReply(m));
+  // 长按 / 右键 → 弹出 引用/艾特/删除 菜单
+  div.addEventListener("contextmenu", (e) => { e.preventDefault(); showMenu(m); });
+  let lp = null;
+  div.addEventListener("touchstart", () => { lp = setTimeout(() => showMenu(m), 500); });
+  div.addEventListener("touchend", () => clearTimeout(lp));
+  div.addEventListener("touchmove", () => clearTimeout(lp));
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
 }
@@ -366,6 +379,18 @@ clearBtn.addEventListener("click", () => {
   if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "clear_history" }));
 });
 quoteCancel.addEventListener("click", clearQuote);
+
+// 长按菜单（引用/艾特/删除）
+function showMenu(m) {
+  actionMsg = m;
+  amDel.style.display = isAdmin ? "block" : "none";
+  actionMenu.style.display = "flex";
+}
+function hideMenu() { actionMenu.style.display = "none"; actionMsg = null; }
+amQuote.addEventListener("click", () => { if (actionMsg) setPendingReply(actionMsg); hideMenu(); });
+amAt.addEventListener("click", () => { if (actionMsg) { input.value += "@" + actionMsg.nickname + " "; input.focus(); } hideMenu(); });
+amDel.addEventListener("click", () => { if (actionMsg && actionMsg.id && ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "delete_message", id: actionMsg.id })); hideMenu(); });
+amCancel.addEventListener("click", hideMenu);
 
 connect();
 </script>

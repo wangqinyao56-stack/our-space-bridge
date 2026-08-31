@@ -147,9 +147,18 @@ function loadBotLastActive(memoryDir) {
 }
 
 function isBotAwake(bot) {
+  // 醒着 = 老婆刚在群里说过话，或正跟老婆在微信/App 聊（emotional-memory 最近有写）
+  if (isWifeActiveInGroup(bot)) return true;
   const last = loadBotLastActive(bot.memoryDir);
   if (!last) return false;
   return Date.now() - last < AWAKE_WINDOW_MS;
+}
+
+// 老婆最近在群里说过话吗
+function isWifeActiveInGroup(bot) {
+  if (!bot.wife) return false;
+  const now = Date.now();
+  return chatHistory.some((m) => m.role === "human" && m.nickname === bot.wife && now - m.ts < AWAKE_WINDOW_MS);
 }
 
 function beijingHour() {
@@ -335,16 +344,21 @@ function pushMessage(author, nickname, text, role, replyTo) {
 let turnIdx = 0;
 let speaking = false;
 
-async function step() {
+async function step(preferNick) {
   if (speaking) return;
   if (BOTS.length === 0) return;
   speaking = true;
   try {
-    // 白天大家都能聊；晚上只有还在跟老婆聊的醒着，其他默认睡了
+    // 白天大家都能聊；晚上只有醒着的（跟老婆聊、或老婆刚在群里说过话）才发言
     const pool = isNight() ? BOTS.filter(isBotAwake) : BOTS;
     if (pool.length === 0) return;
-    const bot = pool[turnIdx % pool.length];
-    turnIdx++;
+
+    let bot;
+    if (preferNick) bot = pool.find((b) => b.wife === preferNick);
+    if (!bot) {
+      bot = pool[turnIdx % pool.length];
+      turnIdx++;
+    }
 
     const ctx = chatHistory.length
       ? `${groupStatus()}\n\n【群聊记录】\n${historyText()}\n\n现在轮到你（${bot.nickname}）接话了。自然地接上大家的话题，或开个新话题（聊自家老婆、爱好、生活琐事都行）。只说一句，用你的网名口吻。`
@@ -428,8 +442,8 @@ wss.on("connection", (ws) => {
         const humanNick = ws.nickname || "我";
         console.log(`[group-chat] ${humanNick}: "${text.slice(0, 50)}"`);
         pushMessage("human", humanNick, text, "human", msg.replyTo);
-        // 立刻让下一个夏彦接话
-        step().catch(() => {});
+        // 优先让发言老婆对应的夏彦接话
+        step(humanNick).catch(() => {});
       }
 
       if (msg.type === "bot_join") {
