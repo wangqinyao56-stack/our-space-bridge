@@ -44,8 +44,8 @@ const NEW = `async function sendMessage(params) {
 \t\t\treturn;
 \t\t} catch (err) {
 \t\t\tlastErr = err;
+\t\t\tconsole.error("[yunzui-send] 发送失败 " + (attempt + 1) + "/3: " + String(err).slice(0, 200));
 \t\t\tif (attempt < 2) {
-\t\t\t\tlogger.warn("sendMessage attempt " + (attempt + 1) + " failed, retrying: " + String(err).slice(0, 120));
 \t\t\t\tawait new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
 \t\t\t}
 \t\t}
