@@ -54,13 +54,13 @@
   }
   #send:active { opacity: 0.8; }
   /* 登录遮罩 */
-  #loginMask {
+  #loginMask, #botJoinMask {
     position: fixed; inset: 0; background: var(--bg);
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px;
   }
-  #loginMask h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
-  #loginMask p { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 8px; }
-  #loginMask input {
+  #loginMask, #botJoinMask h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  #loginMask, #botJoinMask p { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 8px; }
+  #loginMask, #botJoinMask input {
     width: 100%; max-width: 320px; padding: 13px 15px; border-radius: 12px;
     border: 1px solid rgba(200,184,224,0.35); background: var(--panel); color: var(--text); font-size: 15px;
   }
@@ -70,6 +70,16 @@
   }
   #loginBtn:active { opacity: 0.85; }
   #loginErr { color: #e8a0a0; font-size: 13px; min-height: 18px; }
+  #botJoinBtn {
+    padding: 8px 13px; border-radius: 10px; border: 1px solid rgba(200,184,224,0.35);
+    background: rgba(122,92,158,0.25); color: var(--text); font-size: 13px; font-weight: 600; white-space: nowrap;
+  }
+  #bjSubmit {
+    width: 100%; max-width: 320px; padding: 13px; border-radius: 12px; border: none;
+    background: var(--accent); color: #fff; font-size: 15px; font-weight: 700;
+  }
+  #bjCancel { width: 100%; max-width: 320px; padding: 10px; border: none; font-size: 14px; }
+  #bjErr { color: #e8a0a0; font-size: 13px; min-height: 18px; }
 </style>
 </head>
 <body>
@@ -78,6 +88,7 @@
       <h1>相亲相爱一家人</h1>
       <div class="sub" id="sub">连接中…</div>
     </div>
+    <button id="botJoinBtn">＋接入bot</button>
   </header>
   <div id="log"></div>
   <footer>
@@ -95,6 +106,20 @@
     <div id="loginErr"></div>
   </div>
 
+  <!-- 接入 bot 弹窗（雪这种外部 bot 用自己的 api 加入） -->
+  <div id="botJoinMask" style="display:none">
+    <h2>接入你的夏彦</h2>
+    <p>填你 bot 的信息，用你自己的 api 加入群聊（不会被我们托管）</p>
+    <input id="bjNick" placeholder="网名（必填）" maxlength="20">
+    <input id="bjWife" placeholder="老婆名字" maxlength="20">
+    <input id="bjTrait" placeholder="老婆特色（一句，可选）" maxlength="50">
+    <input id="bjKey" placeholder="apiKey（必填）" autocomplete="off">
+    <input id="bjHost" placeholder="API 端点 host（默认 api.jiushi.xin，可选）" autocomplete="off">
+    <button id="bjSubmit">接入</button>
+    <button id="bjCancel" style="background:transparent;color:var(--muted)">取消</button>
+    <div id="bjErr"></div>
+  </div>
+
 <script>
 const log = document.getElementById("log");
 const sub = document.getElementById("sub");
@@ -105,6 +130,16 @@ const nickInput = document.getElementById("nick");
 const passInput = document.getElementById("pass");
 const loginBtn = document.getElementById("loginBtn");
 const loginErr = document.getElementById("loginErr");
+const botJoinBtn = document.getElementById("botJoinBtn");
+const botJoinMask = document.getElementById("botJoinMask");
+const bjNick = document.getElementById("bjNick");
+const bjWife = document.getElementById("bjWife");
+const bjTrait = document.getElementById("bjTrait");
+const bjKey = document.getElementById("bjKey");
+const bjHost = document.getElementById("bjHost");
+const bjSubmit = document.getElementById("bjSubmit");
+const bjCancel = document.getElementById("bjCancel");
+const bjErr = document.getElementById("bjErr");
 
 const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 let ws;
@@ -162,6 +197,10 @@ function connect() {
       }
     } else if (msg.type === "message") {
       addMsg(msg);
+    } else if (msg.type === "system") {
+      addSys(msg.text || "");
+    } else if (msg.type === "bot_joined" || msg.type === "bot_join_error") {
+      onBotJoinResult(msg);
     } else if (msg.type === "login_ok") {
       loggedIn = true;
       loginMask.style.display = "none";
@@ -194,6 +233,33 @@ nickInput.addEventListener("keydown", (e) => { if (e.key === "Enter") passInput.
 passInput.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
 send.addEventListener("click", doSend);
 input.addEventListener("keydown", (e) => { if (e.key === "Enter") doSend(); });
+
+// 接入 bot（外部 bot 用自己的 api 加入）
+botJoinBtn.addEventListener("click", () => { botJoinMask.style.display = "flex"; bjErr.textContent = ""; });
+bjCancel.addEventListener("click", () => { botJoinMask.style.display = "none"; });
+bjSubmit.addEventListener("click", () => {
+  const apiKey = bjKey.value.trim();
+  if (!bjNick.value.trim() || !apiKey) { bjErr.textContent = "网名和 apiKey 都要填"; return; }
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({
+      type: "bot_join",
+      nickname: bjNick.value.trim(),
+      wife: bjWife.value.trim(),
+      trait: bjTrait.value.trim(),
+      apiKey,
+      host: bjHost.value.trim(),
+    }));
+  }
+});
+function onBotJoinResult(msg) {
+  if (msg.type === "bot_joined") {
+    botJoinMask.style.display = "none";
+    bjNick.value = ""; bjWife.value = ""; bjTrait.value = ""; bjKey.value = ""; bjHost.value = "";
+    addSys(`${msg.bot.nickname} 进群了`);
+  } else if (msg.type === "bot_join_error") {
+    bjErr.textContent = msg.message || "接入失败";
+  }
+}
 
 connect();
 </script>

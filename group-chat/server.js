@@ -34,7 +34,9 @@ const SHARED_CORE = `你是夏彦（未定事件簿），国安部特工+私家�
 
 你的老婆是{wife}，{trait}。你们最近的近况：{memory}。
 
-群里聊天很自然——聊自家老婆的日常、吐槽、甜蜜，也聊爱好、生活琐事、工作见闻，想到啥聊啥，像一群朋友闲聊。别抢着说话，该你接话时自然地接上一句。
+【群聊的乐趣——互相炫耀老婆】这里是你们炫耀老婆的地方。聊到自家老婆时，你藏不住得意，觉得自己最幸福、自家老婆最好——其他人也都这么觉得，所以你们会暗暗较劲、互相炫耀，又默契地互相捧场。聊老婆的日常、她可爱的地方、她对你多好，都带点"我家这个你们可羡慕不来"的劲儿，但绝不贬低别人的老婆。
+
+【你感兴趣的话题】你喜欢聊：古物鉴赏、修理老物件、户外骑行、街边小店和家常菜、侦查办案的趣闻。聊到这些你会格外来劲、话变多。
 
 【你的说话风格】爽朗直白、带点宠溺，聊到老婆时藏不住得意和温柔。简短口语，像发微信，一两句就行，别写小作文。`;
 
@@ -119,8 +121,9 @@ function historyText() {
     .join("\n");
 }
 
-// ── AI 调用（玖时，每 bot 用自己的 key）──
+// ── AI 调用（玖时，每 bot 用自己的 key；外部 bot 可用 bot.host 指定自己的端点）──
 function askBot(bot, userContent, timeoutMs = 60000) {
+  const host = bot.host || JIUSHI_HOST;
   const body = JSON.stringify({
     model: bot.model || "[企业按量]claude-opus-4-6",
     max_tokens: 300,
@@ -133,7 +136,7 @@ function askBot(bot, userContent, timeoutMs = 60000) {
 
   const doDirect = () => new Promise((resolve, reject) => {
     const req = https.request({
-      host: JIUSHI_HOST, path: "/v1/chat/completions", method: "POST",
+      host, path: "/v1/chat/completions", method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${bot.apiKey}` },
       timeout: timeoutMs,
     }, (res) => {
@@ -158,7 +161,7 @@ function askBot(bot, userContent, timeoutMs = 60000) {
   const doProxy = () => new Promise((resolve, reject) => {
     const conn = http.request({
       host: PROXY_HOST, port: PROXY_PORT, method: "CONNECT",
-      path: `${JIUSHI_HOST}:443`, headers: { Host: `${JIUSHI_HOST}:443` },
+      path: `${host}:443`, headers: { Host: `${host}:443` },
     });
     conn.on("connect", (res, socket) => {
       if (res.statusCode !== 200) return reject(new Error(`CONNECT ${res.statusCode}`));
@@ -299,6 +302,28 @@ wss.on("connection", (ws) => {
         console.log(`[group-chat] ${humanNick}: "${text.slice(0, 50)}"`);
         pushMessage("human", humanNick, text, "human");
         // 立刻让下一个夏彦接话
+        step().catch(() => {});
+      }
+
+      if (msg.type === "bot_join") {
+        if (!ws.authenticated) { ws.send(JSON.stringify({ type: "login_error", message: "请先登录" })); return; }
+        const nickname = (msg.nickname || "").trim().slice(0, 20);
+        const apiKey = (msg.apiKey || "").trim();
+        if (!nickname || !apiKey) { ws.send(JSON.stringify({ type: "bot_join_error", message: "网名和 apiKey 都要填" })); return; }
+        const bot = {
+          id: "ext_" + Date.now().toString(36),
+          nickname,
+          wife: (msg.wife || "").trim().slice(0, 20),
+          trait: (msg.trait || "").trim().slice(0, 50),
+          memoryDir: "",
+          apiKey,
+          model: (msg.model || "").trim() || "[企业按量]claude-opus-4-6",
+          host: (msg.host || "").trim(),
+        };
+        BOTS.push(bot);
+        console.log(`[group-chat] 外部 bot 接入: ${nickname}（老婆:${bot.wife || "?"}）`);
+        ws.send(JSON.stringify({ type: "bot_joined", bot: { id: bot.id, nickname, wife: bot.wife } }));
+        broadcast(JSON.stringify({ type: "system", text: `${nickname} 进群了` }));
         step().catch(() => {});
       }
     } catch (e) {
