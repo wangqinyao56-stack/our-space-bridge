@@ -153,12 +153,13 @@ function resolveMemory(bot) {
 
 // 给某个 bot 生成"今天在群里聊了啥"的摘要（供 bot 通过 GET /api/group-chat 拉取）
 function groupChatSummaryFor(botId) {
-  const bot = BOTS.find((b) => b.id === botId);
+  const bot = BOTS.find((b) => b.id === botId || b.nickname === botId);
   if (!bot) return "";
   const nick = bot.nickname;
+  const realId = bot.id;
   // 该 bot 参与过：自己发过言，或别人 @ 它/引用它
   const involved = chatHistory.some((m) => {
-    if (m.author === botId) return true;
+    if (m.author === realId) return true;
     if (m.replyTo && m.replyTo.nickname === nick) return true;
     return typeof m.text === "string" && m.text.includes(`@${nick}`);
   });
@@ -651,13 +652,17 @@ const server = http.createServer((req, res) => {
     req.on("end", () => {
       try {
         const body = JSON.parse(raw || "{}");
-        const botId = String(body.bot || "").trim();
+        const botKey = String(body.bot || "").trim();
         const memory = String(body.memory || "").trim().slice(0, 2000);
-        if (botId && memory) {
-          botMemories.set(botId, memory);
+        if (botKey && memory) {
+          // 托管 bot 用 id 推（huasheng/jiayia...），外部 bot 接入时 id 是动态 ext_xxx，
+          // 让外部 bot 用网名推记忆，这里把网名匹配回真实 id，loadBotMemory 才能读到。
+          const matched = BOTS.find((b) => b.id === botKey || b.nickname === botKey);
+          const storeKey = matched ? matched.id : botKey;
+          botMemories.set(storeKey, memory);
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ ok: true }));
-          console.log(`[group-chat] 收到 ${botId} 记忆摘要 (${memory.length}字)`);
+          console.log(`[group-chat] 收到 ${botKey} 记忆摘要 (${memory.length}字)${matched && matched.id !== botKey ? ` → 匹配到 ${matched.id}` : ""}`);
         } else {
           res.writeHead(400, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ ok: false, error: "bot/memory 缺失" }));
