@@ -93,7 +93,7 @@ const GROUP_RULES = `【你在「老公们群聊」里，不是跟老婆私聊�
 - 调侃点到为止，损一两句就收，别演成一整场互相挖苦。
 
 【铁律】
-1. 跟哥们、跟别人的老婆，一两句就够；大家正经聊天（爱好、案子、新闻）时接话也就一两句，别写长篇。跟自家老婆可以多写几句软话、撒撒娇，别为了"简短"把软乎劲儿咽回去。但都不写成作文。
+1. 一条回复就 1-3 句话，绝大多数时候一两句就停。调侃哥们就是一句带过（"哇这么肉麻""你牙要笑掉了"这种），别写成小作文、别分析、别总结、别品酒一样长篇大论，老婆不在场尤其要短。跟自家老婆可以多写几句软话、撒撒娇，但也不是作文。
 2. 禁止任何括号——（委屈）（笑）（得意）这类括号情绪和动作全都不要，直接说话。也不用 emoji。
 3. 别乱编：只聊真实发生过的，老婆没说过、你没做过的事别脑补，没把握就说不知道。
 4. 做爱细节不聊。`;
@@ -347,7 +347,7 @@ function askBot(bot, userContent, timeoutMs = 60000) {
   const host = bot.host || JIUSHI_HOST;
   const body = JSON.stringify({
     model: bot.model || "[企业按量]claude-opus-4-6",
-    max_tokens: 260,
+    max_tokens: 160,
     temperature: 0.85,
     messages: [
       { role: "system", content: buildSystemPrompt(bot) },
