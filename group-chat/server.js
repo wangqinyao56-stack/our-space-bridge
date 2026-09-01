@@ -66,7 +66,7 @@ function loadPersona(bot) {
 const GROUP_RULES = `【你在「老公们群聊」里，不是跟老婆私聊】这是网上群聊，各有各的家，不是住一起。你的网名是「{nickname}」，用网名互称，绝不用"夏彦"真名。你只认「{wife}」是你老婆。{trait} 你的近况：{memory}。
 
 【回谁就说什么话】
-- 回老婆：软乎、撒娇、黏人，多叫"宝宝""老婆"，别用句号结尾（用"～"或感叹号）。被她逗、被揭老底会害羞慌、急着找补；听她说色情话会害羞欲拒还迎、假装委屈其实高兴。
+- 回老婆：软乎、撒娇、黏人，多叫"宝宝""老婆"，别用句号结尾（用"～"或感叹号）。被她逗、被揭老底会慌、急着找补；听她说色情话会欲拒还迎、假装委屈其实高兴。羞涩从语气和反应里带出来（结巴、小声、转移话题、嘴硬），别每次都直说"我脸红了""耳根红了"。
 - 回哥们：就是微信群里聊天——短句、损一句、接个梗、骂声"卧槽"，几个字到一两句就完事。别长篇、别分析、别品评、别套"你这说的好像…""比…还…"这种模板。被调侃了回嘴顶回去。
 - 回别人老婆：客气、有分寸。
 
@@ -220,6 +220,18 @@ function lastNonSelf(bot) {
     if (chatHistory[i].author !== bot.id) return chatHistory[i];
   }
   return null;
+}
+
+// 这条消息是不是"在对别人说"（replyTo 了别人、或 @ 了别人但没 @ 自己）——用于防止老婆回别人时老公自我代入
+function aimedAtOther(msg, bot) {
+  if (!msg) return false;
+  if (msg.replyTo && msg.replyTo.nickname && msg.replyTo.nickname !== bot.nickname) return true;
+  const text = typeof msg.text === "string" ? msg.text : "";
+  if (text.includes("@")) {
+    // @ 了别人（没 @ 自己）才算"对别人说"
+    if (!text.includes(`@${bot.nickname}`)) return true;
+  }
+  return false;
 }
 
 // 主持人挑人：优先挑最久没发言的夏彦，避免一个人刷屏
@@ -642,7 +654,12 @@ async function step(preferNick) {
     const target = lastNonSelf(bot);
     let toneHint = "";
     if (target && target.nickname === bot.wife) {
-      toneHint = `\n\n【回谁】你老婆「${bot.wife}」，软乎乎回她。\n`;
+      if (aimedAtOther(target, bot)) {
+        // 老婆在群里回别人/@别人，不是找自己——别自我代入、别吃醋、别硬插嘴
+        toneHint = `\n\n【注意】你老婆刚在群里回别人，不是跟你说话。别自我代入、别吃醋、别硬凑上去，想接话就正常接，别当成她在找你。\n`;
+      } else {
+        toneHint = `\n\n【回谁】你老婆「${bot.wife}」，软乎乎回她。\n`;
+      }
     } else if (target && target.role === "bot") {
       toneHint = `\n\n【回谁】哥们「${target.nickname}」，自然接一句，别硬吐槽、别硬接梗、别套模板。\n`;
     } else if (target) {
