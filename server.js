@@ -45,6 +45,7 @@ import {
 } from "./lib/message-router.js";
 import { recordAffectionMessage, getAffectionHistory, deleteAffectionMessage, clearAffectionMemory, getAffectionHistoryMessages, getArchivedContext, getAffectionNotes } from "./lib/affection-memory.js";
 import { recordIntimateMessage } from "./lib/intimate-memory.js";
+import { updateLocation } from "./lib/location.js";
 import { updateToyState, getToyState, setMode as setToyMode, getToyContextBlock, getToyPlayPrompt, markDiscovered } from "./lib/toy-state.js";
 import {
   loadDiary,
@@ -773,6 +774,31 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/api/ping") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, clients: clients.size, tts_queue: ttsQueue.length, version: "2026-08-29-coread", recent: recentMsgs.slice(-10) }));
+    return;
+  }
+
+  // 阿鹿位置上报（App 端 GPS 按需上报，供夏彦"看到她在哪"+导航当起点）
+  if (req.method === "POST" && req.url === "/api/location") {
+    let raw = "";
+    req.on("data", (c) => { raw += c; if (raw.length > 10000) req.destroy(); });
+    req.on("end", async () => {
+      try {
+        const body = JSON.parse(raw || "{}");
+        const lng = Number(body.lng);
+        const lat = Number(body.lat);
+        if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: false, error: "lng/lat 无效" }));
+          return;
+        }
+        const loc = await updateLocation(lng, lat);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true, location: loc }));
+      } catch (e) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: e.message }));
+      }
+    });
     return;
   }
 
