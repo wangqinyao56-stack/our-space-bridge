@@ -607,8 +607,14 @@ async function step(preferNick) {
       toneHint = `\n\n【回谁】「${target.nickname}」（别人老婆），客气简短。\n`;
     }
 
+    // 自我记忆锚点：让夏彦明确记得自己刚才说过什么，别转头就否认/失忆
+    const ownRecent = chatHistory.filter((m) => m.author === bot.id).slice(-5);
+    const ownHint = ownRecent.length > 0
+      ? `\n\n【你自己最近说过的话——必须记得，别失忆别否认】${ownRecent.map((m) => m.text).join("；")}`
+      : "";
+
     const ctx = chatHistory.length
-      ? `【现在】${nowBeijing()}\n\n【群聊记录】\n${historyText()}\n\n现在轮到你（${bot.nickname}）接话了。${coldHint}${toneHint}自然地接上大家的话题，或开个新话题（聊你的爱好、最近在忙什么、生活琐事都行，老婆偶尔带一句）。用你的网名口吻，像发微信那样自然点。`
+      ? `【现在】${nowBeijing()}\n\n【群聊记录】\n${historyText()}${ownHint}\n\n现在轮到你（${bot.nickname}）接话了。${coldHint}${toneHint}自然地接上大家的话题，或开个新话题（聊你的爱好、最近在忙什么、生活琐事都行，老婆偶尔带一句）。用你的网名口吻，像发微信那样自然点。`
       : `【现在】${nowBeijing()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊你的爱好、最近的日常、生活琐事都行）。用你的网名口吻，像发微信那样自然点。`;
 
     const reply = await askBot(bot, ctx);
