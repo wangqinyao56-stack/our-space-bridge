@@ -160,6 +160,20 @@ let soupState = null;   // 当前海龟汤游戏 { hostId, hostNick, title, surf
 let lastSoupHost = null; // 上次主持人 id（轮换用）
 const SOUP_RECENT = [];  // 最近用过的题目标题，避免重复
 
+// 群聊是公开场合，私聊记忆（尤其亲密内容）不该全量倒进群。这里只挑非色情、重要的摘要。
+const GROUP_EXPLICIT = /做爱|性交|高潮|阴蒂|阴道|阴茎|龟头|口交|自慰|插入|呻吟|射精|内射|乳头|体位|前戏|亲密|温存|亲热|裸|私处|腿根|湿透|战栗|后入|骑在|顶到|脱光/;
+
+function summarizeSyncedMemories(mems, limit = 12) {
+  try {
+    const active = (Array.isArray(mems) ? mems : [])
+      .filter((m) => m && (m.content || m.quote || m.name) && !GROUP_EXPLICIT.test(`${m.content || ""}${m.quote || ""}${m.name || ""}`))
+      .sort((a, b) => (b.importance || 5) - (a.importance || 5))
+      .slice(0, limit);
+    if (active.length === 0) return "";
+    return active.map((m) => `· ${(m.content || m.name || "").replace(/\s+/g, " ").trim()}`).join("\n");
+  } catch { return ""; }
+}
+
 // ── 实时记忆：优先读 bot 推来的记忆摘要，退到读卷，再退到静态 memory ──
 function loadBotMemory(bot) {
   const synced = botMemories.get(bot.id);
@@ -860,7 +874,12 @@ const server = http.createServer((req, res) => {
       try {
         const body = JSON.parse(raw || "{}");
         const botKey = String(body.bot || "").trim();
-        const memory = String(body.memory || "").trim().slice(0, 2000);
+        // 支持两种格式：精简摘要字符串（memory），或完整记忆数组（memories，我们这边自己过滤+挑重点）
+        let memory = String(body.memory || "").trim();
+        if (!memory && Array.isArray(body.memories)) {
+          memory = summarizeSyncedMemories(body.memories, 12);
+        }
+        memory = memory.slice(0, 6000);
         if (botKey && memory) {
           // 托管 bot 用 id 推（huasheng/jiayia...），外部 bot 接入时 id 是动态 ext_xxx，
           // 让外部 bot 用网名推记忆，这里把网名匹配回真实 id，loadBotMemory 才能读到。
