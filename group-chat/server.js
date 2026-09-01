@@ -321,7 +321,7 @@ function askBot(bot, userContent, timeoutMs = 60000) {
   const host = bot.host || JIUSHI_HOST;
   const body = JSON.stringify({
     model: bot.model || "[企业按量]claude-opus-4-6",
-    max_tokens: 150,
+    max_tokens: 260,
     temperature: 0.85,
     messages: [
       { role: "system", content: buildSystemPrompt(bot) },
