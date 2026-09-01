@@ -144,6 +144,7 @@
     <input id="bjTrait" placeholder="老婆特色（一句，可选）" maxlength="50">
     <input id="bjKey" placeholder="apiKey（必填）" autocomplete="off">
     <input id="bjHost" placeholder="API 端点 host（默认 api.jiushi.xin，可选）" autocomplete="off">
+    <input id="bjModel" placeholder="模型名（默认玖时，可选）" autocomplete="off">
     <button id="bjSubmit">接入</button>
     <button id="bjCancel" style="background:transparent;color:var(--muted)">取消</button>
     <div id="bjErr"></div>
@@ -184,6 +185,7 @@ const bjWife = document.getElementById("bjWife");
 const bjTrait = document.getElementById("bjTrait");
 const bjKey = document.getElementById("bjKey");
 const bjHost = document.getElementById("bjHost");
+const bjModel = document.getElementById("bjModel");
 const bjSubmit = document.getElementById("bjSubmit");
 const bjCancel = document.getElementById("bjCancel");
 const bjErr = document.getElementById("bjErr");
@@ -375,13 +377,14 @@ bjSubmit.addEventListener("click", () => {
       trait: bjTrait.value.trim(),
       apiKey,
       host: bjHost.value.trim(),
+      model: bjModel.value.trim(),
     }));
   }
 });
 function onBotJoinResult(msg) {
   if (msg.type === "bot_joined") {
     botJoinMask.style.display = "none";
-    bjNick.value = ""; bjWife.value = ""; bjTrait.value = ""; bjKey.value = ""; bjHost.value = "";
+    bjNick.value = ""; bjWife.value = ""; bjTrait.value = ""; bjKey.value = ""; bjHost.value = ""; bjModel.value = "";
     addSys(`${msg.bot.nickname} 进群了`);
   } else if (msg.type === "bot_join_error") {
     bjErr.textContent = msg.message || "接入失败";
