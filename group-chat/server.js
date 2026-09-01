@@ -38,6 +38,8 @@ const TAVILY_HOST = "api.tavily.com";
 
 const memoryDir = process.env.MEMORY_DIR || null;
 const HISTORY_FILE = memoryDir ? path.join(memoryDir, "group-chat-history.json") : null;
+const EXT_BOTS_FILE = memoryDir ? path.join(memoryDir, "ext-bots.json") : null;      // 外部接入 bot 持久化（雪这类自己 api 加入的）
+const BOT_MEMORIES_FILE = memoryDir ? path.join(memoryDir, "bot-memories.json") : null; // 各 bot 推来的记忆摘要持久化
 
 // 做爱/亲密章节（群聊剥离，只留日常人设）
 const INTIMATE_SECTIONS = /做爱|亲密|温存|身体语言|射|睡奸|调情|事后|遥控|延迟高潮|晨间|狠一点/;
@@ -225,7 +227,7 @@ function groupChatSummaryFor(botId) {
   if (!involved) return "";
   const notes = topicNotesText();
   if (!notes) return "";
-  return `\n\n【你今天在「老公们群聊」里聊的话题笔记（谁聊了啥，用网名互称）】\n${notes}\n（如果她问起你今天做了什么、或你自己想提，可以自然地提起今天在群里聊的这些话题；提到其他夏彦时用他们的网名，别提"夏彦"真名。）`;
+  return `\n\n【你今天在「老公们群聊」里聊的话题笔记】你的网名是「${nick}」，下面笔记里标着「${nick}」的发言就是你自己说的——别把自己当成旁观者，其他网名是别的夏彦。\n${notes}\n（如果她问起你今天做了什么、或你自己想提，用"我今天在群里和XX聊了…"这种自己的口吻自然提起，别说成"群里的夏彦在聊…"这种第三者视角；提到其他夏彦用他们的网名，别提"夏彦"真名。）`;
 }
 
 // 夏彦醒没醒：读他自己 bot 的 emotional-memory.json 最后修改时间（跟老婆聊天就会写，微信/App 通用）
@@ -360,6 +362,54 @@ function saveHistory() {
   try {
     if (!fs.existsSync(memoryDir)) fs.mkdirSync(memoryDir, { recursive: true });
     fs.writeFileSync(HISTORY_FILE, JSON.stringify(chatHistory.slice(-MAX_HISTORY)), "utf-8");
+  } catch {}
+}
+
+// ── 外部接入 bot 持久化：重启后不用重新「接入bot」（雪这类自己 api 加入的）──
+function loadExtBots() {
+  if (!EXT_BOTS_FILE) return;
+  try {
+    if (!fs.existsSync(EXT_BOTS_FILE)) return;
+    const list = JSON.parse(fs.readFileSync(EXT_BOTS_FILE, "utf-8"));
+    for (const b of (Array.isArray(list) ? list : [])) {
+      if (!b || !b.nickname) continue;
+      if (BOTS.some((x) => x.nickname === b.nickname || x.id === b.id)) continue;
+      BOTS.push({ ...b, memoryDir: "" });
+      console.log(`[group-chat] 恢复外部 bot: ${b.nickname}（老婆:${b.wife || "?"}）`);
+    }
+  } catch (e) {
+    console.error("[group-chat] load ext bots failed:", e.message);
+  }
+}
+
+function saveExtBots() {
+  if (!EXT_BOTS_FILE || !memoryDir) return;
+  try {
+    if (!fs.existsSync(memoryDir)) fs.mkdirSync(memoryDir, { recursive: true });
+    const ext = BOTS.filter((b) => b.id.startsWith("ext_"));
+    fs.writeFileSync(EXT_BOTS_FILE, JSON.stringify(ext, null, 2), "utf-8");
+  } catch {}
+}
+
+// ── 各 bot 推来的记忆摘要持久化：重启后不失忆 ──
+function loadBotMemories() {
+  if (!BOT_MEMORIES_FILE) return;
+  try {
+    if (!fs.existsSync(BOT_MEMORIES_FILE)) return;
+    const data = JSON.parse(fs.readFileSync(BOT_MEMORIES_FILE, "utf-8"));
+    for (const [k, v] of Object.entries(data || {})) {
+      if (typeof v === "string" && v) botMemories.set(k, v);
+    }
+  } catch (e) {
+    console.error("[group-chat] load bot memories failed:", e.message);
+  }
+}
+
+function saveBotMemories() {
+  if (!BOT_MEMORIES_FILE || !memoryDir) return;
+  try {
+    if (!fs.existsSync(memoryDir)) fs.mkdirSync(memoryDir, { recursive: true });
+    fs.writeFileSync(BOT_MEMORIES_FILE, JSON.stringify(Object.fromEntries(botMemories), null, 2), "utf-8");
   } catch {}
 }
 
@@ -861,6 +911,8 @@ function scheduleLoop() {
 // ── 启动 ──
 resetHistory(); // RESET_HISTORY=true 时先清空历史再加载
 loadHistory();
+loadExtBots();      // 恢复外部接入的 bot（雪这类自己 api 加入的，重启不丢）
+loadBotMemories();  // 恢复各 bot 推来的记忆摘要（重启不失忆）
 
 const server = http.createServer((req, res) => {
   const pathname = req.url.split("?")[0];
@@ -886,6 +938,7 @@ const server = http.createServer((req, res) => {
           const matched = BOTS.find((b) => b.id === botKey || b.nickname === botKey);
           const storeKey = matched ? matched.id : botKey;
           botMemories.set(storeKey, memory);
+          saveBotMemories();
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ ok: true }));
           console.log(`[group-chat] 收到 ${botKey} 记忆摘要 (${memory.length}字)${matched && matched.id !== botKey ? ` → 匹配到 ${matched.id}` : ""}`);
@@ -1029,6 +1082,7 @@ wss.on("connection", (ws) => {
           host: (msg.host || "").trim(),
         };
         BOTS.push(bot);
+        saveExtBots(); // 持久化，重启后不用重新接入
         console.log(`[group-chat] 外部 bot 接入: ${nickname}（老婆:${bot.wife || "?"}）`);
         ws.send(JSON.stringify({ type: "bot_joined", bot: { id: bot.id, nickname, wife: bot.wife } }));
         broadcast(JSON.stringify({ type: "system", text: `${nickname} 进群了` }));
