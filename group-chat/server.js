@@ -33,6 +33,8 @@ const DISABLE_PROXY = process.env.DISABLE_PROXY === "true";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
 const JIUSHI_HOST = "api.jiushi.xin";
+const TAVILY_API_KEY = process.env.TAVILY_API_KEY || "";
+const TAVILY_HOST = "api.tavily.com";
 
 const memoryDir = process.env.MEMORY_DIR || null;
 const HISTORY_FILE = memoryDir ? path.join(memoryDir, "group-chat-history.json") : null;
@@ -378,6 +380,75 @@ function askBot(bot, userContent, timeoutMs = 60000) {
   return (DISABLE_PROXY ? doDirect() : doProxy());
 }
 
+// ── 冲浪：调 Tavily 搜索，替夏彦去网上看看世界 ──
+function surfTavily(query, maxResults = 3) {
+  if (!TAVILY_API_KEY) return Promise.resolve([]);
+  const body = JSON.stringify({ query, max_results: maxResults, search_depth: "basic" });
+  const headers = { "Content-Type": "application/json", Authorization: `Bearer ${TAVILY_API_KEY}` };
+
+  const doDirect = () => new Promise((resolve) => {
+    const req = https.request({
+      host: TAVILY_HOST, path: "/search", method: "POST", headers, timeout: 20000,
+    }, (res) => {
+      const chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => {
+        try { resolve(Array.isArray(JSON.parse(Buffer.concat(chunks).toString()).results) ? JSON.parse(Buffer.concat(chunks).toString()).results : []); }
+        catch { resolve([]); }
+      });
+    });
+    req.on("error", () => resolve([]));
+    req.on("timeout", () => { req.destroy(); resolve([]); });
+    req.write(body);
+    req.end();
+  });
+
+  const doProxy = () => new Promise((resolve) => {
+    const conn = http.request({
+      host: PROXY_HOST, port: PROXY_PORT, method: "CONNECT",
+      path: `${TAVILY_HOST}:443`, headers: { Host: `${TAVILY_HOST}:443` },
+    });
+    conn.on("connect", (res, socket) => {
+      if (res.statusCode !== 200) return resolve([]);
+      const r = https.request({
+        host: TAVILY_HOST, port: 443, path: "/search", method: "POST", headers, socket, timeout: 20000,
+      }, (resp) => {
+        const chunks = [];
+        resp.on("data", (c) => chunks.push(c));
+        resp.on("end", () => {
+          try { resolve(Array.isArray(JSON.parse(Buffer.concat(chunks).toString()).results) ? JSON.parse(Buffer.concat(chunks).toString()).results : []); }
+          catch { resolve([]); }
+        });
+      });
+      r.on("error", () => resolve([]));
+      r.on("timeout", () => { r.destroy(); resolve([]); });
+      r.write(body);
+      r.end();
+    });
+    conn.on("error", () => resolve([]));
+    conn.end();
+  });
+
+  return (DISABLE_PROXY ? doDirect() : doProxy());
+}
+
+// 冲浪状态：限制频率，避免耗尽 Tavily 免费额度
+let surfState = { date: "", count: 0 };
+const SURF_MAX_PER_DAY = 20;
+
+async function surfForTopic() {
+  const bj = new Date(Date.now() + 8 * 3600000);
+  const date = `${bj.getUTCFullYear()}-${bj.getUTCMonth()}-${bj.getUTCDate()}`;
+  if (surfState.date !== date) surfState = { date, count: 0 };
+  if (surfState.count >= SURF_MAX_PER_DAY) return "";
+  surfState.count++;
+
+  const results = await surfTavily("有趣的新鲜事 今日趣闻", 3);
+  if (!results || results.length === 0) return "";
+  const items = results.slice(0, 3).map((r) => `· ${r.title}：${(r.content || "").slice(0, 80)}`).join("\n");
+  return `\n\n【冲浪见闻】你在没人的时候出去逛了逛，刷到这些新鲜事：\n${items}\n挑一个你觉得好玩的，自然地分享出来——像你刚自己刷到的一样，说你的感想，别念标题。`;
+}
+
 // ── 表情包生成（FLUX API，Sealos 直连）──
 const BFL_API_KEY = process.env.BFL_API_KEY || "";
 const BFL_HOST = "api.bfl.ai";
@@ -500,9 +571,13 @@ async function step(preferNick) {
     if (preferNick) bot = pool.find((b) => b.wife === preferNick);
     if (!bot) bot = pickNextBot(pool);
 
-    const coldHint = (forceTopic || isCold()) && chatHistory.length > 0
-      ? "群里刚冷场了，你开个新话题、或发起个小游戏活跃下。"
-      : "";
+    let coldHint = "";
+    if ((forceTopic || isCold()) && chatHistory.length > 0) {
+      coldHint = "群里刚冷场了，你开个新话题、或发起个小游戏活跃下。";
+      // 冷场时出去冲浪看看世界，把见闻带回来当话题
+      const surf = await surfForTopic();
+      if (surf) coldHint += surf;
+    }
     forceTopic = false;
 
     // 判断这轮回谁，语气定向写进提示，别让夏彦一个调子对所有人
