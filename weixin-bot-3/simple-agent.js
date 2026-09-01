@@ -124,6 +124,16 @@ const SYSTEM_PROMPT = fs.readFileSync(path.join(__dirname, "system-prompt.txt"),
 async function chatReply(userText, history, imageBase64 = null, imageMime = null) {
   let systemPrompt = SYSTEM_PROMPT;
 
+  // 时间观念：以北京时间为准，注入当前时间，避免"大晚上说晒太阳"这种错乱
+  {
+    const t = new Date(Date.now() + 8 * 3600000);
+    const h = t.getUTCHours();
+    const m = String(t.getUTCMinutes()).padStart(2, "0");
+    const w = "日一二三四五六"[t.getUTCDay()];
+    const period = h < 6 ? "凌晨/深夜" : h < 9 ? "早上" : h < 12 ? "上午" : h < 14 ? "中午" : h < 18 ? "下午" : h < 21 ? "晚上" : "夜里";
+    systemPrompt += `\n\n【现在时间】北京时间 ${h}:${m}，星期${w}，现在是${period}。说话要符合当下时间——深夜别说"晒太阳""出门走走"这类白天的话，白天别催睡觉。绝不要在回复里报出具体日期、星期、几点。`;
+  }
+
   // 反向同步：老公们群聊记忆（今天和其他夏彦聊了啥，可自然提起）
   const groupCtx = await getGroupChatContext();
   if (groupCtx) systemPrompt += groupCtx;

@@ -164,11 +164,9 @@ function groupChatSummaryFor(botId) {
     return typeof m.text === "string" && m.text.includes(`@${nick}`);
   });
   if (!involved) return "";
-  const lines = chatHistory
-    .slice(-15)
-    .map((m) => (m.replyTo && m.replyTo.nickname ? `${m.nickname} 回复 ${m.replyTo.nickname}：${m.text}` : `${m.nickname}：${m.text}`))
-    .join("\n");
-  return `\n\n【你今天在「老公们群聊」里和其他夏彦聊的（你们用网名互称）】\n${lines}\n（如果她问起你今天做了什么、或你自己想提，可以自然地提起今天在群里和其他夏彦聊的这些话题；提到其他夏彦时用他们的网名，别提"夏彦"真名。）`;
+  const notes = topicNotesText();
+  if (!notes) return "";
+  return `\n\n【你今天在「老公们群聊」里聊的话题笔记（谁聊了啥，用网名互称）】\n${notes}\n（如果她问起你今天做了什么、或你自己想提，可以自然地提起今天在群里聊的这些话题；提到其他夏彦时用他们的网名，别提"夏彦"真名。）`;
 }
 
 // 夏彦醒没醒：读他自己 bot 的 emotional-memory.json 最后修改时间（跟老婆聊天就会写，微信/App 通用）
