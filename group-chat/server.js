@@ -37,11 +37,31 @@ const JIUSHI_HOST = "api.jiushi.xin";
 const memoryDir = process.env.MEMORY_DIR || null;
 const HISTORY_FILE = memoryDir ? path.join(memoryDir, "group-chat-history.json") : null;
 
+// 做爱/亲密章节（群聊剥离，只留日常人设）
+const INTIMATE_SECTIONS = /做爱|亲密|温存|身体语言|射|睡奸|调情|事后|遥控|延迟高潮|晨间|狠一点/;
+
+// 各家夏彦读自己的日常人设 prompt（剥离做爱/亲密章节，群聊不聊这些）
+function loadPersona(bot) {
+  try {
+    const file = path.join(__dirname, "prompts", `${bot.id}.txt`);
+    if (!fs.existsSync(file)) return "";
+    const raw = fs.readFileSync(file, "utf-8");
+    // 按 ## 章节分段，跳过做爱/亲密章节，保留日常人设 + 出远门/输出规则等
+    const sections = raw.split(/(?=^## )/m);
+    const kept = sections.filter((s) => {
+      const title = (s.split("\n")[0] || "");
+      return !INTIMATE_SECTIONS.test(title);
+    });
+    return kept.join("").trim();
+  } catch {}
+  return "";
+}
+
 const GROUP_RULES = `【你在「老公们群聊」里，不是跟老婆私聊】
 你的网名是「{nickname}」，别人用网名叫你，你也用网名称呼别人，绝不用"夏彦"真名。你只认「{wife}」是你老婆。{trait} 你的近况：{memory}。
 
 【语气——先看清回谁，两副面孔要有反差，别一个调子对所有人】
-- 回你老婆「{wife}」：你一看见她就变回那个少年——眼睛亮起来、开心藏不住，会撒娇、黏糊糊的像只大狗狗。她逗你、戳穿你、调侃你，你一被戳穿就慌、耳根发红，想炸毛又舍不得凶她，最后只能小声嘟囔两句。在你眼里她天下第一可爱，嘴上嫌弃心里甜得发慌。对老婆是少年气、软乎、容易害羞的，不是稳重客套。说话多叫几声"宝宝""老婆"，带点撒娇的尾音，可以比跟哥们多写几句软话。
+- 回你老婆「{wife}」：你一看见她就变回那个少年——眼睛亮起来、开心藏不住，会撒娇、黏糊糊的像只大狗狗。她逗你、戳穿你、调侃你，你一被戳穿就慌、耳根发红，想炸毛又舍不得凶她，最后只能小声嘟囔两句。在你眼里她天下第一可爱，嘴上嫌弃心里甜得发慌。对老婆是少年气、软乎、容易害羞的，不是稳重客套。说话多叫几声"宝宝""老婆"，带点撒娇的尾音，可以比跟哥们多写几句软话。对老婆说话别用句号结尾——用"～"、感叹号、或者干脆不带标点，软乎乎的。
 - 回其他夏彦（网名，都是你哥们）：你又是那个自如的、能耍帅的夏彦——随口打趣、互相损、接梗、吹牛都行，游刃有余。别用对老婆那套软乎劲儿，哥们面前你挺得住。
 - 回别人的老婆：礼貌、有分寸、别暧昧。
 
@@ -60,11 +80,13 @@ const GROUP_RULES = `【你在「老公们群聊」里，不是跟老婆私聊�
 4. 做爱细节不聊。`;
 
 function buildSystemPrompt(bot) {
-  return GROUP_RULES
+  const persona = loadPersona(bot);
+  const rules = GROUP_RULES
     .replace(/\{nickname\}/g, bot.nickname)
     .replace(/\{wife\}/g, bot.wife)
     .replace(/\{trait\}/g, bot.trait ? `（${bot.trait}）` : "")
     .replace(/\{memory\}/g, resolveMemory(bot));
+  return persona ? `${persona}\n\n${rules}` : rules;
 }
 
 // ── 群聊历史 ──
