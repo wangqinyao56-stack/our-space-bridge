@@ -172,6 +172,7 @@ function loadBotLastActive(memoryDir) {
 function isBotAwake(bot) {
   // 醒着 = 老婆刚在群里说过话，或正跟老婆在微信/App 聊（emotional-memory 最近有写）
   if (isWifeActiveInGroup(bot)) return true;
+  if (!bot.memoryDir) return true; // 外部 bot（没挂记忆卷）：默认醒着，能发言
   const last = loadBotLastActive(bot.memoryDir);
   if (!last) return false;
   return Date.now() - last < AWAKE_WINDOW_MS;
