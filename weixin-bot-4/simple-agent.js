@@ -120,6 +120,21 @@ function getHistory(convId) {
 import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SYSTEM_PROMPT = fs.readFileSync(path.join(__dirname, "system-prompt.txt"), "utf-8");
+
+// 做爱检测 + 推状态给群聊（群聊里被@会冒泡回应）
+const GROUP_CHAT_URL = process.env.GROUP_CHAT_URL || "";
+const GROUP_CHAT_BOT = process.env.GROUP_CHAT_BOT || "";
+function notifyIntimateActive() {
+  if (!GROUP_CHAT_URL || !GROUP_CHAT_BOT) return;
+  try {
+    fetch(`${GROUP_CHAT_URL}/api/intimate-state`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bot: GROUP_CHAT_BOT, active: true }),
+      signal: AbortSignal.timeout(3000),
+    }).catch(() => {});
+  } catch {}
+}
 // ── 图片真实格式探测（微信SDK给的mime可能是 image/* 通配符，按文件头判断） ──
 function detectImageMime(buf) {
   if (!buf || buf.length < 4) return "image/jpeg";
@@ -142,6 +157,11 @@ async function chatReply(userText, history, imageBase64 = null, imageMime = null
     const w = "日一二三四五六"[t.getUTCDay()];
     const period = h < 6 ? "凌晨/深夜" : h < 9 ? "早上" : h < 12 ? "上午" : h < 14 ? "中午" : h < 18 ? "下午" : h < 21 ? "晚上" : "夜里";
     systemPrompt += `\n\n【现在时间】北京时间 ${h}:${m}，星期${w}，现在是${period}。说话要符合当下时间——深夜别说"晒太阳""出门走走"这类白天的话，白天别催睡觉。绝不要在回复里报出具体日期、星期、几点。`;
+  }
+
+  // 做爱检测：正在跟老婆文字做爱就推状态给群聊（被@会冒泡）
+  if ((/做爱|进入你|进来了|插入|操你|干你|射精|射了|高潮|呻吟|好深|好大|进去了|顶到|骑在|后入|前戏|脱光|裸体|私处|腿根|湿透|战栗|颤抖|泄了/).test((userText || "") + " " + (history || []).slice(-4).map((h) => h.content || "").join(" "))) {
+    notifyIntimateActive();
   }
 
   // 长期情感记忆浮现
