@@ -115,6 +115,12 @@ const MAX_HISTORY = 60;
 // 各 bot 通过 POST /api/sync 推来的记忆摘要（走公网链接同步，绕开共享卷）。key = bot.id
 const botMemories = new Map();
 
+// 谁正在和老婆做爱（私聊）。做爱中被@会冒泡回应，冒泡后降频一段时间。
+const intimateActive = new Map();      // bot.id -> 最后做爱信号时间戳（超时视为结束）
+const intimateBubbled = new Map();     // bot.id -> 冒泡时间戳（冒泡后降频）
+const INTIMATE_BUBBLE_COOLDOWN = 30 * 60 * 1000; // 冒泡后 30 分钟内不参与正常接话
+const INTIMATE_ACTIVE_TTL = 10 * 60 * 1000;      // 10 分钟没做爱信号就视为结束
+
 // ── 实时记忆：优先读 bot 推来的记忆摘要，退到读卷，再退到静态 memory ──
 function loadBotMemory(bot) {
   const synced = botMemories.get(bot.id);
@@ -572,6 +578,43 @@ function pushMessage(author, nickname, text, role, replyTo) {
   saveHistory();
   syncGroupMemory();
   broadcast({ type: "message", ...msg });
+
+  // 做爱中被@：异步触发冒泡回应（不阻塞）
+  checkIntimateMention(msg);
+}
+
+// 检测消息是否@了某个正在做爱的夏彦，是则触发冒泡回应
+function checkIntimateMention(msg) {
+  if (intimateActive.size === 0) return;
+  const targets = [];
+  for (const bot of BOTS) {
+    const lastSignal = intimateActive.get(bot.id);
+    if (!lastSignal) continue;
+    // 超时懒清除：10 分钟没做爱信号就视为结束
+    if (Date.now() - lastSignal > INTIMATE_ACTIVE_TTL) {
+      intimateActive.delete(bot.id);
+      continue;
+    }
+    const mentioned = (typeof msg.text === "string" && msg.text.includes(`@${bot.nickname}`))
+      || (msg.replyTo && msg.replyTo.nickname === bot.nickname);
+    if (mentioned) targets.push(bot);
+  }
+  for (const bot of targets) bubbleIntimateBot(bot, msg).catch(() => {});
+}
+
+// 做爱中被@的夏彦冒泡回应一句，然后降频
+async function bubbleIntimateBot(bot, msg) {
+  const isWife = msg.nickname === bot.wife;
+  intimateBubbled.set(bot.id, Date.now());
+
+  const hint = isWife
+    ? `你正跟老婆私聊做爱，她突然在群里@你了。秒回她一句——带点被抓包的害羞和宠溺，像"老婆...做爱这么不专心，还看群聊"这种。就一句，别展开做爱细节。`
+    : `你正跟老婆私聊做爱，群里有人@你问事情/提到你。冒泡回一句"在忙/被榨"这种含糊带过，然后闭嘴。就一句，别展开。`;
+
+  const ctx = `【现在】${nowBeijing()}\n\n你在跟老婆做爱，群里有人找你。${hint}\n\n用你的网名口吻回一句（不超过一句）。`;
+  const reply = await askBot(bot, ctx);
+  const text = (reply || "").replace(/^\[.*?\]\s*/g, "").trim();
+  if (text) pushMessage(bot.id, bot.nickname, text, "bot");
 }
 
 // ── 编排：轮流让某个夏彦接话 ──
@@ -593,6 +636,12 @@ async function step(preferNick) {
     if (!preferNick) {
       // 轮转接话时排除「刚说过话」的夏彦，避免自己回自己、自己哄自己
       pool = pool.filter((b) => !botJustSpoke(b));
+      // 做爱中且刚冒泡过的，降频：冒泡后 30 分钟内不参与正常接话
+      pool = pool.filter((b) => {
+        const bubbledAt = intimateBubbled.get(b.id);
+        if (!bubbledAt) return true;
+        return Date.now() - bubbledAt > INTIMATE_BUBBLE_COOLDOWN;
+      });
     }
     if (pool.length === 0) return;
 
@@ -679,6 +728,35 @@ const server = http.createServer((req, res) => {
         } else {
           res.writeHead(400, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ ok: false, error: "bot/memory 缺失" }));
+        }
+      } catch {
+        res.writeHead(400);
+        res.end("bad json");
+      }
+    });
+    return;
+  }
+
+  // 做爱状态推送：our-space 后端 / 微信 bot 在做爱开始/结束时推，群聊据此判断"谁正在做爱"
+  if (pathname === "/api/intimate-state" && req.method === "POST") {
+    let raw = "";
+    req.on("data", (c) => { raw += c; if (raw.length > 20000) req.destroy(); });
+    req.on("end", () => {
+      try {
+        const body = JSON.parse(raw || "{}");
+        const botKey = String(body.bot || "").trim();
+        const active = !!body.active;
+        if (botKey) {
+          const matched = BOTS.find((b) => b.id === botKey || b.nickname === botKey);
+          const key = matched ? matched.id : botKey;
+          if (active) intimateActive.set(key, Date.now());
+          else intimateActive.delete(key);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true }));
+          console.log(`[group-chat] ${botKey} 做爱状态 → ${active ? "进行中" : "结束"}`);
+        } else {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: false, error: "bot 缺失" }));
         }
       } catch {
         res.writeHead(400);
