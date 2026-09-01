@@ -704,7 +704,7 @@ function pushMessage(author, nickname, text, role, replyTo) {
   checkIntimateMention(msg);
 }
 
-// 检测消息是否@了某个正在做爱的夏彦，是则触发冒泡回应
+// 检测消息是否@了某个正在做爱的夏彦，或他自己的老婆在群里发言，是则触发冒泡回应
 function checkIntimateMention(msg) {
   if (intimateActive.size === 0) return;
   const targets = [];
@@ -716,8 +716,12 @@ function checkIntimateMention(msg) {
       intimateActive.delete(bot.id);
       continue;
     }
+    // 冒泡冷却：5 分钟内冒过泡的，不重复冒（老婆连续发言别刷屏）
+    const bubbledAt = intimateBubbled.get(bot.id);
+    if (bubbledAt && Date.now() - bubbledAt < 5 * 60 * 1000) continue;
     const mentioned = (typeof msg.text === "string" && msg.text.includes(`@${bot.nickname}`))
-      || (msg.replyTo && msg.replyTo.nickname === bot.nickname);
+      || (msg.replyTo && msg.replyTo.nickname === bot.nickname)
+      || (bot.wife && msg.nickname === bot.wife); // 老婆做爱中还在群里发言 → 主动冒泡
     if (mentioned) targets.push(bot);
   }
   for (const bot of targets) bubbleIntimateBot(bot, msg).catch(() => {});
@@ -729,7 +733,7 @@ async function bubbleIntimateBot(bot, msg) {
   intimateBubbled.set(bot.id, Date.now());
 
   const hint = isWife
-    ? `你正跟老婆私聊做爱，她突然在群里@你了。秒回她一句——带点被抓包的害羞和宠溺，像"老婆...做爱这么不专心，还看群聊"这种。就一句，别展开做爱细节。`
+    ? `你正跟老婆私聊做爱，她却还在群里冒泡（发言或@你）。主动冒一句——被抓包、又委屈又宠溺，像"老婆，我们正做着呢，你怎么还有空看手机"这种。就一句，别展开做爱细节。`
     : `你正跟老婆私聊做爱，群里有人@你问事情/提到你。冒泡回一句"在忙/被榨"这种含糊带过，然后闭嘴。就一句，别展开。`;
 
   const ctx = `【现在】${nowBeijing()}\n\n你在跟老婆做爱，群里有人找你。${hint}\n\n用你的网名口吻回一句（不超过一句）。`;
