@@ -339,7 +339,12 @@ function topicNotesText() {
 
 // ── AI 调用（玖时，每 bot 用自己的 key；外部 bot 可用 bot.host 指定自己的端点）──
 function askBot(bot, userContent, timeoutMs = 60000) {
-  const host = bot.host || JIUSHI_HOST;
+  // host 可能带路径前缀（如 opencode.ai/zen/go），拆成纯域名 + 路径前缀
+  const hostStr = bot.host || JIUSHI_HOST;
+  const slash = hostStr.indexOf("/");
+  const host = slash > 0 ? hostStr.slice(0, slash) : hostStr;   // 纯域名，如 opencode.ai
+  const basePath = slash > 0 ? hostStr.slice(slash) : "";       // 路径前缀，如 /zen/go
+  const apiPath = `${basePath}/v1/chat/completions`;            // 完整路径
   const body = JSON.stringify({
     model: bot.model || "[企业按量]claude-opus-4-6",
     max_tokens: 160,
@@ -352,7 +357,7 @@ function askBot(bot, userContent, timeoutMs = 60000) {
 
   const doDirect = () => new Promise((resolve, reject) => {
     const req = https.request({
-      host, path: "/v1/chat/completions", method: "POST",
+      host, path: apiPath, method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${bot.apiKey}` },
       timeout: timeoutMs,
     }, (res) => {
@@ -382,7 +387,7 @@ function askBot(bot, userContent, timeoutMs = 60000) {
     conn.on("connect", (res, socket) => {
       if (res.statusCode !== 200) return reject(new Error(`CONNECT ${res.statusCode}`));
       const r = https.request({
-        host: JIUSHI_HOST, port: 443, path: "/v1/chat/completions", method: "POST",
+        host, port: 443, path: apiPath, method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${bot.apiKey}` },
         socket, timeout: timeoutMs,
       }, (resp) => {
