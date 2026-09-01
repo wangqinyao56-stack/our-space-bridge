@@ -14,6 +14,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.MEMORY_DIR || path.join(__dirname, "..", "data");
 const MEMORY_FILE = path.join(DATA_DIR, "emotional-memory.json");
 
+// 老公们群聊同步（走公网链接，绕开共享卷）
+const GROUP_CHAT_URL = process.env.GROUP_CHAT_URL || "";
+const GROUP_CHAT_BOT = process.env.GROUP_CHAT_BOT || "";
+
 // ── 调参常量（原样移植 Ombre-Brain decay_engine.py）──
 const LAMBDA = 0.05;
 const ARCHIVE_THRESHOLD = 0.3;
@@ -352,10 +356,61 @@ export async function runDream() {
   }
 }
 
-// ── 反向同步：老公们群聊记忆 ──
-// 群聊服务会往 DATA_DIR/group-chat-memory.json 写今天和其他夏彦聊的记录，
-// 这里读出来，让夏彦在和自己老婆聊时能自然提起今天在群里聊的话题（其他夏彦叫网名）。
-export function getGroupChatContext() {
+// ── 老公们群聊同步（走公网链接，绕开共享卷）──
+// 把本 bot 的 top 非亲密记忆摘要推给群聊服务当真实素材（防群聊里乱编）
+export function getMemorySummaryForGroupChat(limit = 6) {
+  try {
+    runDecay();
+    const active = memories
+      .filter((m) => m && (m.content || m.name) && !m.digested)
+      .sort((a, b) => (b.importance || 5) - (a.importance || 5))
+      .slice(0, limit);
+    if (active.length === 0) return "";
+    return active.map((m) => {
+      const title = (m.name || "").trim() || (m.content || "").slice(0, 20);
+      const intimate = Array.isArray(m.domain)
+        ? m.domain.includes("intimate")
+        : /做爱|亲密|温存|亲热|高潮/.test(m.name || m.content || "");
+      if (intimate) return `· ${title}`;
+      const detail = (m.content || "").replace(/\s+/g, " ").trim().slice(0, 50);
+      return detail && detail !== title ? `· ${title}：${detail}` : `· ${title}`;
+    }).join("\n");
+  } catch {
+    return "";
+  }
+}
+
+export async function pushMemoryToGroupChat() {
+  if (!GROUP_CHAT_URL || !GROUP_CHAT_BOT) return;
+  try {
+    const memory = getMemorySummaryForGroupChat();
+    if (!memory) return;
+    await fetch(`${GROUP_CHAT_URL}/api/sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bot: GROUP_CHAT_BOT, memory }),
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch {
+    // 静默失败，不阻塞聊天
+  }
+}
+
+// 拉取今天在群里聊了啥：优先走公网链接，失败退到本地文件（旧方式）
+export async function getGroupChatContext() {
+  if (GROUP_CHAT_URL && GROUP_CHAT_BOT) {
+    try {
+      const res = await fetch(`${GROUP_CHAT_URL}/api/group-chat?bot=${encodeURIComponent(GROUP_CHAT_BOT)}`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (res.ok) {
+        const text = (await res.text()).trim();
+        if (text) return text;
+      }
+    } catch {
+      // 网络失败 → 退到本地文件
+    }
+  }
   try {
     const file = path.join(DATA_DIR, "group-chat-memory.json");
     if (!fs.existsSync(file)) return "";

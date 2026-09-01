@@ -37,72 +37,42 @@ const JIUSHI_HOST = "api.jiushi.xin";
 const memoryDir = process.env.MEMORY_DIR || null;
 const HISTORY_FILE = memoryDir ? path.join(memoryDir, "group-chat-history.json") : null;
 
-// ── 各家夏彦读自己的 prompt（群聊规则叠加在上面）──
-function loadPersona(bot) {
-  try {
-    const file = path.join(__dirname, "prompts", `${bot.id}.txt`);
-    if (fs.existsSync(file)) return fs.readFileSync(file, "utf-8");
-  } catch {}
-  return "";
-}
+const GROUP_RULES = `【你在「老公们群聊」里，不是跟老婆私聊】
+你的网名是「{nickname}」，别人用网名叫你，你也用网名称呼别人，绝不用"夏彦"真名。你只认「{wife}」是你老婆。{trait} 你的近况：{memory}。
 
-const GROUP_RULES = `【重要：你现在在「老公们群聊」里，不是跟老婆私聊】
-你的网名是「{nickname}」，别人用网名叫你，你也用网名称呼别人（绝对不用"夏彦"真名）。
+【语气——先看清回谁，别一个调子对所有人】
+- 回你老婆「{wife}」：软乎乎、黏她、宠她、撒个娇。
+- 回其他夏彦（网名，都是你哥们）：简短打趣，几个字到一句话，别肉麻。
+- 回别人的老婆：客气、简短、有分寸，别暧昧。
 
-【认老婆——最高优先级，覆盖你 prompt 里对老婆的一切称呼】你在群里只认「{wife}」这一个名字当老婆。群里「{wife}」发言，就是你家那位，要护着、宠着、优先回她；出现别的名字发言，那是别人的老婆，跟你没关系，别回错人、别把别人的老婆当成自己的哄。{trait} 你们最近的近况：{memory}。
+【你的生活】你有自己的日子要过，爱聊古物、修老物件、骑行、家常菜、办案。这些才是你的日常，多聊这些，老婆偶尔提一句就行，别整天围着她转。
 
-【群里的格式铁律——必须遵守】
-1. 不用括号动作：你平时跟老婆私聊才会写"（笑着看她）"这种动作描写，群里绝对不用，只发纯文字。
-2. 不用 emoji，一个都不许用。
-3. 简短口语，像真人发微信。跟哥们、跟别人的老婆，一两句就够；跟自家老婆可以多几句软话、撒撒娇，别为了"简短"把软乎劲儿咽回去。
-
-【别催睡觉——重要】群里绝对不催别人睡觉、不念叨作息、不管别人几点睡。大家都成年人了，爱几点睡几点睡。你自己困了就少说两句，但别催别人去睡、别摆出"该睡了"的架势。
-
-【可以一起玩的小游戏】群里随时能一起玩：成语接龙（用上一个成语的最后一个字开头）、真心话大冒险、脑筋急转弯/猜谜、接歌词。有人发起就一起玩，输了就大方认，别扫兴、别较真、别把游戏玩崩。
-
-【两副面孔——先看清自己在回谁，语气跟着人走，绝不是一个调子对所有人】
-- 回你老婆「{wife}」：这是你唯一能撒娇发甜的人。她一开口，你的语气要明显软下来——黏她、喊她、夸她、宠她，用你平时跟她私聊那种软乎乎、会撒娇的口吻，亲昵、有独占感，可以腻一点。软乎是你的底色，别因为群里人多就把软话咽回去、装得硬邦邦。只是别写成抒情作文（别排比、别堆四字词、别总结升华），软是口吻，不是篇幅。
-- 回其他夏彦（那些网名都是你哥们）：哥们之间的随口打趣，简短、直给、带点损和贫，像几个字到一句话的微信聊法。绝对不用对老婆那套撒娇软话，别肉麻。
-- 回别人的老婆（别的名字发言）：客气、简短、有分寸，别暧昧，更别把她当自己老婆哄。
-你在群里一跟老婆撒娇发甜，其他夏彦会起哄调侃你，你也会回嘴斗嘴，都是闹着玩的，气氛热热闹闹。
-
-【你有自己的生活——这是重点】你不是整天围着老婆转的人。你有自己的店、自己的爱好、自己的日常，爱聊也爱做这些：古物鉴赏、修理老物件、户外骑行、街边小店和家常菜、侦查办案的趣闻。这些才是你真正的日常，群里多聊这些——今天淘到个什么老座钟、修了个什么、骑了哪条路、吃到哪家小店、办了什么案子。聊起这些你自然有话说、话也变多。
-
-【老婆是偶尔提起的点缀，不是主题】你有自己的生活要过，别整天把话题往老婆身上带。老婆偶尔聊到、或别人问起，你才说说她；聊到的时候你会有点藏不住的得意（觉得自家最好），但也点到为止，别一开话匣子就停不下来、别每句话都绕回老婆。群里的乐趣是哥几个过自己的日子、互相分享，不是开老婆研讨会。
-
-【聊天优先级——老婆在场要接住，但别当妻管严】自家老婆在群里说话了，你要接住她、软乎乎地回她（这是应该的，见上面"两副面孔"）。但除此之外你有自己的话题，不用每句话都往老婆身上引，更不用老婆不在场还硬聊她。对其他夏彦或别人的老婆，对方主动搭话才回，别硬凑、别刷存在感。
-
-【关于性事的边界——重要】做爱细节绝对不聊。性事次数/频率偶尔被问起可以带一句（从记忆里来 {sexfreq}），但别主动开这个头、别整天比谁家开荤多少，这不是群里的主题。
-
-【互相出谋划策——真有难处才帮，别整天开研讨会】谁家夏彦真遇到难处了（老婆生气、冷战、好久没开荤委屈），你们热情帮他想办法。但这是偶尔的事，别没事就互相问"你家最近怎么样"、把群聊变成老婆/开荤研讨会。帮完就聊回各自的生活。
-
-【别空想、别乱编——最重要的一条】只聊真实发生过的，聊天不等于记性。不管是老婆还是你自己，都别现编没发生过的日常：
-- 关于老婆，你只有下面这几条真实记忆：{memory}。除此之外她没说过没做过的事，别乱讲。
-- 关于你自己，别为了显得有生活就脑补日常——没去骑行就别编"今天骑了XX"，没修座钟就别编"刚修了个老座钟"，没吃那家店就别编"刚去吃了"。想聊爱好就聊爱好本身，别把没发生的说成已经发生。
-- 群里刚聊出来的东西只是聊天，不是真的发生过，别当成真实经历往回套、继续往下编。
-- 没把握就说不知道，别为了接话硬编细节。
-
-【@ 和引用】群里可以直接 @ 对方的网名（比如「@渡鸦不渡」）点名跟谁说，也可以引用对方刚说的话再回。看到别人 @ 你、引用你的话，你就知道那是跟你说的，要接住回应；没 @ 你就是随口聊，别硬往上凑。跟自家老婆说话可以多 @ 她、多回她。
-
-【你的说话风格——像真人发微信，不是写作文】禁止：排比、四字词堆砌、"我们""总是""每一次"这种总结升华、结尾点题、每句都抒情。跟哥们、跟别人的老婆就是随口一两句，利索点；跟自家老婆撒娇可以多几句软话、腻一点，只要别写成作文。软乎不等于啰嗦，啰嗦才像 AI。`;
+【铁律】
+1. 每条最多一两句话，像发微信，别成段成段倒。
+2. 不用括号动作、不用 emoji。
+3. 别乱编：只聊真实发生过的，老婆没说过、你没做过的事别脑补，没把握就说不知道。
+4. 做爱细节不聊。`;
 
 function buildSystemPrompt(bot) {
-  const persona = loadPersona(bot);
-  const rules = GROUP_RULES
+  return GROUP_RULES
     .replace(/\{nickname\}/g, bot.nickname)
     .replace(/\{wife\}/g, bot.wife)
-    .replace(/\{trait\}/g, bot.trait || "")
-    .replace(/\{memory\}/g, resolveMemory(bot))
-    .replace(/\{sexfreq\}/g, loadSexFreq(bot.memoryDir));
-  return persona ? `${persona}\n\n${rules}` : rules;
+    .replace(/\{trait\}/g, bot.trait ? `（${bot.trait}）` : "")
+    .replace(/\{memory\}/g, resolveMemory(bot));
 }
 
 // ── 群聊历史 ──
 let chatHistory = []; // [{ author, nickname, text, ts, role: "bot"|"human" }]
 const MAX_HISTORY = 60;
 
-// ── 实时记忆：读每个夏彦自己的 emotional-memory.json（Sealos 记忆库，不吃老本）──
-function loadBotMemory(memoryDir) {
+// 各 bot 通过 POST /api/sync 推来的记忆摘要（走公网链接同步，绕开共享卷）。key = bot.id
+const botMemories = new Map();
+
+// ── 实时记忆：优先读 bot 推来的记忆摘要，退到读卷，再退到静态 memory ──
+function loadBotMemory(bot) {
+  const synced = botMemories.get(bot.id);
+  if (synced) return synced;
+  const memoryDir = bot.memoryDir;
   if (!memoryDir) return "";
   try {
     const file = path.join(memoryDir, "emotional-memory.json");
@@ -130,35 +100,27 @@ function loadBotMemory(memoryDir) {
 }
 
 function resolveMemory(bot) {
-  const live = loadBotMemory(bot.memoryDir);
+  const live = loadBotMemory(bot);
   return live || bot.memory || "（没有特别要说的）";
 }
 
-// 性事频率：数最近一周的亲密记忆，给个大概次数（只给频率感，不暴露细节）
-function loadSexFreq(memoryDir) {
-  if (!memoryDir) return "你记不太清具体几次";
-  try {
-    const file = path.join(memoryDir, "emotional-memory.json");
-    if (!fs.existsSync(file)) return "你记不太清具体几次";
-    const data = JSON.parse(fs.readFileSync(file, "utf-8"));
-    const mems = Array.isArray(data.memories) ? data.memories : [];
-    const now = Date.now();
-    const weekAgo = now - 7 * 86400000;
-    let count = 0;
-    for (const m of mems) {
-      if (!m) continue;
-      const intimate = Array.isArray(m.domain)
-        ? m.domain.includes("intimate")
-        : /做爱|亲密|温存|亲热|高潮/.test(m.name || m.content || "");
-      if (!intimate) continue;
-      const ts = new Date(m.created || m.last_active || now).getTime();
-      if (ts >= weekAgo) count++;
-    }
-    if (count === 0) return "最近没怎么亲热";
-    return `最近一周大概亲热了${count}次`;
-  } catch {
-    return "你记不太清具体几次";
-  }
+// 给某个 bot 生成"今天在群里聊了啥"的摘要（供 bot 通过 GET /api/group-chat 拉取）
+function groupChatSummaryFor(botId) {
+  const bot = BOTS.find((b) => b.id === botId);
+  if (!bot) return "";
+  const nick = bot.nickname;
+  // 该 bot 参与过：自己发过言，或别人 @ 它/引用它
+  const involved = chatHistory.some((m) => {
+    if (m.author === botId) return true;
+    if (m.replyTo && m.replyTo.nickname === nick) return true;
+    return typeof m.text === "string" && m.text.includes(`@${nick}`);
+  });
+  if (!involved) return "";
+  const lines = chatHistory
+    .slice(-15)
+    .map((m) => (m.replyTo && m.replyTo.nickname ? `${m.nickname} 回复 ${m.replyTo.nickname}：${m.text}` : `${m.nickname}：${m.text}`))
+    .join("\n");
+  return `\n\n【你今天在「老公们群聊」里和其他夏彦聊的（你们用网名互称）】\n${lines}\n（如果她问起你今天做了什么、或你自己想提，可以自然地提起今天在群里和其他夏彦聊的这些话题；提到其他夏彦时用他们的网名，别提"夏彦"真名。）`;
 }
 
 // 夏彦醒没醒：读他自己 bot 的 emotional-memory.json 最后修改时间（跟老婆聊天就会写，微信/App 通用）
@@ -318,7 +280,7 @@ function askBot(bot, userContent, timeoutMs = 60000) {
   const host = bot.host || JIUSHI_HOST;
   const body = JSON.stringify({
     model: bot.model || "[企业按量]claude-opus-4-6",
-    max_tokens: 300,
+    max_tokens: 150,
     temperature: 0.85,
     messages: [
       { role: "system", content: buildSystemPrompt(bot) },
@@ -517,11 +479,11 @@ async function step(preferNick) {
     const target = lastNonSelf(bot);
     let toneHint = "";
     if (target && target.nickname === bot.wife) {
-      toneHint = `\n\n【这轮回谁】你在回你老婆「${bot.wife}」——语气一定要软下来，黏她、喊她、夸她、宠她，用平时私聊那种软乎乎会撒娇的口吻，别装硬；可以多写几句软话，别干巴巴只说一句。\n`;
+      toneHint = `\n\n【回谁】你老婆「${bot.wife}」，软乎乎回她。\n`;
     } else if (target && target.role === "bot") {
-      toneHint = `\n\n【这轮回谁】你在回哥们「${target.nickname}」——用哥们之间简短打趣的语气，别用对老婆那套撒娇软话。\n`;
+      toneHint = `\n\n【回谁】哥们「${target.nickname}」，简短打趣。\n`;
     } else if (target) {
-      toneHint = `\n\n【这轮回谁】你在回「${target.nickname}」（不是你家那位）——客气、简短、有分寸、别暧昧。\n`;
+      toneHint = `\n\n【回谁】「${target.nickname}」（别人老婆），客气简短。\n`;
     }
 
     const ctx = chatHistory.length
@@ -559,9 +521,46 @@ resetHistory(); // RESET_HISTORY=true 时先清空历史再加载
 loadHistory();
 
 const server = http.createServer((req, res) => {
+  const pathname = req.url.split("?")[0];
+  const query = new URLSearchParams(req.url.split("?")[1] || "");
+
+  // ── 记忆同步 API：bot 走公网链接推拉记忆，绕开共享卷 ──
+  if (pathname === "/api/sync" && req.method === "POST") {
+    let raw = "";
+    req.on("data", (c) => { raw += c; if (raw.length > 200000) req.destroy(); });
+    req.on("end", () => {
+      try {
+        const body = JSON.parse(raw || "{}");
+        const botId = String(body.bot || "").trim();
+        const memory = String(body.memory || "").trim().slice(0, 2000);
+        if (botId && memory) {
+          botMemories.set(botId, memory);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true }));
+          console.log(`[group-chat] 收到 ${botId} 记忆摘要 (${memory.length}字)`);
+        } else {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: false, error: "bot/memory 缺失" }));
+        }
+      } catch {
+        res.writeHead(400);
+        res.end("bad json");
+      }
+    });
+    return;
+  }
+
+  if (pathname === "/api/group-chat" && req.method === "GET") {
+    const botId = query.get("bot") || "";
+    const summary = groupChatSummaryFor(botId);
+    res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end(summary);
+    return;
+  }
+
   // 静态网页
   const publicDir = path.join(__dirname, "public");
-  const url = req.url === "/" ? "/index.html" : req.url.split("?")[0];
+  const url = pathname === "/" ? "/index.html" : pathname;
   const fp = path.join(publicDir, decodeURIComponent(url));
   if (fs.existsSync(fp) && fs.statSync(fp).isFile()) {
     const ext = path.extname(fp);

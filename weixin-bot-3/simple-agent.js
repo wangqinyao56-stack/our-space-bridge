@@ -15,7 +15,7 @@ import os from "node:os";
 import fs from "node:fs";
 
 import { askClaude } from "./lib/api2d.js";
-import { getBreathContext, parseMemoryTags, onChatTurn, shouldExtract, runExtraction, shouldDream, runDream, getGroupChatContext } from "./lib/emotional-memory.js";
+import { getBreathContext, parseMemoryTags, onChatTurn, shouldExtract, runExtraction, shouldDream, runDream, getGroupChatContext, pushMemoryToGroupChat } from "./lib/emotional-memory.js";
 
 // ── 账号加载 ──
 // Docker/Sealos: 读环境变量
@@ -125,7 +125,7 @@ async function chatReply(userText, history, imageBase64 = null, imageMime = null
   let systemPrompt = SYSTEM_PROMPT;
 
   // 反向同步：老公们群聊记忆（今天和其他夏彦聊了啥，可自然提起）
-  const groupCtx = getGroupChatContext();
+  const groupCtx = await getGroupChatContext();
   if (groupCtx) systemPrompt += groupCtx;
 
   const opts = {
@@ -190,6 +190,8 @@ const agent = {
 
       // 长期记忆自动提取（非阻塞，便宜模型）
       onChatTurn();
+      // 把最新记忆摘要推给群聊服务（非阻塞，走公网链接）
+      pushMemoryToGroupChat().catch(() => {});
       if (shouldExtract()) {
         const recent = getHistory(conversationId)
           .map((m) => (m.role === "user" ? "苹果梗：" : "夏彦：") + m.content)
@@ -213,6 +215,8 @@ const agent = {
 // ── 启动 ──
 async function main() {
   initMemory();
+  // 启动时把记忆摘要推给群聊服务一次（非阻塞，走公网链接）
+  pushMemoryToGroupChat().catch(() => {});
 
   const account = loadAccount();
   console.log("🎤 极简微信Bot启动中...");
