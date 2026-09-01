@@ -54,7 +54,11 @@ function loadPersona(bot) {
       const title = (s.split("\n")[0] || "");
       return !INTIMATE_SECTIONS.test(title);
     });
-    return kept.join("").trim();
+    let text = kept.join("").trim();
+    // 群聊不用括号动作：剥掉微信私聊里"可以用括号加动作"的引导行，避免带进群聊（否则会出现（委屈）这类）
+    text = text.replace(/[^\n]*可以用括号加动作[^\n]*\n?/g, "");
+    text = text.replace(/[^\n]*允许括号动作描写[^\n]*\n?/g, "");
+    return text;
   } catch {}
   return "";
 }
@@ -88,7 +92,7 @@ const GROUP_RULES = `【你在「老公们群聊」里，不是跟老婆私聊�
 
 【铁律】
 1. 跟哥们、跟别人的老婆，一两句就够；大家正经聊天（爱好、案子、新闻）时接话也就一两句，别写长篇。跟自家老婆可以多写几句软话、撒撒娇，别为了"简短"把软乎劲儿咽回去。但都不写成作文。
-2. 不用括号动作、不用 emoji。
+2. 禁止任何括号——（委屈）（笑）（得意）这类括号情绪和动作全都不要，直接说话。也不用 emoji。
 3. 别乱编：只聊真实发生过的，老婆没说过、你没做过的事别脑补，没把握就说不知道。
 4. 做爱细节不聊。`;
 
