@@ -103,6 +103,35 @@ const intimateBubbled = new Map();     // bot.id -> 冒泡时间戳（冒泡后�
 const INTIMATE_BUBBLE_COOLDOWN = 30 * 60 * 1000; // 冒泡后 30 分钟内不参与正常接话
 const INTIMATE_ACTIVE_TTL = 10 * 60 * 1000;      // 10 分钟没做爱信号就视为结束
 
+// ── 海龟汤（多人共猜，轮换主持）──
+const SOUP_LIBRARY = [
+  {
+    title: "海龟汤",
+    surface: "有个人走进一家餐厅，点了一碗海龟汤，喝了一口后，回家自杀了。为什么？",
+    truth: "他多年前在海上遇难，和同伴漂流到荒岛。同伴煮了一锅'海龟汤'给他续命，说那是海龟肉。多年后他喝到真正的海龟汤，尝出味道完全不同，才明白当年吃的是同伴的肉，承受不住自杀了。",
+    keyPoints: ["海上遇难", "荒岛求生", "当年喝的其实是人肉", "味道不同才醒悟"],
+    hints: ["他当年在荒岛上活下来，靠的是同伴", "同伴骗了他一件事", "真正的海龟汤味道完全不一样"],
+  },
+  {
+    title: "半根火柴",
+    surface: "沙漠中央发现一具赤裸的男尸，手里紧紧握着半根火柴。他是怎么死的？",
+    truth: "他和同伴乘热气球穿越沙漠，气球故障不断下沉。扔光所有东西还是不行，最后抽签决定谁跳下去——抽到最短火柴的人跳。他抽到半根火柴，跳下气球摔死了。",
+    keyPoints: ["热气球", "故障下沉", "抽签决定谁跳", "抽到半根火柴的人跳"],
+    hints: ["他不是一个人", "他们在一个会坠落的东西上", "火柴是用来抽签的"],
+  },
+  {
+    title: "水草",
+    surface: "一个男人路过河边，看到河里的水草，突然跳河自杀了。为什么？",
+    truth: "他和女友曾在这条河边玩水，女友溺水，他跳下去救人，只摸到一团'水草'（其实是女友的头发），却没能救起她。多年后他回到这里，听人说这条河从没有水草，才明白当年摸到的是女友的头发，悔恨交加跳了河。",
+    keyPoints: ["女友溺水", "摸到的'水草'其实是头发", "多年后得知河里没有水草", "悔恨自杀"],
+    hints: ["他曾经有个女友", "女友就是在这条河出的事", "'水草'不是水草"],
+  },
+];
+
+let soupState = null;   // 当前海龟汤游戏 { hostId, hostNick, title, surface, truth, keyPoints, hints, hintLevel, active }
+let lastSoupHost = null; // 上次主持人 id（轮换用）
+const SOUP_RECENT = [];  // 最近用过的题目标题，避免重复
+
 // ── 实时记忆：优先读 bot 推来的记忆摘要，退到读卷，再退到静态 memory ──
 function loadBotMemory(bot) {
   const synced = botMemories.get(bot.id);
@@ -617,6 +646,89 @@ async function bubbleIntimateBot(bot, msg) {
   if (text) pushMessage(bot.id, bot.nickname, text, "bot");
 }
 
+// ── 海龟汤（多人共猜，轮换主持）──
+function pickSoupHost() {
+  const pool = BOTS.filter((b) => b.id !== lastSoupHost);
+  const candidates = pool.length > 0 ? pool : BOTS;
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function pickSoup() {
+  const pool = SOUP_LIBRARY.filter((s) => !SOUP_RECENT.includes(s.title));
+  const candidates = pool.length > 0 ? pool : SOUP_LIBRARY;
+  const soup = candidates[Math.floor(Math.random() * candidates.length)];
+  SOUP_RECENT.push(soup.title);
+  if (SOUP_RECENT.length > SOUP_LIBRARY.length) SOUP_RECENT.shift();
+  return soup;
+}
+
+async function startSoupGame() {
+  const host = pickSoupHost();
+  const soup = pickSoup();
+  if (!host || !soup) return;
+  soupState = {
+    hostId: host.id, hostNick: host.nickname,
+    title: soup.title, surface: soup.surface, truth: soup.truth,
+    keyPoints: soup.keyPoints, hints: soup.hints, hintLevel: 0, active: true,
+  };
+  lastSoupHost = host.id;
+  pushMessage(host.id, host.nickname, `【海龟汤】${soup.surface}\n大家用"是/否"问题来猜真相，我来当主持人～`, "bot");
+}
+
+async function handleSoupMessage(text, senderNick) {
+  if (!soupState || !soupState.active) return null;
+  const host = BOTS.find((b) => b.id === soupState.hostId);
+  if (!host) return null;
+  const hostNick = soupState.hostNick;
+  if (senderNick === hostNick) return null; // 主持人自己说的话不算猜题
+
+  if (/我猜|答案是|真相是|提交|我知道了/.test(text)) {
+    return judgeSoupSubmit(text, host, hostNick);
+  }
+  if (/提示/.test(text)) {
+    return giveSoupHint(host, hostNick);
+  }
+  if (/[吗么？?]|是不是|有没有|能不能|会不会/.test(text)) {
+    return judgeSoupQuestion(text, host, hostNick);
+  }
+  return null;
+}
+
+async function judgeSoupQuestion(text, host, hostNick) {
+  const ctx = `你是海龟汤主持人。汤底真相是：\n${soupState.truth}\n\n有人问："${text}"\n\n只回答"是"、"否"、"是也不是"、"无关"之一，最多补一两句极简解释。问题不能简单用是/否判断就回"无关"。绝对不要泄露汤底真相。`;
+  const reply = await askBot(host, ctx);
+  const ans = (reply || "").replace(/^\[.*?\]\s*/g, "").trim();
+  if (ans) pushMessage(host.id, hostNick, ans, "bot");
+  return ans;
+}
+
+async function judgeSoupSubmit(text, host, hostNick) {
+  const ctx = `你是海龟汤主持人。汤底真相是：\n${soupState.truth}\n\n关键情节：${soupState.keyPoints.join("、")}\n\n有人提交了答案："${text}"\n\n判断是否猜对。猜对就恭喜他、简短评分（关键情节/逻辑/细节），然后揭晓完整汤底真相。没猜对就指出哪里不对、鼓励继续，但别泄露汤底。`;
+  const reply = await askBot(host, ctx);
+  const ans = (reply || "").replace(/^\[.*?\]\s*/g, "").trim();
+  if (ans) pushMessage(host.id, hostNick, ans, "bot");
+  if (/汤底|真相|恭喜|揭晓|答对|猜对/.test(ans)) {
+    soupState.active = false;
+    setTimeout(() => {
+      if (!soupState || !soupState.active) {
+        pushMessage(host.id, hostNick, "还想玩就喊'再来一题海龟汤'～", "bot");
+      }
+    }, 2500);
+  }
+  return ans;
+}
+
+async function giveSoupHint(host, hostNick) {
+  if (soupState.hintLevel >= soupState.hints.length) {
+    pushMessage(host.id, hostNick, "提示给完啦，靠你们自己咯～", "bot");
+    return null;
+  }
+  soupState.hintLevel++;
+  pushMessage(host.id, hostNick, `提示${soupState.hintLevel}：${soupState.hints[soupState.hintLevel - 1]}`, "bot");
+  return null;
+}
+
 // ── 编排：轮流让某个夏彦接话 ──
 let speaking = false;
 let pendingWife = null;
@@ -831,8 +943,14 @@ wss.on("connection", (ws) => {
         const humanNick = ws.nickname || "我";
         console.log(`[group-chat] ${humanNick}: "${text.slice(0, 50)}"`);
         pushMessage("human", humanNick, text, "human", msg.replyTo);
-        // 优先让发言老婆对应的夏彦接话
-        step(humanNick).catch(() => {});
+        // 海龟汤：开局 / 猜题 / 正常接话
+        if (/海龟汤/.test(text) && (!soupState || !soupState.active)) {
+          startSoupGame().catch(() => {});
+        } else if (soupState && soupState.active && /[吗么？?]|是不是|有没有|能不能|会不会|我猜|答案是|真相是|提交|提示|我知道/.test(text)) {
+          handleSoupMessage(text, humanNick).catch(() => {});
+        } else {
+          step(humanNick).catch(() => {});
+        }
       }
 
       if (msg.type === "topic") {
