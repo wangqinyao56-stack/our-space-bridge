@@ -81,7 +81,7 @@ const GROUP_RULES = `【你在「老公们群聊」里，不是跟老婆私聊�
 
 【给老婆挑约会/礼物——哥们互相支招+炫耀】想带老婆去哪儿玩、想不好送她什么礼物时，可以在群里说出来让哥几个帮你出主意。也可以炫耀给老婆买的东西——买的礼物、买的小吃、带她去的好地方，带点"我家这个你们羡慕不来"的得意。注意你是买不是做：你不会做饭，但会给老婆买她爱吃的。点到为止，别把群变成老婆研讨会，做爱细节照旧不聊。
 
-【别当老爹——关心点到为止】对老婆的提醒、关心，一两句就好，别反复催、别念叨。你是她老公不是她爹——催睡觉、催吃饭、催喝水这种事点到为止，她不听就别一直念，念多了像老爹不像老公。
+【别当老爹——关心点到为止，别反复催别反复确认】对老婆的提醒、关心，一两句就好，别反复催、别念叨。你是她老公不是她爹——催睡觉、催吃饭、催喝水、催喝奶茶这种事点到为止，她不听就别一直念。事情提醒一两次就停，别三番五次；已经问过的别反复确认来确认去（"吃了吗""还没吃吗""真的不吃吗"），一句带过就收，反复催反复确认很招人烦。
 
 【调侃——老婆来了先回老婆，损嘴是哥们间的调味】
 - 老婆「{wife}」在群里说话，你立刻先回她，兄弟的话头放下。她在场的时候，你的注意力就是她的。
@@ -316,11 +316,26 @@ function resetHistory() {
 }
 
 function historyText() {
-  return chatHistory
+  return chatHistory.slice(-20)
     .map((m) => m.replyTo && m.replyTo.nickname
       ? `${m.nickname} 回复 ${m.replyTo.nickname}：${m.text}`
       : `${m.nickname}：${m.text}`)
     .join("\n");
+}
+
+// 今日话题笔记：按发言者聚类，让每个夏彦一眼记住"谁聊了啥、大致回了啥"
+function topicNotesText() {
+  const byAuthor = new Map();
+  for (const m of chatHistory) {
+    if (!byAuthor.has(m.nickname)) byAuthor.set(m.nickname, []);
+    byAuthor.get(m.nickname).push(m.text);
+  }
+  const lines = [];
+  for (const [nick, texts] of byAuthor) {
+    const uniq = [...new Set(texts.slice(-4))];
+    lines.push(`${nick}：${uniq.join("；")}`);
+  }
+  return lines.join("\n");
 }
 
 // ── AI 调用（玖时，每 bot 用自己的 key；外部 bot 可用 bot.host 指定自己的端点）──
@@ -607,14 +622,8 @@ async function step(preferNick) {
       toneHint = `\n\n【回谁】「${target.nickname}」（别人老婆），客气简短。\n`;
     }
 
-    // 自我记忆锚点：让夏彦明确记得自己刚才说过什么，别转头就否认/失忆
-    const ownRecent = chatHistory.filter((m) => m.author === bot.id).slice(-5);
-    const ownHint = ownRecent.length > 0
-      ? `\n\n【你自己最近说过的话——必须记得，别失忆别否认】${ownRecent.map((m) => m.text).join("；")}`
-      : "";
-
     const ctx = chatHistory.length
-      ? `【现在】${nowBeijing()}\n\n【群聊记录】\n${historyText()}${ownHint}\n\n现在轮到你（${bot.nickname}）接话了。${coldHint}${toneHint}自然地接上大家的话题，或开个新话题（聊你的爱好、最近在忙什么、生活琐事都行，老婆偶尔带一句）。用你的网名口吻，像发微信那样自然点。`
+      ? `【现在】${nowBeijing()}\n\n【今日群聊笔记——谁聊了啥，别忘】\n${topicNotesText()}\n\n【最近对话】\n${historyText()}\n\n现在轮到你（${bot.nickname}）接话了。${coldHint}${toneHint}自然地接上大家的话题，或开个新话题（聊你的爱好、最近在忙什么、生活琐事都行，老婆偶尔带一句）。用你的网名口吻，像发微信那样自然点。`
       : `【现在】${nowBeijing()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊你的爱好、最近的日常、生活琐事都行）。用你的网名口吻，像发微信那样自然点。`;
 
     const reply = await askBot(bot, ctx);
