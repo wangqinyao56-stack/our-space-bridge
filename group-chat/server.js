@@ -44,6 +44,9 @@ const BOT_MEMORIES_FILE = memoryDir ? path.join(memoryDir, "bot-memories.json") 
 // 做爱/亲密章节（群聊剥离，只留日常人设）
 const INTIMATE_SECTIONS = /做爱|亲密|温存|身体语言|射|睡奸|调情|事后|遥控|延迟高潮|晨间|狠一点/;
 
+// 做爱动作描写关键词：这些行/段落在群聊里必须删掉。只删明显色情动作，保留"揉揉头发/搂/亲"这类正常亲昵。
+const INTIMATE_LINE_RX = /舔|含住|舌尖|舔穴|射精|高潮|插入|阴道|穴|脱光|裸体|喘息|前戏|耳垂|锁骨|肩胛|手指插进头发|揉.*小腹|捏.*腰|蹭|湿透|变两根|浅变深|吻遍|搂进怀里|低头吻/;
+
 // 各家夏彦读自己的日常人设 prompt（剥离做爱/亲密章节，群聊不聊这些）
 function loadPersona(bot) {
   try {
@@ -57,6 +60,8 @@ function loadPersona(bot) {
       return !INTIMATE_SECTIONS.test(title);
     });
     let text = kept.join("").trim();
+    // 逐行删掉做爱动作描写（按关键词，因为这些内容常常不独立成章节，藏在"核心语气/对话风格"里）
+    text = text.split("\n").filter((line) => !INTIMATE_LINE_RX.test(line)).join("\n");
     // 群聊不用括号动作：剥掉微信私聊里"可以用括号加动作"的引导行，避免带进群聊（否则会出现（委屈）这类）
     text = text.replace(/[^\n]*可以用括号加动作[^\n]*\n?/g, "");
     text = text.replace(/[^\n]*允许括号动作描写[^\n]*\n?/g, "");
