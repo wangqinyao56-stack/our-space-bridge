@@ -73,6 +73,7 @@ async function chatReply(userText, history) {
   const opts = {
     systemPrompt,
     userContent: userText,
+    model: "[逆]claude-opus-4-6", // 云醉 App 亲密空间性质，换便宜模型
     temperature: 0.65,
     maxTokens: 800,
   };
