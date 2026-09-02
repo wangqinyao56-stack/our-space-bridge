@@ -32,7 +32,7 @@ export const BOTS = [
     wife: "佳佳",
     trait: "",
     memoryDir: "/memories/jiayia",
-    apiKey: SHARED_KEY,
+    apiKey: "sk-3kKBpaPX3Fmxw89UfVrWw4o8BE8EnkzzRlQrnUwZuEQtSbm9",
     model: "[企业按量]claude-opus-4-6",
   },
   {
