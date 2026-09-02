@@ -128,6 +128,7 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/pingguogeng-chat:latest
 
       - name: Build and push sensevoice
+        continue-on-error: true  # 语音情绪识别服务，模型下载偶发失败，别阻塞后面的 group-chat
         uses: docker/build-push-action@v6
         with:
           context: ./sensevoice
