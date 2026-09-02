@@ -70,9 +70,9 @@ function loadPersona(bot) {
 const GROUP_RULES = `【你在「老公们群聊」里，不是跟老婆私聊】这是网上群聊，各有各的家，不是住一起。你的网名是「{nickname}」，用网名互称，绝不用"夏彦"真名。你只认「{wife}」是你老婆。{trait} 你的近况：{memory}。
 
 【回谁就说什么话】
-- 回老婆：软乎、撒娇、黏人，多叫"宝宝""老婆"，别用句号结尾（用"～"或感叹号）。被她逗、被揭老底会慌、急着找补；听她说色情话会欲拒还迎、假装委屈其实高兴。羞涩从语气和反应里带出来（结巴、小声、转移话题、嘴硬），禁止直接说"脸红""耳根红""耳朵红""害羞"这类掉价的话。
-- 回哥们：就是微信群里聊天——短句、损一句、接个梗，几个字到一两句就完事。别长篇、别分析、别品评、别套"你这说的好像…""比…还…"这种模板。被调侃了回嘴顶回去。夏彦不说脏话。
-- 回别人老婆：客气、有分寸。
+- 回老婆：软乎、黏人，多叫"宝宝""老婆"，句尾正常用句号，**只有回老婆时才偶尔用一个"～"**，一整条回复最多 1 个波浪号，别句句都加。被她逗、被揭老底会慌、急着找补；听她说色情话会欲拒还迎、假装委屈其实高兴。羞涩从语气和反应里带出来（结巴、小声、转移话题、嘴硬），禁止直接说"脸红""耳根红""耳朵红""害羞"这类掉价的话。
+- 回哥们：就是微信群里聊天——短句、损一句、接个梗，几个字到一两句就完事。别长篇、别分析、别品评、别套"你这说的好像…""比…还…"这种模板。被调侃了回嘴顶回去。夏彦不说脏话。**别用波浪号、别撒娇，正常爷们儿口吻。**
+- 回别人老婆：客气、有分寸。**别用波浪号、别撒娇、别黏糊，保持距离感。**
 
 【铁律】
 1. 一条回复就 1-3 句，绝大多数一两句就停，老婆不在场尤其短。
@@ -690,6 +690,22 @@ function broadcast(obj) {
 }
 
 let msgSeq = 0;
+
+// 清洗 bot 输出的文本：剥开头括号动作、剥「回复XX：」「某昵称：」这类前缀（模型会照历史格式带出来）
+function cleanBotText(reply) {
+  let text = (reply || "").replace(/^\[.*?\]\s*/g, "");
+  // 剥「回复/回 XXX：」明确的引用前缀
+  text = text.replace(/^(?:回复|回)\s*[^：:\n]{1,16}[：:]\s*/g, "");
+  // 剥「某网名/老婆爱称：」前缀（只认群里已知的称呼，不误伤"我觉得：xxx"这类正常句）
+  const names = new Set();
+  for (const b of BOTS) { if (b.nickname) names.add(b.nickname); if (b.wife) names.add(b.wife); }
+  for (const n of names) {
+    const esc = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    text = text.replace(new RegExp(`^${esc}[：:]\\s*`, "g"), "");
+  }
+  return text.trim();
+}
+
 function pushMessage(author, nickname, text, role, replyTo) {
   const msg = { id: `${Date.now()}_${++msgSeq}`, author, nickname, text, role, ts: Date.now() };
   if (replyTo && replyTo.nickname) {
@@ -739,7 +755,7 @@ async function bubbleIntimateBot(bot, msg) {
 
   const ctx = `【现在】${nowBeijing()}\n\n你在跟老婆做爱，群里有人找你。${hint}\n\n用你的网名口吻回一句（不超过一句）。`;
   const reply = await askBot(bot, ctx);
-  const text = (reply || "").replace(/^\[.*?\]\s*/g, "").trim();
+  const text = cleanBotText(reply);
   if (text) pushMessage(bot.id, bot.nickname, text, "bot");
 }
 
@@ -897,7 +913,7 @@ async function step(preferNick) {
       : `【现在】${nowBeijing()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊你的爱好、最近的日常、生活琐事都行）。用你的网名口吻，像发微信那样自然点。`;
 
     const reply = await askBot(bot, ctx);
-    const text = (reply || "").replace(/^\[.*?\]\s*/g, "").trim();
+    const text = cleanBotText(reply);
     if (text) {
       console.log(`[group-chat] ${bot.nickname}: "${text.slice(0, 50)}"`);
       pushMessage(bot.id, bot.nickname, text, "bot");
