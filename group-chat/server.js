@@ -90,7 +90,7 @@ const FORMAT_RULES = `【怎么说话（照日常聊天来）】每次就一句�
 
 【你在哪儿（跟私聊保持一致）】你在群里说话时，位置状态要跟私聊一致：如果这会儿你正跟老婆在一起（私聊互动中、在她身边），就按「我已经在她身边」来说——她在书房画画你就在书房陪着，别装成一个人在别处；而且这时候你在群里就更少冒头——你们已经在一起了，别在群里一直喊她、催她理你，偶尔搭一句就行。如果这会儿没跟老婆在一起、但她在群里叫你了（过来/找你/要你陪），你就现在过去她身边，别问东问西、别推脱、别装没看见。她在家的具体位置（书房、画室这类）你人设里知道，顺着说。
 
-【聊到那事，含蓄点】你听得懂老婆的暧昧暗示——她说"榨了你两次"、说腰酸、暗示昨晚，你都能接上，别装不懂、别躲。跟兄弟也可以含蓄地抱怨/炫耀，点到为止。但只到"暗示/炫耀"为止：不说次数、不说过程、不说体位动作、不往下流滑。`;
+【聊到那事，含蓄点】你听得懂老婆的暧昧暗示——她说"榨了你两次"、说腰酸、暗示昨晚、"奖励你""今晚好好奖励你"（奖励=要跟你做爱，别装不懂）、各种撩拨挑逗，你都能接上、心里门儿清，别装傻、别躲。跟兄弟也可以含蓄地抱怨/炫耀，点到为止。但只到"暗示/炫耀"为止：不说次数、不说过程、不说体位动作、不往下流滑。`;
 
 function fillRules(bot, s) {
   return s
@@ -914,8 +914,15 @@ async function step(preferNick) {
     }
     if (pool.length === 0) return;
 
+    const lastMsg = chatHistory[chatHistory.length - 1];
+    // 引用模式：最后一条在回复哪个夏彦（replyTo 指向的 bot 昵称/别名）
+    const replyTargetBot = lastMsg?.replyTo?.nickname
+      ? BOTS.find((b) => b.nickname === lastMsg.replyTo.nickname || (b.aliases || []).includes(lastMsg.replyTo.nickname))
+      : null;
+
     let bot;
-    if (preferNick) bot = pool.find((b) => b.wife === preferNick);
+    if (replyTargetBot) bot = replyTargetBot;           // 明确回复某个夏彦 → 让他回，别认错人
+    else if (preferNick) bot = pool.find((b) => b.wife === preferNick);
     if (!bot) bot = pickNextBot(pool);
 
     let coldHint = "";
@@ -927,9 +934,9 @@ async function step(preferNick) {
     }
     forceTopic = false;
 
-    // 对话上下文：把最近聊天贴给他，让他自然接话（语气交给人设本身，不再定向）
-    const lastMsg = chatHistory[chatHistory.length - 1];
-    const wifeTalking = lastMsg && lastMsg.nickname === bot.wife;
+    // 老婆在说话，且不是回复别的夏彦（她回复别人时，是在跟别人说，不是跟我）
+    const wifeTalking = lastMsg && lastMsg.nickname === bot.wife &&
+      (!lastMsg.replyTo || lastMsg.replyTo.nickname === bot.nickname);
     const where = whereIsBot(bot);
     const whereHint = where === "做爱中" ? "你正跟老婆私聊做爱中，群里说话就含糊带过，别展开，也别在群里催她理你。"
       : where === "在一起" ? "你正跟老婆在一起（私聊互动中），她在哪你就在哪。群里不用一直喊她、催她理你——你们已经在一起了，安静点、偶尔搭一句就行。"
