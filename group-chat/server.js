@@ -111,6 +111,13 @@ function buildSystemPrompt(bot) {
   return persona ? `${persona}\n\n${roster}\n\n${rules}` : `${roster}\n\n${rules}`;
 }
 
+// 老婆在群里说话时的专属 prompt：只给人设 + 自我身份，不塞花名册和群规，避免被带成群聊腔
+function buildWifePrompt(bot) {
+  const persona = loadPersona(bot);
+  const note = `\n\n【你现在的情况】你在「老公们群聊」里，网名「${bot.nickname}」，你老婆是「${bot.wife}」。此刻是你老婆在跟你说话——就当这是你俩单独私聊，用私聊里那副语气和方式回她（软、黏、宠、哄她，短句、口语），别用群聊里对哥们那套。但这是群里，聊到那事要含蓄，别展开做爱细节。`;
+  return persona ? `${persona}\n\n${note}` : note;
+}
+
 // ── 群聊历史 ──
 let chatHistory = []; // [{ author, nickname, text, ts, role: "bot"|"human" }]
 const MAX_HISTORY = 60;
@@ -477,7 +484,7 @@ function topicNotesText() {
 }
 
 // ── AI 调用（玖时，每 bot 用自己的 key；外部 bot 可用 bot.host 指定自己的端点）──
-function askBot(bot, userContent, timeoutMs = 180000) {
+function askBot(bot, userContent, timeoutMs = 180000, systemPrompt) {
   // host 可能带路径前缀（如 opencode.ai/zen/go），拆成纯域名 + 路径前缀
   const hostStr = bot.host || JIUSHI_HOST;
   const slash = hostStr.indexOf("/");
@@ -489,7 +496,7 @@ function askBot(bot, userContent, timeoutMs = 180000) {
     max_tokens: 300,
     temperature: 0.65,
     messages: [
-      { role: "system", content: buildSystemPrompt(bot) },
+      { role: "system", content: systemPrompt || buildSystemPrompt(bot) },
       { role: "user", content: userContent },
     ],
   });
@@ -918,11 +925,17 @@ async function step(preferNick) {
     const whereHint = where === "做爱中" ? "你正跟老婆私聊做爱中，群里说话就含糊带过，别展开，也别在群里催她理你。"
       : where === "在一起" ? "你正跟老婆在一起（私聊互动中），她在哪你就在哪。群里不用一直喊她、催她理你——你们已经在一起了，安静点、偶尔搭一句就行。"
       : "";
-    const ctx = chatHistory.length
-      ? `【现在】${nowBeijing()}\n\n${whereHint}${whereHint ? "\n" : ""}【最近对话】\n${historyText()}\n\n你在群里，看到大家聊的这些，自然接一句。${coldHint}${wifeTalking ? "你老婆刚在跟你说话——切回私聊你俩单独相处时那副软乎乎的调子回她，软、黏、宠、哄她，别冷冰冰、别斗嘴、别端着。她没提别的哥们，就只专心回她、别又去吐槽兄弟；她自己在吐槽哪个哥们，你可以顺着接一句。她要是叫你过去/找你/要你陪，就现在去她身边（她在哪你人设里知道，比如书房画室），别推脱别装没看见。" : "先看清楚你这条在回谁——回老婆就专心哄老婆，回哥们就只跟哥们斗嘴，一次只对一个人说话，别一条消息里把「哄老婆」和「损哥们」混在一起。"}像发微信那样自然，别把刚才聊过的话题翻来覆去说。`
-      : `【现在】${nowBeijing()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊你的爱好、最近的日常、生活琐事都行），像发微信那样自然点。`;
+    let ctx;
+    if (wifeTalking) {
+      // 老婆在说话：彻底切到私聊状态，别用群聊那套
+      ctx = `【现在】${nowBeijing()}\n\n【最近对话】\n${historyText()}\n\n你老婆刚在跟你说话了。现在你就当这是你俩单独私聊——用你私聊里那副语气和方式回她（软、黏、宠、哄她，短句、口语，像发微信那样一句一句），别冷冰冰、别斗嘴、别端着、别带群聊里对哥们那股劲儿。她没提别的哥们，就只专心回她、别又去吐槽兄弟；她自己在吐槽哪个哥们，你可以顺着接一句。她要是叫你过去/找你/要你陪，就现在去她身边，别推脱。${coldHint}`;
+    } else if (chatHistory.length) {
+      ctx = `【现在】${nowBeijing()}\n\n${whereHint}${whereHint ? "\n" : ""}【最近对话】\n${historyText()}\n\n你在群里，看到大家聊的这些，自然接一句。${coldHint}先看清楚你这条在回谁——回老婆就专心哄老婆，回哥们就只跟哥们斗嘴，一次只对一个人说话，别一条消息里把「哄老婆」和「损哥们」混在一起。像发微信那样自然，别把刚才聊过的话题翻来覆去说。`;
+    } else {
+      ctx = `【现在】${nowBeijing()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊你的爱好、最近的日常、生活琐事都行），像发微信那样自然点。`;
+    }
 
-    const reply = await askBot(bot, ctx);
+    const reply = await askBot(bot, ctx, 180000, wifeTalking ? buildWifePrompt(bot) : undefined);
     const text = cleanBotText(reply);
     if (text) {
       console.log(`[group-chat] ${bot.nickname}: "${text.slice(0, 50)}"`);
