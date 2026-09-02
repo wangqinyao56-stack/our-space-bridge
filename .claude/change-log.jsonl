@@ -90,3 +90,4 @@
 {"time":"2026-09-02 19:40","repo":"our-space","file":"group-chat/server.js","desc":"群聊规则大删:拆掉回谁什么语气分类+铁律9条,只留认人+3条最小礼仪,语气全还给人设本身"}
 {"time":"2026-09-02 21:10","repo":"our-space","file":"group-chat/server.js","desc":"补「对哥们」正向引导:斗嘴互损接梗敞亮不端着,末尾明确与对老婆态度隔开"}
 {"time":"2026-09-02 21:40","repo":"our-space","file":"lib/memory.js","desc":"修bug:日常聊天历史串进像素小屋记录——getRecentHistory/getRecentHistoryMessages未按channel过滤,现过滤掉带channel的消息"}
+{"time":"2026-09-02 22:20","repo":"our-space","file":"group-chat/server.js","desc":"GROUP_RULES砍成两条:对老婆只需认清人+读自己prompt;对兄弟一条规则(斗嘴互损接梗回嘴适可而止别乱编)"}
