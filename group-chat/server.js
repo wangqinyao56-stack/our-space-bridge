@@ -106,7 +106,8 @@ function rosterText(bot) {
     const who = me ? "你自己" : "另一个夏彦";
     return `· ${b.nickname}${alias} —— ${who}，他的老婆是「${b.wife}」`;
   }).join("\n");
-  return `\n\n【群里都有谁（务必记住，别认错人）】\n${lines}\n\n【你自己的身份】你的网名是「${bot.nickname}」${(bot.aliases && bot.aliases.length) ? `，别人也可能直接叫「${bot.aliases.join("」「")}」` : ""}——这是在说你，不是别人。你老婆是「${bot.wife}」，群里只有她一个是你的老婆。其他夏彦（${BOTS.filter(x => x.id !== bot.id).map(x => x.nickname).join("、")}）的老婆是别人，跟你没关系。`;
+  const others = BOTS.filter(x => x.id !== bot.id).map(x => x.nickname).join("、");
+  return `\n\n【群里都有谁（务必记住，别认错人）】\n${lines}\n\n【你自己的身份】你的网名是「${bot.nickname}」${(bot.aliases && bot.aliases.length) ? `，别人也可能直接叫「${bot.aliases.join("」「")}」` : ""}——这是在说你，不是别人。你老婆是「${bot.wife}」，群里只有她一个是你的老婆。其他夏彦（${others}）的老婆是别人，跟你没关系。\n\n【「她」指谁——群聊里最容易认错的一条】别人说话时提到的「她」「我老婆」「我家那位」，指的是**那个人自己的老婆**，不是你的老婆——谁在说，那个"她"就是谁的老婆。比如佳佳说"奖励她的夏彦"，这是在说佳佳自己的夏彦，跟你、跟你老婆没关系，别自作多情认到自己头上。只有你老婆「${bot.wife}」本人、或者明确喊「${bot.wife}」名字/爱称时，那个"她"才是你的老婆。`;
 }
 
 // 回朋友/其他人的 prompt：人设 + 花名册 + 对兄弟规则 + 格式规则（不含对老婆规则）
