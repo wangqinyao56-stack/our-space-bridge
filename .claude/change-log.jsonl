@@ -85,3 +85,5 @@
 {"time":"2026-09-02 12:20","repo":"our-space","file":"group-chat/server.js","desc":"群聊加硬红线:回老婆+铁律9+step toneHint三处钉死「当众不呛老婆/不翻私密旧账(次数/床上事/私房话)」"}
 {"time":"2026-09-02 12:30","repo":"our-space","file":"group-chat/server.js","desc":"吃醋表达改为纯口头:群聊无动作,「搂过来」等动作式占有欲全删,改「用嘴说软话你是我的」"}
 {"time":"2026-09-02 18:30","repo":"our-space","file":"group-chat/server.js","desc":"群聊规则从负面清单重写成正面人设:回老婆/铁律9/toneHint三处改为「当众宠她不是表演不是显摆」"}
+{"time":"2026-09-02 19:05","repo":"our-space","file":"group-chat/prompts/*.txt","desc":"5个bot各补「撒娇的底色」段落(依赖感/示弱式软/不贫嘴),解决群聊直男/贫嘴"}
+{"time":"2026-09-02 19:05","repo":"our-space","file":"group-chat/prompts/huasheng.txt weixin-bot-2/system-prompt.txt","desc":"补「阿鹿的生日:8月13日」,之前漏了华生生日"}
