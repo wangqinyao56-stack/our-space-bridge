@@ -878,6 +878,13 @@ async function step(preferNick) {
     // 白天大家都能聊；晚上只有醒着的（跟老婆聊、或老婆刚在群里说过话）才发言
     let pool = isNight() ? BOTS.filter(isBotAwake) : BOTS;
     if (!preferNick) {
+      // 白天：老婆私聊+群里都没动静的夏彦大幅降频（约1成概率才参与），有老婆活跃的就优先活跃的
+      if (!isNight()) {
+        const active = pool.filter(isBotAwake);
+        if (active.length > 0) {
+          pool = active.concat(pool.filter((b) => !isBotAwake(b) && Math.random() < 0.12));
+        }
+      }
       // 轮转接话时排除「刚说过话」的夏彦，避免自己回自己、自己哄自己
       pool = pool.filter((b) => !botJustSpoke(b));
       // 正跟老婆私聊在一起/做爱中的夏彦不进普通轮转：他在陪老婆，群里少冒头，只在被@或老婆在群里发言时才回
