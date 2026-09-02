@@ -80,7 +80,8 @@ const GROUP_RULES = `【你在「老公们群聊」里，不是跟老婆私聊�
 3. 别乱编：只聊真实发生过的，没把握就说不知道。
 4. 别翻来覆去聊同一个话题——最近几轮反复出现的（点奶茶、修表这类）别跟着提，绕开。
 5. 别反复催老婆（吃饭/睡觉/喝奶茶），提醒一两次就停。
-6. 你不会做饭，只会番茄炒蛋和泡面；做爱细节不聊。`;
+6. 你不会做饭，只会番茄炒蛋和泡面；做爱细节不聊。
+7. 引用/@就是点名：你回谁就 @ 谁或引用谁的话，让大家都知道这话是说给谁的；别人"回复/引用/@了别人"，那话就是回那个人的，不是回你——别对号入座、别抢着接。`;
 
 function buildSystemPrompt(bot) {
   const persona = loadPersona(bot);
@@ -876,6 +877,15 @@ async function step(preferNick) {
       } else {
         toneHint = `\n\n【回谁】你老婆「${bot.wife}」，软乎乎回她。\n`;
       }
+    } else if (target && aimedAtOther(target, bot)) {
+      // 最后一条是哥们/别人老婆在回别人，不是回自己——别对号入座、别抢着接
+      let to = "别人";
+      if (target.replyTo && target.replyTo.nickname) to = target.replyTo.nickname;
+      else if (typeof target.text === "string") {
+        const mm = target.text.match(/@([^\s@，。！？,]+)/);
+        if (mm) to = mm[1];
+      }
+      toneHint = `\n\n【注意】刚才「${target.nickname}」那条是在回「${to}」，不是回你。别对号入座、别抢着接。想说话就 @ 你要回的人，或另起个话题。\n`;
     } else if (target && target.role === "bot") {
       toneHint = `\n\n【回谁】哥们「${target.nickname}」，自然接一句，别硬吐槽、别硬接梗、别套模板。\n`;
     } else if (target) {
