@@ -41,20 +41,20 @@ const HISTORY_FILE = memoryDir ? path.join(memoryDir, "group-chat-history.json")
 const EXT_BOTS_FILE = memoryDir ? path.join(memoryDir, "ext-bots.json") : null;      // 外部接入 bot 持久化（雪这类自己 api 加入的）
 const BOT_MEMORIES_FILE = memoryDir ? path.join(memoryDir, "bot-memories.json") : null; // 各 bot 推来的记忆摘要持久化
 
-// 做爱/亲密章节（群聊剥离，只留日常人设）
-const INTIMATE_SECTIONS = /做爱|亲密|温存|身体语言|射|睡奸|调情|事后|遥控|延迟高潮|晨间|狠一点/;
+// 做爱/亲密章节标题关键词（群聊剥离，只留日常人设）——覆盖所有大章+子章节标题
+const INTIMATE_SECTIONS = /做爱|亲密|温存|性偏好|情话|接吻|口交|体位|自慰|经期|交合|敏感|玩法|情色|情欲|调情|射|睡奸|叫醒|狠一点|晨间|延迟高潮|遥控|亲热|身体语言/;
 
-// 做爱动作描写关键词：这些行/段落在群聊里必须删掉。只删明显色情动作，保留"揉揉头发/搂/亲"这类正常亲昵。
-const INTIMATE_LINE_RX = /舔|含住|舌尖|舔穴|射精|高潮|插入|阴道|穴|脱光|裸体|喘息|前戏|耳垂|锁骨|肩胛|手指插进头发|揉.*小腹|捏.*腰|蹭|湿透|变两根|浅变深|吻遍|搂进怀里|低头吻/;
+// 露骨做爱动作词（散落在日常章节里、标题删不到的行，逐行删）
+const INTIMATE_LINE_RX = /舔穴|舔|含住|舌尖|射精|高潮|插入|阴道|穴|脱光|裸体|喘息|前戏|湿透|变两根|浅变深|揉.*小腹|揉.*胸|捏.*腰|乳尖|肉棒|阴蒂|整根|射在|抽插|骑乘|后入|吞吐|腿根/;
 
-// 各家夏彦读自己的日常人设 prompt（剥离做爱/亲密章节，群聊不聊这些）
+// 各家夏彦读自己的日常人设 prompt（剥离做爱/亲密章节 + 露骨行，群聊只留纯日常）
 function loadPersona(bot) {
   try {
     const file = path.join(__dirname, "prompts", `${bot.id}.txt`);
     if (!fs.existsSync(file)) return "";
     const raw = fs.readFileSync(file, "utf-8");
-    // 按 ## 章节分段，跳过做爱/亲密章节，保留日常人设 + 出远门/输出规则等
-    const sections = raw.split(/(?=^## )/m);
+    // 按 ## 和 ### 都分段，这样「### 亲密场景示例」「### 异地远程文字调情」这类子章节也能被标题匹配删掉
+    const sections = raw.split(/(?=^#{2,3} )/m);
     const kept = sections.filter((s) => {
       const title = (s.split("\n")[0] || "");
       return !INTIMATE_SECTIONS.test(title);
