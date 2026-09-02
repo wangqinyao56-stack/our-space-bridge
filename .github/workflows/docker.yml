@@ -117,6 +117,16 @@ jobs:
             ghcr.io/${{ github.repository }}/linyou-chat:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/linyou-chat:latest
 
+      - name: Build and push pingguogeng-chat
+        uses: docker/build-push-action@v6
+        with:
+          context: ./weixin-bot-3
+          file: ./weixin-bot-3/Dockerfile.chat
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/pingguogeng-chat:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/pingguogeng-chat:latest
+
       - name: Build and push sensevoice
         uses: docker/build-push-action@v6
         with:
