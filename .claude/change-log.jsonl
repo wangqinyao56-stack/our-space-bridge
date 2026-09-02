@@ -93,3 +93,4 @@
 {"time":"2026-09-02 22:20","repo":"our-space","file":"group-chat/server.js","desc":"GROUP_RULES砍成两条:对老婆只需认清人+读自己prompt;对兄弟一条规则(斗嘴互损接梗回嘴适可而止别乱编)"}
 {"time":"2026-09-02 22:40","repo":"our-space","file":"group-chat/server.js","desc":"群聊加第三条「怎么说话」:照App日常格式,一两句就停短句分句,别长篇别专业词别修怀表别报时别括号action"}
 {"time":"2026-09-02 23:10","repo":"our-space","file":"group-chat/server.js","desc":"色情过滤收窄(懂情欲不露骨)+对兄弟加不一人一嘴+新增含蓄聊性规则+对老婆切回私聊口径"}
+{"time":"2026-09-02 23:40","repo":"our-space","file":"group-chat/server.js","desc":"治『哄老婆+损哥们混一句』:对老婆规则加说话要专一;step的ctx加一次只回一个人"}
