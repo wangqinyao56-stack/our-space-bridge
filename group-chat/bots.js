@@ -50,7 +50,7 @@ export const BOTS = [
     wife: "林游", // 老婆名林游；芝麻是她家猫的名字
     trait: "家里有只猫叫芝麻",
     memoryDir: "/memories/zhima",
-    apiKey: SHARED_KEY,
+    apiKey: "sk-giOsrYqjedrlmGijq7IRwO2Oxvrz8zbY4fJb8A35DhMuSwPs",
     model: "[企业按量]claude-opus-4-6",
   },
   {
