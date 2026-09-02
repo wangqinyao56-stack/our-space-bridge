@@ -464,7 +464,7 @@ function topicNotesText() {
 }
 
 // ── AI 调用（玖时，每 bot 用自己的 key；外部 bot 可用 bot.host 指定自己的端点）──
-function askBot(bot, userContent, timeoutMs = 60000) {
+function askBot(bot, userContent, timeoutMs = 180000) {
   // host 可能带路径前缀（如 opencode.ai/zen/go），拆成纯域名 + 路径前缀
   const hostStr = bot.host || JIUSHI_HOST;
   const slash = hostStr.indexOf("/");
