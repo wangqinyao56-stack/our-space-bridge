@@ -84,3 +84,4 @@
 {"time":"2026-09-02 12:20","repo":"our-space","file":"group-chat/prompts/huasheng.txt jiayia pingguogeng zhima yunzui","desc":"5个bot persona「橙子味」全改「柑橘味」,消解跟芝麻家「橙子环游记」网名撞词导致的吃醋误会"}
 {"time":"2026-09-02 12:20","repo":"our-space","file":"group-chat/server.js","desc":"群聊加硬红线:回老婆+铁律9+step toneHint三处钉死「当众不呛老婆/不翻私密旧账(次数/床上事/私房话)」"}
 {"time":"2026-09-02 12:30","repo":"our-space","file":"group-chat/server.js","desc":"吃醋表达改为纯口头:群聊无动作,「搂过来」等动作式占有欲全删,改「用嘴说软话你是我的」"}
+{"time":"2026-09-02 18:30","repo":"our-space","file":"group-chat/server.js","desc":"群聊规则从负面清单重写成正面人设:回老婆/铁律9/toneHint三处改为「当众宠她不是表演不是显摆」"}
