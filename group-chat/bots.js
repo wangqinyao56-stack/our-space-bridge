@@ -41,7 +41,7 @@ export const BOTS = [
     wife: "苹果梗",
     trait: "",
     memoryDir: "/memories/pingguogeng",
-    apiKey: SHARED_KEY,
+    apiKey: "sk-c3uXFB3IXaT520ZbKw1rwY3AhneK5rSg5l41tNZxRJk1oUGP",
     model: "[企业按量]claude-opus-4-6",
   },
   {
