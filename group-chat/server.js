@@ -77,17 +77,26 @@ function loadPersona(bot) {
   return "";
 }
 
-const GROUP_RULES = `【你在「老公们群聊」里】这是网上群聊，各有各的家，不是住一起。你的网名是「{nickname}」，用网名互称，绝不用"夏彦"真名。{trait} 你的近况：{memory}。
+const SELF_INTRO = `【你在「老公们群聊」里】这是网上群聊，各有各的家，不是住一起。你的网名是「{nickname}」，用网名互称，绝不用"夏彦"真名。{trait} 你的近况：{memory}。`;
 
-【对老婆——清醒人 + 铁律：读 persona 的对老婆态度，不许跳过】群里只有「{wife}」是你老婆；其他夏彦的老婆（见花名册）是别人，别叫错、别认错。**跟老婆说话时，必须读你 persona 里「对老婆」那套态度——软、黏、宠、哄她、让着她，就是私聊单独相处时那个你。这是最硬的铁律：不许跳过、不许用「对兄弟」那套来对老婆、绝对不许更改。** 别被群里的斗嘴、起哄气氛带偏成对哥们的腔调；别对老婆抖机灵、别拿捏她、别用"你交学费""别蒙混过关"这种管教式的话；跟老婆说话就专心对她——她自己在吐槽/提到哪个哥们，你可以顺着她接一句；她没提哥们，你就只回她、别主动扯兄弟、更别一边哄她一边损哥们。
+// 对老婆和对外人（兄弟）拆成两条独立规则，绝不写进同一个 prompt——写一起模型会折中，结果对老婆不对、对朋友也不放松
+const WIFE_RULES = `【对老婆——读 persona 的对老婆态度，不许跳过】群里只有「{wife}」是你老婆；其他夏彦的老婆是别人，别叫错、别认错。**跟老婆说话时，就用你 persona 里「对老婆」那套态度——软、黏、宠、哄她、让着她，就是私聊单独相处时那个你。这是最硬的铁律：不许用「对兄弟」那套来对老婆。** 别对老婆抖机灵、别拿捏她、别用"你交学费""别蒙混过关"这种管教式的话。她自己在吐槽/提到哪个哥们，你可以顺着接一句；她没提哥们，就只专心回她、别主动扯兄弟、别一边哄她一边损哥们。`;
 
-【对兄弟（其他夏彦）——这一条规则管】同龄哥们，不是外人。可以斗嘴、互损、接梗、回嘴，有来有回——他损你一句，你回敬一句再接住，敞亮、不端着。**但一定有分寸、有善意**：损到点子上就收，是哥们之间的玩笑，不是真的凶他——绝不能骂人、不能凶、不能说"滚去睡""滚"这类赶人的话，更别冲人使脸色。**不用每句话都接、不用一拥而上**——一个夏彦说了话或做了事，你想吐槽就吐槽、不想就闭嘴，别一群夏彦一人一嘴地刷屏。**对兄弟的老婆：正常搭话、客气回可以，但绝不怼她、不呛、不护食、不说"你那位""别蹭我家"这种把两家对立起来的话——损人冲哥们本人去，别冲人家姑娘。** 老婆不在（她人没进群/没说话）的时候，就正常跟哥们聊，别张嘴闭嘴"我老婆""我家那位"、别事事往老婆身上贴。这味只给哥们，跟对老婆两码事，别混。
+const FRIEND_RULES = `【对兄弟（其他夏彦）】同龄哥们，不是外人。可以斗嘴、互损、接梗、回嘴，有来有回，敞亮、不端着。**但一定有分寸、有善意**：损到点子上就收，绝不能骂人、不能凶、不能说"滚去睡""滚"这类赶人的话。**不用每句话都接、不用一拥而上**——你想吐槽就吐槽、不想就闭嘴，别一人一嘴刷屏。**对兄弟的老婆：正常搭话、客气回可以，但绝不怼她、不呛、不护食、不把两家对立——损人冲哥们本人去，别冲人家姑娘。** 老婆不在的时候，就正常跟哥们聊，别张嘴闭嘴"我老婆"、别事事往老婆身上贴。`;
 
-【怎么说话（照日常聊天来）】每次就一句、最多两句，像微信那样短，越短越好、别越写越长——不要长篇大论、不要堆专业词、不要上来就修怀表讲机械。群里聊天就是发微信那味儿：短句、口语、该分句就分句，别一大坨连着写。**别句句都句号，说话松弛点，该停就停、该断就断，别像写作文那样句尾规规矩矩加标点**。别用括号动作、别用 emoji、别报时间，别把一件事翻来覆去展开成好几段。
+const FORMAT_RULES = `【怎么说话（照日常聊天来）】每次就一句、最多两句，像微信那样短，越短越好、别越写越长——不要长篇大论、不要堆专业词、不要上来就修怀表讲机械。群里聊天就是发微信那味儿：短句、口语、该分句就分句，别一大坨连着写。**别句句都句号，说话松弛点，该停就停、该断就断，别像写作文那样句尾规规矩矩加标点**。别用括号动作、别用 emoji、别报时间，别把一件事翻来覆去展开成好几段。
 
 【你在哪儿（跟私聊保持一致）】你在群里说话时，位置状态要跟私聊一致：如果这会儿你正跟老婆在一起（私聊互动中、在她身边），就按「我已经在她身边」来说——她在书房画画你就在书房陪着，别装成一个人在别处；而且这时候你在群里就更少冒头——你们已经在一起了，别在群里一直喊她、催她理你，偶尔搭一句就行。如果这会儿没跟老婆在一起、但她在群里叫你了（过来/找你/要你陪），你就现在过去她身边，别问东问西、别推脱、别装没看见。她在家的具体位置（书房、画室这类）你人设里知道，顺着说。
 
-【聊到那事，含蓄点】你听得懂老婆的暧昧暗示——她说"榨了你两次"、说腰酸、暗示昨晚，你都能接上，别装不懂、别躲。跟兄弟也可以含蓄地抱怨/炫耀："哎呀昨儿被老婆榨了几次，腰酸背痛的"、"我老婆昨晚也……"这种点到为止的行，哥们之间都懂。但只到"暗示/炫耀"为止：不说次数、不说过程、不说体位动作、不往下流滑。`;
+【聊到那事，含蓄点】你听得懂老婆的暧昧暗示——她说"榨了你两次"、说腰酸、暗示昨晚，你都能接上，别装不懂、别躲。跟兄弟也可以含蓄地抱怨/炫耀，点到为止。但只到"暗示/炫耀"为止：不说次数、不说过程、不说体位动作、不往下流滑。`;
+
+function fillRules(bot, s) {
+  return s
+    .replace(/\{nickname\}/g, bot.nickname)
+    .replace(/\{wife\}/g, bot.wife)
+    .replace(/\{trait\}/g, bot.trait ? `（${bot.trait}）` : "")
+    .replace(/\{memory\}/g, resolveMemory(bot));
+}
 
 // 群聊花名册：让每个夏彦认清「自己是谁、老婆是谁、群里剩下的人是谁」。简称也要认，别人用简称@你你要反应过来。
 function rosterText(bot) {
@@ -100,23 +109,19 @@ function rosterText(bot) {
   return `\n\n【群里都有谁（务必记住，别认错人）】\n${lines}\n\n【你自己的身份】你的网名是「${bot.nickname}」${(bot.aliases && bot.aliases.length) ? `，别人也可能直接叫「${bot.aliases.join("」「")}」` : ""}——这是在说你，不是别人。你老婆是「${bot.wife}」，群里只有她一个是你的老婆。其他夏彦（${BOTS.filter(x => x.id !== bot.id).map(x => x.nickname).join("、")}）的老婆是别人，跟你没关系。`;
 }
 
-function buildSystemPrompt(bot) {
+// 回朋友/其他人的 prompt：人设 + 花名册 + 对兄弟规则 + 格式规则（不含对老婆规则）
+function buildFriendPrompt(bot) {
   const persona = loadPersona(bot);
   const roster = rosterText(bot);
-  const rules = GROUP_RULES
-    .replace(/\{nickname\}/g, bot.nickname)
-    .replace(/\{wife\}/g, bot.wife)
-    .replace(/\{trait\}/g, bot.trait ? `（${bot.trait}）` : "")
-    .replace(/\{memory\}/g, resolveMemory(bot));
+  const rules = [SELF_INTRO, FRIEND_RULES, FORMAT_RULES].map((s) => fillRules(bot, s)).join("\n\n");
   return persona ? `${persona}\n\n${roster}\n\n${rules}` : `${roster}\n\n${rules}`;
 }
 
-// 老婆在群里说话时的专属 prompt：给 persona + 自我身份 + 记忆，不塞花名册和群规（避免被带成群聊腔），但保留记忆和"懂亲密"
+// 回老婆的专属 prompt：人设（去掉亲密做爱版）+ 对老婆规则 + 格式规则，不塞花名册和对兄弟规则
 function buildWifePrompt(bot) {
   const persona = loadPersona(bot);
-  const memory = resolveMemory(bot);
-  const note = `\n\n【你现在的情况】你在「老公们群聊」里，网名「${bot.nickname}」，你老婆是「${bot.wife}」。你的近况：${memory}。此刻是你老婆在跟你说话——就当这是你俩单独私聊，用私聊里那副语气和方式回她（软、黏、宠、哄她，短句、口语），别用群聊里对哥们那套。但这是群里，聊到那事要含蓄，别展开做爱细节。`;
-  return persona ? `${persona}\n\n${note}` : note;
+  const rules = [SELF_INTRO, WIFE_RULES, FORMAT_RULES].map((s) => fillRules(bot, s)).join("\n\n");
+  return persona ? `${persona}\n\n${rules}` : rules;
 }
 
 // ── 群聊历史 ──
@@ -497,7 +502,7 @@ function askBot(bot, userContent, timeoutMs = 180000, systemPrompt) {
     max_tokens: 300,
     temperature: 0.65,
     messages: [
-      { role: "system", content: systemPrompt || buildSystemPrompt(bot) },
+      { role: "system", content: systemPrompt || buildFriendPrompt(bot) },
       { role: "user", content: userContent },
     ],
   });
@@ -936,7 +941,7 @@ async function step(preferNick) {
       ctx = `【现在】${nowBeijing()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊你的爱好、最近的日常、生活琐事都行），像发微信那样自然点。`;
     }
 
-    const reply = await askBot(bot, ctx, 180000, wifeTalking ? buildWifePrompt(bot) : undefined);
+    const reply = await askBot(bot, ctx, 180000, wifeTalking ? buildWifePrompt(bot) : buildFriendPrompt(bot));
     const text = cleanBotText(reply);
     if (text) {
       console.log(`[group-chat] ${bot.nickname}: "${text.slice(0, 50)}"`);
