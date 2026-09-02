@@ -135,6 +135,18 @@ function notifyIntimateActive() {
     }).catch(() => {});
   } catch {}
 }
+// 私聊互动状态推送：老婆每条消息都推一次「在一起」，群聊据此判断夏彦在不在老婆身边（TTL 负责过期）
+function notifyPresence(active) {
+  if (!GROUP_CHAT_URL || !GROUP_CHAT_BOT) return;
+  try {
+    fetch(`${GROUP_CHAT_URL}/api/presence`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bot: GROUP_CHAT_BOT, active }),
+      signal: AbortSignal.timeout(3000),
+    }).catch(() => {});
+  } catch {}
+}
 // ── 图片真实格式探测（微信SDK给的mime可能是 image/* 通配符，按文件头判断） ──
 function detectImageMime(buf) {
   if (!buf || buf.length < 4) return "image/jpeg";
@@ -216,6 +228,9 @@ const agent = {
     }
 
     if (!userText && !imageBase64) return { text: "" };
+
+    // 老婆发消息 = 正在私聊互动，推「在一起」给群聊（fire-and-forget）
+    notifyPresence(true);
 
     if (!userText && imageBase64) {
       // Pure image, no caption

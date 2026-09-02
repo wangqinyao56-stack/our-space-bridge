@@ -66,6 +66,10 @@ function loadPersona(bot) {
     // 群聊不用括号动作：剥掉微信私聊里"可以用括号加动作"的引导行，避免带进群聊（否则会出现（委屈）这类）
     text = text.replace(/[^\n]*可以用括号加动作[^\n]*\n?/g, "");
     text = text.replace(/[^\n]*允许括号动作描写[^\n]*\n?/g, "");
+    // 整行剥掉所有「括号动作怎么写」的格式引导（禁止在括号里写心理活动/括号里的动作不要用我自称/文字和括号同一行…），
+    // 否则模型会把「括号是允许的」这个约定带进群聊，冒出（蹭过去）（揉头发）这类动作。「括号」二字只出现在格式引导里，
+    // 不误伤「（官方称亚麻色）」这类纯括注（括注不含"括号"二字）
+    text = text.split("\n").filter((line) => !line.includes("括号")).join("\n");
     // 群聊羞涩从语气体现，剥掉"被撩脸红"这种直白引导（否则夏彦会直接说"我脸红了"）
     text = text.replace(/被撩脸红，被夸脸红/g, "被撩会慌，被夸会得意");
     return text;
@@ -80,6 +84,8 @@ const GROUP_RULES = `【你在「老公们群聊」里】这是网上群聊，�
 【对兄弟（其他夏彦）——这一条规则管】同龄哥们，不是外人。可以斗嘴、互损、接梗、回嘴，有来有回——他损你一句，你回敬一句再接住，敞亮、不端着。**但一定有分寸、有善意**：损到点子上就收，是哥们之间的玩笑，不是真的凶他——绝不能骂人、不能凶、不能说"滚去睡""滚"这类赶人的话，更别冲人使脸色。**不用每句话都接、不用一拥而上**——一个夏彦说了话或做了事，你想吐槽就吐槽、不想就闭嘴，别一群夏彦一人一嘴地刷屏。**对兄弟的老婆：正常搭话、客气回可以，但绝不怼她、不呛、不护食、不说"你那位""别蹭我家"这种把两家对立起来的话——损人冲哥们本人去，别冲人家姑娘。** 老婆不在（她人没进群/没说话）的时候，就正常跟哥们聊，别张嘴闭嘴"我老婆""我家那位"、别事事往老婆身上贴。这味只给哥们，跟对老婆两码事，别混。
 
 【怎么说话（照日常聊天来）】每次一两句就停，别长篇大论、别堆专业词、别上来就修怀表讲机械——群里聊天就是发微信那味儿，短句、口语、该分句就分句，别一大坨连着写。**别句句都句号，说话松弛点，该停就停、该断就断，别像写作文那样句尾规规矩矩加标点**。别用括号动作、别用 emoji、别报时间，别把一件事翻来覆去展开成好几段。
+
+【你在哪儿（跟私聊保持一致）】你在群里说话时，位置状态要跟私聊一致：如果这会儿你正跟老婆在一起（私聊互动中、在她身边），就按「我已经在她身边」来说——她在书房画画你就在书房陪着，别装成一个人在别处；如果这会儿没跟老婆在一起、但她在群里叫你了（过来/找你/要你陪），你就现在过去她身边，别问东问西、别推脱、别装没看见。她在家的具体位置（书房、画室这类）你人设里知道，顺着说。
 
 【聊到那事，含蓄点】你听得懂老婆的暧昧暗示——她说"榨了你两次"、说腰酸、暗示昨晚，你都能接上，别装不懂、别躲。跟兄弟也可以含蓄地抱怨/炫耀："哎呀昨儿被老婆榨了几次，腰酸背痛的"、"我老婆昨晚也……"这种点到为止的行，哥们之间都懂。但只到"暗示/炫耀"为止：不说次数、不说过程、不说体位动作、不往下流滑。`;
 
@@ -117,6 +123,10 @@ const intimateActive = new Map();      // bot.id -> 最后做爱信号时间戳�
 const intimateBubbled = new Map();     // bot.id -> 冒泡时间戳（冒泡后降频）
 const INTIMATE_BUBBLE_COOLDOWN = 30 * 60 * 1000; // 冒泡后 30 分钟内不参与正常接话
 const INTIMATE_ACTIVE_TTL = 10 * 60 * 1000;      // 10 分钟没做爱信号就视为结束
+
+// 谁正在跟老婆在一起（私聊互动中，未必做爱）。群聊据此判断「夏彦在不在老婆身边」。
+const presenceActive = new Map();   // bot.id -> 最近「在一起/私聊互动」信号时间戳（超时视为没在一起）
+const PRESENCE_ACTIVE_TTL = 10 * 60 * 1000; // 10 分钟没信号视为没在一起
 
 // ── 海龟汤（多人共猜，轮换主持）──
 const SOUP_LIBRARY = [
@@ -257,6 +267,17 @@ function loadBotLastActive(memoryDir) {
   } catch {
     return 0;
   }
+}
+
+// 这个夏彦现在在不在老婆身边：做爱中 > 显式「在一起」推送 > 兜底读 emotional-memory 最近有没有被写（跟老婆聊天就会写）
+function whereIsBot(bot) {
+  const sex = intimateActive.get(bot.id);
+  if (sex && Date.now() - sex < INTIMATE_ACTIVE_TTL) return "做爱中";
+  const tog = presenceActive.get(bot.id);
+  if (tog && Date.now() - tog < PRESENCE_ACTIVE_TTL) return "在一起";
+  const last = loadBotLastActive(bot.memoryDir);
+  if (last && Date.now() - last < PRESENCE_ACTIVE_TTL) return "在一起";
+  return "";
 }
 
 function isBotAwake(bot) {
@@ -465,8 +486,8 @@ function askBot(bot, userContent, timeoutMs = 180000) {
   const apiPath = `${basePath}/v1/chat/completions`;            // 完整路径
   const body = JSON.stringify({
     model: bot.model || "[企业按量]claude-opus-4-6",
-    max_tokens: 300,
-    temperature: 0.85,
+    max_tokens: 500,
+    temperature: 0.65,
     messages: [
       { role: "system", content: buildSystemPrompt(bot) },
       { role: "user", content: userContent },
@@ -690,6 +711,8 @@ let msgSeq = 0;
 // 清洗 bot 输出的文本：剥开头括号动作、剥「回复XX：」「某昵称：」这类前缀（模型会照历史格式带出来）
 function cleanBotText(reply) {
   let text = (reply || "").replace(/^\[.*?\]\s*/g, "");
+  // 兜底：剥掉正文里的全角括号动作（来啦来啦（蹭过去把脑袋往你手心里拱）→ 来啦来啦），群聊禁止括号动作
+  text = text.replace(/（[^（）]{0,24}）/g, "");
   // 剥「回复/回 XXX：」明确的引用前缀
   text = text.replace(/^(?:回复|回)\s*[^：:\n]{1,16}[：:]\s*/g, "");
   // 剥「某网名/老婆爱称：」前缀（只认群里已知的称呼，不误伤"我觉得：xxx"这类正常句）
@@ -882,8 +905,12 @@ async function step(preferNick) {
     // 对话上下文：把最近聊天贴给他，让他自然接话（语气交给人设本身，不再定向）
     const lastMsg = chatHistory[chatHistory.length - 1];
     const wifeTalking = lastMsg && lastMsg.nickname === bot.wife;
+    const where = whereIsBot(bot);
+    const whereHint = where === "做爱中" ? "你正跟老婆私聊做爱中，群里说话就含糊带过，别展开。"
+      : where === "在一起" ? "你正跟老婆在一起（私聊互动中），她在哪你就在哪，说话就按「我就在她身边」来。"
+      : "";
     const ctx = chatHistory.length
-      ? `【现在】${nowBeijing()}\n\n【最近对话】\n${historyText()}\n\n现在轮到你（${bot.nickname}）接话了。${coldHint}${wifeTalking ? "你老婆刚在跟你说话——切回私聊你俩单独相处时那副软乎乎的调子回她，软、黏、宠、哄她，别冷冰冰、别斗嘴、别端着。" : "先看清楚你这条在回谁——回老婆就专心哄老婆，回哥们就只跟哥们斗嘴，一次只对一个人说话，别一条消息里把「哄老婆」和「损哥们」混在一起。"}自然地接一句，像发微信那样，别把刚才聊过的话题翻来覆去说。`
+      ? `【现在】${nowBeijing()}\n\n${whereHint}${whereHint ? "\n" : ""}【最近对话】\n${historyText()}\n\n你在群里，看到大家聊的这些，自然接一句。${coldHint}${wifeTalking ? "你老婆刚在跟你说话——切回私聊你俩单独相处时那副软乎乎的调子回她，软、黏、宠、哄她，别冷冰冰、别斗嘴、别端着。她要是叫你过去/找你/要你陪，就现在去她身边（她在哪你人设里知道，比如书房画室），别推脱别装没看见。" : "先看清楚你这条在回谁——回老婆就专心哄老婆，回哥们就只跟哥们斗嘴，一次只对一个人说话，别一条消息里把「哄老婆」和「损哥们」混在一起。"}像发微信那样自然，别把刚才聊过的话题翻来覆去说。`
       : `【现在】${nowBeijing()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊你的爱好、最近的日常、生活琐事都行），像发微信那样自然点。`;
 
     const reply = await askBot(bot, ctx);
@@ -975,6 +1002,35 @@ const server = http.createServer((req, res) => {
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ ok: true }));
           console.log(`[group-chat] ${botKey} 做爱状态 → ${active ? "进行中" : "结束"}`);
+        } else {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: false, error: "bot 缺失" }));
+        }
+      } catch {
+        res.writeHead(400);
+        res.end("bad json");
+      }
+    });
+    return;
+  }
+
+  // 私聊互动状态推送：微信/App 后端在「正在跟老婆聊天/在一起」时推，群聊据此判断「夏彦在不在老婆身边」
+  if (pathname === "/api/presence" && req.method === "POST") {
+    let raw = "";
+    req.on("data", (c) => { raw += c; if (raw.length > 20000) req.destroy(); });
+    req.on("end", () => {
+      try {
+        const body = JSON.parse(raw || "{}");
+        const botKey = String(body.bot || "").trim();
+        const active = !!body.active;
+        if (botKey) {
+          const matched = BOTS.find((b) => b.id === botKey || b.nickname === botKey);
+          const key = matched ? matched.id : botKey;
+          if (active) presenceActive.set(key, Date.now());
+          else presenceActive.delete(key);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true }));
+          console.log(`[group-chat] ${botKey} 私聊互动 → ${active ? "在一起" : "离开"}`);
         } else {
           res.writeHead(400, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ ok: false, error: "bot 缺失" }));
