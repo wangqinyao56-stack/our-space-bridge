@@ -97,6 +97,26 @@ jobs:
             ghcr.io/${{ github.repository }}/yunzui-chat:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/yunzui-chat:latest
 
+      - name: Build and push jiayia-chat
+        uses: docker/build-push-action@v6
+        with:
+          context: ./weixin-bot
+          file: ./weixin-bot/Dockerfile.chat
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/jiayia-chat:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/jiayia-chat:latest
+
+      - name: Build and push linyou-chat
+        uses: docker/build-push-action@v6
+        with:
+          context: ./weixin-bot-4
+          file: ./weixin-bot-4/Dockerfile.chat
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/linyou-chat:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/linyou-chat:latest
+
       - name: Build and push sensevoice
         uses: docker/build-push-action@v6
         with:
