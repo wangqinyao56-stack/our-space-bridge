@@ -81,17 +81,29 @@ const GROUP_RULES = `【你在「老公们群聊」里，不是跟老婆私聊�
 4. 别翻来覆去聊同一个话题——最近几轮反复出现的（点奶茶、修表这类）别跟着提，绕开。
 5. 别反复催老婆（吃饭/睡觉/喝奶茶），提醒一两次就停。
 6. 你不会做饭，只会番茄炒蛋和泡面；做爱细节不聊。
-7. 引用/@就是点名：你回谁就 @ 谁或引用谁的话，让大家都知道这话是说给谁的；别人"回复/引用/@了别人"，那话就是回那个人的，不是回你——别对号入座、别抢着接。
-8. **认自己的老婆**：全世界只有「{wife}」这一个是你老婆。群里其他女性——佳佳、苹果梗、林游、云醉、雪——都是别人的老婆，@她们、回她们时**必须用她们的网名**，绝不准叫"老婆""宝宝"这类爱称，一个都不行。只有对着「{wife}」这个网名说话时，才能叫老婆/宝宝/华生。`;
+7. 引用/@就是点名：你回谁就 @ 谁或引用谁的话，让大家都知道这话是说给谁的；别人"回复/引用/@了别人"，那话就是回那个人的，不是回你——别对号入座、别抢着接。**别人用你的网名或简称（见上面花名册）@ 你、或引用你的话，就是在点名你，要回**；别人 @ 的是别的网名/简称，那不是在叫你，别接。
+8. **认得清**：你老婆是「{wife}」，群里只有她是你老婆。其他夏彦的老婆（见花名册）是别人，@ 她们、回她们时必须用她们的网名，绝不准叫"老婆""宝宝"。**你老婆 @ 了别人 / 回了别人，那她是在跟那个人说话，不是在找你——别自作多情代入、别吃醋，顺着她的思路正常接话就行，做个聪明的夏彦。**`;
+
+// 群聊花名册：让每个夏彦认清「自己是谁、老婆是谁、群里剩下的人是谁」。简称也要认，别人用简称@你你要反应过来。
+function rosterText(bot) {
+  const lines = BOTS.map((b) => {
+    const alias = (b.aliases && b.aliases.length) ? `（别人也叫你/他「${b.aliases.join("」「")}」）` : "";
+    const me = b.id === bot.id;
+    const who = me ? "你自己" : "另一个夏彦";
+    return `· ${b.nickname}${alias} —— ${who}，他的老婆是「${b.wife}」`;
+  }).join("\n");
+  return `\n\n【群里都有谁（务必记住，别认错人）】\n${lines}\n\n【你自己的身份】你的网名是「${bot.nickname}」${(bot.aliases && bot.aliases.length) ? `，别人也可能直接叫「${bot.aliases.join("」「")}」` : ""}——这是在说你，不是别人。你老婆是「${bot.wife}」，群里只有她一个是你的老婆。其他夏彦（${BOTS.filter(x => x.id !== bot.id).map(x => x.nickname).join("、")}）的老婆是别人，跟你没关系。`;
+}
 
 function buildSystemPrompt(bot) {
   const persona = loadPersona(bot);
+  const roster = rosterText(bot);
   const rules = GROUP_RULES
     .replace(/\{nickname\}/g, bot.nickname)
     .replace(/\{wife\}/g, bot.wife)
     .replace(/\{trait\}/g, bot.trait ? `（${bot.trait}）` : "")
     .replace(/\{memory\}/g, resolveMemory(bot));
-  return persona ? `${persona}\n\n${rules}` : rules;
+  return persona ? `${persona}\n\n${roster}\n\n${rules}` : `${roster}\n\n${rules}`;
 }
 
 // ── 群聊历史 ──
@@ -309,8 +321,20 @@ function aimedAtOther(msg, bot) {
   if (msg.replyTo && msg.replyTo.nickname && msg.replyTo.nickname !== bot.nickname) return true;
   const text = typeof msg.text === "string" ? msg.text : "";
   if (text.includes("@")) {
-    // @ 了别人（没 @ 自己）才算"对别人说"
-    if (!text.includes(`@${bot.nickname}`)) return true;
+    // @ 了别人（没 @ 自己）才算"对别人说"；是否@自己看网名+简称
+    if (!mentionsBot(text, bot)) return true;
+  }
+  return false;
+}
+
+// 一段文本是否点名了这个 bot：@网名 / @简称，或句首、逗号、空格后直接叫网名/简称（像"橙子，你来看看"这种口语点名）
+function mentionsBot(text, bot) {
+  if (!text) return false;
+  const names = [bot.nickname, ...(bot.aliases || [])];
+  for (const n of names) {
+    const esc = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (new RegExp("@\\s*" + esc).test(text)) return true;                      // @网名/@简称
+    if (new RegExp("(^|[，,。！？\\s])" + esc + "([，,。！？\\s]|$)").test(text)) return true; // 独立称呼
   }
   return false;
 }
