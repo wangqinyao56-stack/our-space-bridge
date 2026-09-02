@@ -79,3 +79,8 @@
 {"time":"2026-09-01 01:00","repo":"our-space","file":"weixin-bot-2~5","desc":"同步getGroupChatContext+注入到其余4个bot"}
 {"time":"2026-09-01 01:20","repo":"our-space","file":"group-chat/server.js","desc":"群聊加登录:ROOM_PASSWORD(默认1205)+login消息校验+chat用ws.nickname"}
 {"time":"2026-09-01 01:20","repo":"our-space","file":"group-chat/public/index.html","desc":"网页加登录遮罩(昵称+密码)+localStorage记住自动进群"}
+{"time":"2026-09-02 12:00","repo":"our-space","file":"group-chat/server.js","desc":"群聊回老婆条目删掉'句尾正常用句号'反向引导,改自然停顿换行"}
+{"time":"2026-09-02 12:00","repo":"our-space","file":"desktop-home/index.html","desc":"修立绘大小bug:删boot前过早renderRoom,doConnect里双rAF布局完成后重算"}
+{"time":"2026-09-02 12:20","repo":"our-space","file":"group-chat/prompts/huasheng.txt jiayia pingguogeng zhima yunzui","desc":"5个bot persona「橙子味」全改「柑橘味」,消解跟芝麻家「橙子环游记」网名撞词导致的吃醋误会"}
+{"time":"2026-09-02 12:20","repo":"our-space","file":"group-chat/server.js","desc":"群聊加硬红线:回老婆+铁律9+step toneHint三处钉死「当众不呛老婆/不翻私密旧账(次数/床上事/私房话)」"}
+{"time":"2026-09-02 12:30","repo":"our-space","file":"group-chat/server.js","desc":"吃醋表达改为纯口头:群聊无动作,「搂过来」等动作式占有欲全删,改「用嘴说软话你是我的」"}
