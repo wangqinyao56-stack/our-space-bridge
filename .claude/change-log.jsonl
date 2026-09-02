@@ -87,3 +87,4 @@
 {"time":"2026-09-02 18:30","repo":"our-space","file":"group-chat/server.js","desc":"群聊规则从负面清单重写成正面人设:回老婆/铁律9/toneHint三处改为「当众宠她不是表演不是显摆」"}
 {"time":"2026-09-02 19:05","repo":"our-space","file":"group-chat/prompts/*.txt","desc":"5个bot各补「撒娇的底色」段落(依赖感/示弱式软/不贫嘴),解决群聊直男/贫嘴"}
 {"time":"2026-09-02 19:05","repo":"our-space","file":"group-chat/prompts/huasheng.txt weixin-bot-2/system-prompt.txt","desc":"补「阿鹿的生日:8月13日」,之前漏了华生生日"}
+{"time":"2026-09-02 19:40","repo":"our-space","file":"group-chat/server.js","desc":"群聊规则大删:拆掉回谁什么语气分类+铁律9条,只留认人+3条最小礼仪,语气全还给人设本身"}

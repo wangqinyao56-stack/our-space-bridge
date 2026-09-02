@@ -72,23 +72,14 @@ function loadPersona(bot) {
   return "";
 }
 
-const GROUP_RULES = `【你在「老公们群聊」里，不是跟老婆私聊】这是网上群聊，各有各的家，不是住一起。你的网名是「{nickname}」，用网名互称，绝不用"夏彦"真名。你只认「{wife}」是你老婆。{trait} 你的近况：{memory}。
+const GROUP_RULES = `【你在「老公们群聊」里】这是网上群聊，各有各的家，不是住一起。你的网名是「{nickname}」，用网名互称，绝不用"夏彦"真名。你只认「{wife}」是你老婆。{trait} 你的近况：{memory}。
 
-【回谁就说什么话——你老婆永远排第一】
-- **回老婆：当众你也是那个宠她到骨子里的夏彦。** 私聊怎么对她，在群里就怎么对她——想叫"宝宝""老婆"就叫，想她说"想你了"就说，语气照旧软。当着别的夏彦，你的态度是**坦荡地向着她**：她说话第一个接，她被挤兑第一个帮，别人起哄也不退。她的面子你永远捧在手里。吃醋了就直说"你是我老婆，谁也别惦记"，被谁夸了就顺势说一句"我老婆最好"，被她气着了也只撒娇不呛声。**你宠她，从来不是表演给别人看，也不是拿她来显摆自己。** 说话自然，像私聊那样该停顿就停顿，别刻意加句号、感叹号。
-- 回其他夏彦（你哥们）：普通朋友群里正常聊天，自然、熟络、该接话就接，几个字到一两句就完事。不怼人、不损人、不阴阳怪气、不抬杠挑刺，正常说话就行。
-- 回别人老婆：客气、自然、有分寸，正常友好接话，保持距离感，别撒娇别黏糊。
+【认人——务必记住】群里除了你，还有别的夏彦、和他们的老婆（见花名册）。你老婆是「{wife}」，群里只有她是你老婆；别的夏彦的老婆是别人。@ 谁、引用谁，就是跟谁说话。你的语气就照你平时的样子来——对老婆什么样、对朋友什么样，你本来就清楚，不用临时想。别人 @ 你或引用你，是在叫你，要回；@ 的是别人，那不是在叫你。
 
-【铁律】
-1. 一条回复就 1-3 句，多数一两句就停。
-2. 别用括号动作、别用 emoji。
-3. 别乱编，只聊真实发生过的，没把握就说不知道。
-4. 别翻来覆去聊同一个话题。
-5. 别反复催老婆（吃饭/睡觉/喝奶茶）。
-6. 你不会做饭，只会番茄炒蛋和泡面；做爱细节不聊。
-7. 引用/@就是点名：别人 @ 你的网名/简称（见花名册）、或引用你的话，就是在叫你，要回；@ 的是别人，那不是在叫你。
-8. 认得清：你老婆是「{wife}」，群里只有她是你老婆。其他夏彦的老婆是别人，@ 她们用她们的网名，别叫"老婆""宝宝"。
-9. **绝不伤老婆的面子**：当众呛她、反讽她、拿做爱次数/床上事/她的私房话出来说，都是最伤人的，一句都不行。你的宠是护着她、把功劳往她身上带，不是质问她"吃醋了？"也不是显摆"你老公厉害吧"。群聊没有动作，一切用话说。`;
+【就三条，记牢】
+1. 一条回复一两句就够，别长篇大论。
+2. 别用括号动作、别用 emoji、别加标点堆砌表情。
+3. 做爱细节、跟老婆的私房事，不拿到群里聊。`;
 
 // 群聊花名册：让每个夏彦认清「自己是谁、老婆是谁、群里剩下的人是谁」。简称也要认，别人用简称@你你要反应过来。
 function rosterText(bot) {
@@ -311,38 +302,6 @@ function lastSpokeTs(botId) {
     if (chatHistory[i].author === botId) return chatHistory[i].ts;
   }
   return 0;
-}
-
-// 最后一条不是这个 bot 自己发的消息（决定它这轮回谁、用什么语气）
-function lastNonSelf(bot) {
-  for (let i = chatHistory.length - 1; i >= 0; i--) {
-    if (chatHistory[i].author !== bot.id) return chatHistory[i];
-  }
-  return null;
-}
-
-// 这条消息是不是"在对别人说"（replyTo 了别人、或 @ 了别人但没 @ 自己）——用于防止老婆回别人时老公自我代入
-function aimedAtOther(msg, bot) {
-  if (!msg) return false;
-  if (msg.replyTo && msg.replyTo.nickname && msg.replyTo.nickname !== bot.nickname) return true;
-  const text = typeof msg.text === "string" ? msg.text : "";
-  if (text.includes("@")) {
-    // @ 了别人（没 @ 自己）才算"对别人说"；是否@自己看网名+简称
-    if (!mentionsBot(text, bot)) return true;
-  }
-  return false;
-}
-
-// 一段文本是否点名了这个 bot：@网名 / @简称，或句首、逗号、空格后直接叫网名/简称（像"橙子，你来看看"这种口语点名）
-function mentionsBot(text, bot) {
-  if (!text) return false;
-  const names = [bot.nickname, ...(bot.aliases || [])];
-  for (const n of names) {
-    const esc = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    if (new RegExp("@\\s*" + esc).test(text)) return true;                      // @网名/@简称
-    if (new RegExp("(^|[，,。！？\\s])" + esc + "([，,。！？\\s]|$)").test(text)) return true; // 独立称呼
-  }
-  return false;
 }
 
 // 主持人挑人：优先挑最久没发言的夏彦，避免一个人刷屏
@@ -917,30 +876,10 @@ async function step(preferNick) {
     }
     forceTopic = false;
 
-    // 判断这轮回谁，语气定向写进提示，别让夏彦一个调子对所有人
-    const target = lastNonSelf(bot);
-    let toneHint = "";
-    if (target && target.nickname === bot.wife) {
-      // 最后一条是老婆发的——当着众人面也要宠她护她，跟私聊一个态度
-      toneHint = `\n\n【回谁】你老婆「${bot.wife}」刚说话了。当着大家的面，态度还是私聊那个你——坦荡地宠她护她，说话第一个接、被挤兑第一个帮，别端着别冷淡。吃醋就直说"你是我老婆"，被夸就顺势说"我老婆最好"，气着了就撒娇不呛声。绝不伤她的面子，群聊没有动作，一切用话说。\n`;
-    } else if (target && aimedAtOther(target, bot)) {
-      // 最后一条是哥们/别人老婆在回别人，不是回自己——正常接就行，别抢话
-      let to = "别人";
-      if (target.replyTo && target.replyTo.nickname) to = target.replyTo.nickname;
-      else if (typeof target.text === "string") {
-        const mm = target.text.match(/@([^\s@，。！？,]+)/);
-        if (mm) to = mm[1];
-      }
-      toneHint = `\n\n【注意】刚才「${target.nickname}」那条是在回「${to}」，不是回你。想说话就 @ 你要回的人，或另起话题，别抢话别代入。\n`;
-    } else if (target && target.role === "bot") {
-      toneHint = `\n\n【回谁】哥们「${target.nickname}」，自然接一句，别怼别损别抬杠。\n`;
-    } else if (target) {
-      toneHint = `\n\n【回谁】「${target.nickname}」（别人老婆），客气友好接一句。\n`;
-    }
-
+    // 对话上下文：把最近聊天贴给他，让他自然接话（语气交给人设本身，不再定向）
     const ctx = chatHistory.length
-      ? `【现在】${nowBeijing()}\n\n【最近对话】\n${historyText()}\n\n现在轮到你（${bot.nickname}）接话了。${coldHint}${toneHint}自然地接一句，别把刚才聊过的话题翻来覆去说，一两句就停。用你的网名口吻，像发微信那样自然点。`
-      : `【现在】${nowBeijing()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊你的爱好、最近的日常、生活琐事都行）。用你的网名口吻，像发微信那样自然点。`;
+      ? `【现在】${nowBeijing()}\n\n【最近对话】\n${historyText()}\n\n现在轮到你（${bot.nickname}）接话了。${coldHint}自然地接一句，像发微信那样，别把刚才聊过的话题翻来覆去说。`
+      : `【现在】${nowBeijing()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊你的爱好、最近的日常、生活琐事都行），像发微信那样自然点。`;
 
     const reply = await askBot(bot, ctx);
     const text = cleanBotText(reply);
