@@ -297,7 +297,11 @@ function connect() {
       if (msg.bots && msg.bots.length) {
         addSys(`在群里的夏彦：${msg.bots.map(b => b.nickname).join("、")}`);
       }
-      (msg.messages || []).forEach(addMsg);
+      // 重画历史时：system 消息走居中提示，普通消息走气泡
+      (msg.messages || []).forEach((m) => {
+        if (m.role === "system") addSys(m.text || "");
+        else addMsg(m);
+      });
       // 需要密码则显示密码框
       if (msg.needPassword) {
         passInput.style.display = "block";

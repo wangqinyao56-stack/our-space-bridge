@@ -526,6 +526,7 @@ function resetHistory() {
 
 function historyText() {
   return chatHistory.slice(-20)
+    .filter((m) => m.role !== "system") // 系统提示（游戏数值等）不进 AI 上下文
     .map((m) => m.replyTo && m.replyTo.nickname
       ? `${m.nickname} 回复 ${m.replyTo.nickname}：${m.text}`
       : `${m.nickname}：${m.text}`)
@@ -777,8 +778,12 @@ function broadcast(obj) {
   }
 }
 
-// 系统提示（居中灰色小字，不进聊天历史、不触发接话）
+// 系统提示（居中灰色小字）：存进聊天历史并持久化，重连/刷新后不会消失，也不触发接话
 function pushSystem(text) {
+  const msg = { id: `${Date.now()}_${++msgSeq}`, author: "system", nickname: "", text, role: "system", ts: Date.now() };
+  chatHistory.push(msg);
+  if (chatHistory.length > MAX_HISTORY) chatHistory = chatHistory.slice(-MAX_HISTORY);
+  saveHistory();
   broadcast({ type: "system", text });
 }
 
