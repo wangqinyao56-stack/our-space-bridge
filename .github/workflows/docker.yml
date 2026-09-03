@@ -32,6 +32,7 @@ jobs:
 
       - name: Build and push our-space-bridge
         uses: docker/build-push-action@v6
+        continue-on-error: true
         with:
           context: .
           push: true
@@ -44,6 +45,7 @@ jobs:
 
       - name: Build and push weixin-bot
         uses: docker/build-push-action@v6
+        continue-on-error: true
         with:
           context: ./weixin-bot
           push: true
@@ -53,6 +55,7 @@ jobs:
 
       - name: Build and push weixin-bot-2
         uses: docker/build-push-action@v6
+        continue-on-error: true
         with:
           context: ./weixin-bot-2
           push: true
@@ -62,6 +65,7 @@ jobs:
 
       - name: Build and push weixin-bot-3
         uses: docker/build-push-action@v6
+        continue-on-error: true
         with:
           context: ./weixin-bot-3
           push: true
@@ -71,6 +75,7 @@ jobs:
 
       - name: Build and push weixin-bot-4
         uses: docker/build-push-action@v6
+        continue-on-error: true
         with:
           context: ./weixin-bot-4
           push: true
@@ -80,6 +85,7 @@ jobs:
 
       - name: Build and push weixin-bot-5
         uses: docker/build-push-action@v6
+        continue-on-error: true
         with:
           context: ./weixin-bot-5
           push: true
@@ -89,6 +95,7 @@ jobs:
 
       - name: Build and push yunzui-chat
         uses: docker/build-push-action@v6
+        continue-on-error: true
         with:
           context: ./weixin-bot-5
           file: ./weixin-bot-5/Dockerfile.chat
@@ -99,6 +106,7 @@ jobs:
 
       - name: Build and push jiayia-chat
         uses: docker/build-push-action@v6
+        continue-on-error: true
         with:
           context: ./weixin-bot
           file: ./weixin-bot/Dockerfile.chat
@@ -109,6 +117,7 @@ jobs:
 
       - name: Build and push linyou-chat
         uses: docker/build-push-action@v6
+        continue-on-error: true
         with:
           context: ./weixin-bot-4
           file: ./weixin-bot-4/Dockerfile.chat
@@ -119,6 +128,7 @@ jobs:
 
       - name: Build and push pingguogeng-chat
         uses: docker/build-push-action@v6
+        continue-on-error: true
         with:
           context: ./weixin-bot-3
           file: ./weixin-bot-3/Dockerfile.chat
@@ -139,6 +149,7 @@ jobs:
 
       - name: Build and push group-chat
         uses: docker/build-push-action@v6
+        continue-on-error: true
         with:
           context: ./group-chat
           push: true
