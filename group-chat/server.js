@@ -527,9 +527,13 @@ function resetHistory() {
 function historyText() {
   return chatHistory.slice(-20)
     .filter((m) => m.role !== "system") // 系统提示（游戏数值等）不进 AI 上下文
-    .map((m) => m.replyTo && m.replyTo.nickname
-      ? `${m.nickname} 回复 ${m.replyTo.nickname}：${m.text}`
-      : `${m.nickname}：${m.text}`)
+    .map((m) => {
+      if (m.replyTo && m.replyTo.nickname) {
+        const quoted = m.replyTo.text ? `（他/她当时说的：${m.replyTo.text}）` : "";
+        return `${m.nickname} 回复 ${m.replyTo.nickname}${quoted}：${m.text}`;
+      }
+      return `${m.nickname}：${m.text}`;
+    })
     .join("\n");
 }
 
@@ -623,7 +627,19 @@ function askBot(bot, userContent, timeoutMs = 180000, systemPrompt) {
     conn.end();
   });
 
-  return (DISABLE_PROXY ? doDirect() : doProxy());
+  // 429 限流退避重试：玖时提示「Too many pending requests / quota reset 1s」，撞上限流停一下再试基本就过
+  const attempt = () => (DISABLE_PROXY ? doDirect() : doProxy());
+  return (async () => {
+    for (let i = 0; i < 3; i++) {
+      try {
+        return await attempt();
+      } catch (e) {
+        const is429 = /429/.test(String(e && e.message || e));
+        if (!is429 || i === 2) throw e;
+        await new Promise((r) => setTimeout(r, 1200 + i * 800));
+      }
+    }
+  })();
 }
 
 // ── 冲浪：调 Tavily 搜索，替夏彦去网上看看世界 ──

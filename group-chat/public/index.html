@@ -363,7 +363,7 @@ function doSend() {
 function setPendingReply(m) {
   pendingReply = { id: m.id, nickname: m.nickname, text: m.text };
   quoteName.textContent = m.nickname;
-  quoteText.textContent = m.text.slice(0, 30);
+  quoteText.textContent = m.text.slice(0, 50); // 引用原文显示足一点，让人和 bot 都看清引用的是哪句
   quoteBar.style.display = "flex";
   input.focus();
 }
