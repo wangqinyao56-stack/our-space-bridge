@@ -14,4 +14,5 @@
 {"time":"2026-09-03 16:25","repo":"our-space","file":"group-chat/server.js+public/index.html","desc":"拆条间隔再慢(2000ms+每字130ms上限3200ms)+动画放慢(0.5s滑入)"}
 {"time":"2026-09-03 16:43","repo":"our-space","file":"group-chat/server.js+system-prompt-daily.md","desc":"夏彦被调侃的反应:被老婆/哥们调侃会着急辩解越描越黑慌慌张张结结巴巴傻乎乎,不是冷静讲道理。群聊WIFE_RULES+App日常prompt两处同步"}
 {"time":"2026-09-03 16:47","repo":"our-space","file":"group-chat/server.js","desc":"修拆句太碎:prompt改'同一层意思用逗号连别拆碎,只在换话题/对象才换行';拆条加合并保护'单独一行@某人跟下一句并成一条'"}
+{"time":"2026-09-03 17:31","repo":"our-space","file":"group-chat/server.js","desc":"群聊roster加'点名认领':提具体网名说就是那个人别当自己;老婆说'狗'=夏彦(几家不养狗),谁家老婆家的狗就是谁家夏彦,看清楚名字再接话"}
 {"time":"2026-09-03 15:35","repo":"our-space","file":"lib/emotional-memory.js+group-chat/server.js","desc":"修日常聊天失忆:群聊上下文串味——群聊记录注入日常prompt被当成华生正在聊的话题去接,加约束'群里社交≠和华生对话,她没问就别提'两处同步"}
