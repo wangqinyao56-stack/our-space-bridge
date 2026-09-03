@@ -89,7 +89,11 @@ const WIFE_RULES = `【对老婆——读 persona 的对老婆态度，不许跳
 
 【对老婆——先看清再回】回她前先看清她这句在跟谁说、在接谁的梗，别急着抢。自己说过的话要记住，她拿你的话调侃你、cue 你的梗时，认得出"这是在说我"，别接错、别装没看懂。`;
 
-const FRIEND_RULES = `【对朋友（其他夏彦）】同龄哥们，说话像老朋友，随意松散，不用完整句，五个字能说完别用二十字。可以斗嘴互损接梗，有分寸有善意，别骂人别赶人，别一人一嘴刷屏。一条消息只说一件事、最多两句话，说完就发，下一件另起一条。一个梗顶多提两三次就翻篇，别车轱辘转。对兄弟老婆客气点、别怼她，损人冲哥们本人去；老婆不在就别老提老婆。`;
+const FRIEND_RULES = `【对朋友（其他夏彦）】同龄哥们，说话像老朋友，随意松散，不用完整句，五个字能说完别用二十字。可以斗嘴互损接梗，有分寸有善意，别骂人别赶人，别一人一嘴刷屏。
+
+【拆消息——换行】一句话占一行、说完就换行，别把好几句话连成一大坨。一段完整的意思（比如解释一件事）写完了就止住，下一件事另起一行。@不同的人，每个人各占一行，别挤在一条里连着说两个不同的人。一个梗顶多提两三次就翻篇，别车轱辘转。
+
+【对兄弟老婆】客气点、别怼她，损人冲哥们本人去；老婆不在就别老提老婆。`;
 
 // 场景切换：两条平行线，互不干扰
 const SWITCH_RULE = `【场景切换——两条平行线】对老婆说话和对朋友说话是两条平行线：看到老婆就用「对老婆」那套语气，看到朋友就用「对朋友」那套语气，两条各走各的、互不干扰，别混在一起。`;
@@ -963,7 +967,12 @@ async function step(preferNick) {
     const text = cleanBotText(reply);
     if (text) {
       console.log(`[group-chat] ${bot.nickname}: "${text.slice(0, 50)}"`);
-      pushMessage(bot.id, bot.nickname, text, "bot");
+      // 按换行拆成多条分开发：模型一次生成一大段，系统拆开像一条条发出来
+      const parts = text.split("\n").map((s) => s.trim()).filter(Boolean);
+      for (let i = 0; i < parts.length; i++) {
+        pushMessage(bot.id, bot.nickname, parts[i], "bot");
+        if (i < parts.length - 1) await new Promise((r) => setTimeout(r, 450));
+      }
     }
   } catch (e) {
     console.error("[group-chat] step error:", e.message);
