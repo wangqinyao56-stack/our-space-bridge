@@ -945,7 +945,60 @@ function handleBomb(text, senderNick) {
   if (n > target) gameState.bombHigh = n - 1;
   else gameState.bombLow = n + 1;
   pushSystem(`${senderNick} 猜 ${n}，不对～ 现在范围缩小到 ${gameState.bombLow}~${gameState.bombHigh}`);
+  // 让一个夏彦接着报数（带人设地报一个范围内的数）
+  botPlayBomb();
   return true;
+}
+
+// 数字炸弹：随机一个夏彦组织语言报一个当前范围内的数，带点本人的俏皮
+async function botPlayBomb() {
+  if (!gameState.active || gameState.type !== "bomb") return;
+  const pool = BOTS.filter((b) => !botJustSpoke(b));
+  if (pool.length === 0) return;
+  const bot = pool[Math.floor(Math.random() * pool.length)];
+  const low = gameState.bombLow;
+  const high = gameState.bombHigh;
+  const guardNum = Math.floor((low + high) / 2); // 兜底数（若 AI 没给数）
+  try {
+    const reply = await askBot(
+      bot,
+      `【现在】${nowBeijing()}\n\n你们在玩「数字炸弹」，当前范围是 ${low}~${high}。轮到你报一个数了——在范围内随便选一个数（避开边界，别选 ${low} 或 ${high} 这种刚被排除的数），用你本人的口吻说，比如"那我猜 42""来一个 33 试试"。只报一个数，别分析。`,
+      180000,
+      buildFriendPrompt(bot)
+    );
+    const text = cleanBotText(reply);
+    const m = String(text || "").match(/\d+/);
+    const num = m ? parseInt(m[0], 10) : null;
+    if (num && num >= low && num <= high && num !== gameState.bombTarget) {
+      // bot 报的数有效且没踩中 → 走缩小范围逻辑
+      if (num > gameState.bombTarget) gameState.bombHigh = num - 1;
+      else gameState.bombLow = num + 1;
+      pushMessage(bot.id, bot.nickname, text, "bot");
+      pushSystem(`${bot.nickname} 猜 ${num}，范围缩小到 ${gameState.bombLow}~${gameState.bombHigh}`);
+    } else if (num === gameState.bombTarget) {
+      // bot 踩中炸弹 → 输
+      gameState.active = false;
+      const punish = BOMB_PUNISH[Math.floor(Math.random() * BOMB_PUNISH.length)];
+      pushMessage(bot.id, bot.nickname, text, "bot");
+      pushSystem(`💥 ${bot.nickname} 踩中了炸弹！数字是 ${gameState.bombTarget}！惩罚：${punish}`);
+      setTimeout(() => pushSystem("想再玩就喊「玩数字炸弹」～"), 1200);
+    } else {
+      // AI 没给有效数，用兜底数推进
+      const fallback = guardNum >= low && guardNum <= high ? guardNum : low;
+      if (fallback > gameState.bombTarget) gameState.bombHigh = fallback - 1;
+      else if (fallback < gameState.bombTarget) gameState.bombLow = fallback + 1;
+      else {
+        gameState.active = false;
+        pushSystem(`💥 ${bot.nickname} 踩中了炸弹！数字是 ${gameState.bombTarget}！`);
+        setTimeout(() => pushSystem("想再玩就喊「玩数字炸弹」～"), 1200);
+        return;
+      }
+      pushMessage(bot.id, bot.nickname, `我猜 ${fallback}`, "bot");
+      pushSystem(`${bot.nickname} 猜 ${fallback}，范围缩小到 ${gameState.bombLow}~${gameState.bombHigh}`);
+    }
+  } catch (e) {
+    console.error("[group-chat] botPlayBomb error:", e.message);
+  }
 }
 
 // ── ② 故事接龙 ──
@@ -1021,7 +1074,11 @@ async function startDrawGame() {
     try {
       const describe = await askBot(host, `【现在】${nowBeijing()}\n\n你要当"你画我猜"的出题人，给你的词是「${word}」。请你用文字描述这个词（场景/特征/用途），但绝不能直接说出这个词、也不能说出词里的任何一个字。用你本人的口吻，抛一句提示让大伙猜。`, 180000, buildFriendPrompt(host));
       const s = cleanBotText(describe);
-      if (s) pushMessage(host.id, host.nickname, `（我得描述一下…）${s}`, "bot");
+      if (s) {
+        pushMessage(host.id, host.nickname, `（我得描述一下…）${s}`, "bot");
+        // 出题人描述完，让一个夏彦猜一个词活跃气氛
+        setTimeout(() => botPlayDraw(host.nickname).catch(() => {}), 2500);
+      }
     } catch {}
   }, 800);
 }
@@ -1039,6 +1096,34 @@ function handleDraw(text, senderNick) {
   // 出题人自己说话不算猜（避免他自己漏词）；别人可以继续描述
   if (senderNick === gameState.drawAuthor) return false;
   return false;
+}
+
+// 你画我猜：随机一个（非出题人）夏彦猜一个词（他不知道词，只凭出题人的描述）
+async function botPlayDraw(authorNick) {
+  if (!gameState.active || gameState.type !== "draw" || !gameState.drawWord) return;
+  const guessers = BOTS.filter((b) => b.nickname !== authorNick && !botJustSpoke(b));
+  if (guessers.length === 0) return;
+  const bot = guessers[Math.floor(Math.random() * guessers.length)];
+  try {
+    const reply = await askBot(
+      bot,
+      `【现在】${nowBeijing()}\n\n你们在玩「你画我猜」，出题人刚给了一句描述。配合气氛，你也猜一个词说出来（可能是错的，没关系，猜着玩，带点你本人的俏皮）。只回一句你猜的词。`,
+      180000,
+      buildFriendPrompt(bot)
+    );
+    const text = cleanBotText(reply);
+    if (!text) return;
+    if (text.includes(gameState.drawWord)) {
+      gameState.active = false;
+      pushMessage(bot.id, bot.nickname, text, "bot");
+      pushSystem(`🎉 ${bot.nickname} 猜中了！答案就是「${gameState.drawWord}」！`);
+      setTimeout(() => pushSystem("想再来就喊「玩你画我猜」～"), 1200);
+    } else {
+      pushMessage(bot.id, bot.nickname, text, "bot");
+    }
+  } catch (e) {
+    console.error("[group-chat] botPlayDraw error:", e.message);
+  }
 }
 
 // ── 编排：轮流让某个夏彦接话 ──

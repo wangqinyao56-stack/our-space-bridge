@@ -29,4 +29,5 @@
 {"time":"2026-09-03 21:49","repo":"our-space","file":"group-chat/server.js+public/index.html","desc":"修手机端反复刷新+故事消失:①前端historyLoaded去重——重连收到history不再清屏重画②后端加25s心跳ping防Sealos网关空闲掐断ws③finishStory把完整故事pushMessage进历史,刷新不丢失"}
 {"time":"2026-09-03 22:27","repo":"our-space","file":"group-chat/server.js+public/index.html","desc":"游戏数值/提示持久化:pushSystem进chatHistory+saveHistory持久化(重连刷新不秒没),前端history重画时role=system走addSys居中,historyText过滤system不进AI上下文"}
 {"time":"2026-09-03 23:06","repo":"our-space","file":"group-chat/server.js+public/index.html","desc":"修429限流(数字炸弹多人玩话赶话触发'Too many pending requests',bot不回应像发不出):askBot加429退避重试(1.2s/2s/2.8s×3次)。引用细化:historyText带上引用原句让bot知道引的是哪句,前端quoteText显示50字"}
+{"time":"2026-09-03 23:11","repo":"our-space","file":"group-chat/server.js","desc":"数字炸弹+猜词加bot参与:①handleBomb人报数后botPlayBomb随机一个夏彦报范围内数(带人设,踩炸弹也判输含兜底数)②startDrawGame出题人描述后botPlayDraw随机一个夏彦猜词(猜中判赢)"}
 {"time":"2026-09-03 15:35","repo":"our-space","file":"lib/emotional-memory.js+group-chat/server.js","desc":"修日常聊天失忆:群聊上下文串味——群聊记录注入日常prompt被当成华生正在聊的话题去接,加约束'群里社交≠和华生对话,她没问就别提'两处同步"}
