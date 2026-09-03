@@ -349,10 +349,13 @@ function isNight() {
 // 当前北京时间（服务端跑 UTC，+8 转北京）
 function nowBeijing() {
   const d = new Date(Date.now() + 8 * 3600000);
+  const y = d.getUTCFullYear();
+  const mo = d.getUTCMonth() + 1;
+  const da = d.getUTCDate();
   const h = d.getUTCHours();
   const m = String(d.getUTCMinutes()).padStart(2, "0");
   const wd = ["日", "一", "二", "三", "四", "五", "六"][d.getUTCDay()];
-  return `北京时间 ${h}:${m}，星期${wd}`;
+  return `北京时间 ${mo}月${da}日 星期${wd} ${h}:${m}`;
 }
 
 // 这个夏彦是不是刚发过言（避免自己回自己）
