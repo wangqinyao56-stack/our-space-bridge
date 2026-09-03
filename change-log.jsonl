@@ -2,3 +2,4 @@
 {"time":"2026-09-03 12:47","repo":"our-space","file":"group-chat/bots.js","desc":"群聊5个夏彦bot模型全切到[AG七夕按量]claude-opus-4-6(server.js兜底默认同步)"}
 {"time":"2026-09-03 12:52","repo":"our-space","file":"lib/message-router.js","desc":"日常聊天handleTextMessage显式传model切到[AG七夕按量]claude-opus-4-6(和群聊/亲密一致,不动askJiushi默认)"}
 {"time":"2026-09-03 14:28","repo":"our-space","file":"group-chat/server.js","desc":"群聊FRIEND_RULES加哥们语气:老朋友随意松散不用完整句/一条消息只说一件事/一个梗顶多两三次就翻篇"}
+{"time":"2026-09-03 15:04","repo":"our-space","file":"group-chat/server.js","desc":"WIFE_RULES加:回老婆前先看清她在跟谁说/接谁的梗别急着抢,自己说过的话记住,被调侃认得出这是在说我"}
