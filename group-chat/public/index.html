@@ -38,6 +38,12 @@
   .msg.human { background: var(--bubble-human); align-self: flex-end; border-bottom-right-radius: 4px; }
   .msg.human .who { color: #d0b8e8; }
   .msg.bot .who { color: #8ad0e0; }
+  /* 消息进入动画：从下方滑入，bot 依次出现 */
+  .msg.enter { animation: slideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
   .sys { align-self: center; font-size: 12px; color: var(--muted); }
   footer {
     padding: 10px 12px; background: var(--panel);
@@ -244,6 +250,8 @@ function addMsg(m) {
   div.addEventListener("touchend", () => clearTimeout(lp));
   div.addEventListener("touchmove", () => clearTimeout(lp));
   log.appendChild(div);
+  // 新消息进入动画：挂上后再强制重排触发（历史重载时也顺势滑入，无妨）
+  div.classList.add("enter");
   log.scrollTop = log.scrollHeight;
 }
 
