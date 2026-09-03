@@ -224,6 +224,7 @@ const SOUP_LIBRARY = [
 
 let soupState = null;   // 当前海龟汤游戏 { hostId, hostNick, title, surface, truth, keyPoints, hints, hintLevel, active }
 let lastSoupHost = null; // 上次主持人 id（轮换用）
+let lastSoupTitle = null; // 上一题标题（硬保证下一题不等于上一题）
 const SOUP_RECENT = [];  // 最近用过的题目标题，避免重复
 
 // 群聊是公开场合：露骨的「过程/私处」记忆不进群，但「状态」可含蓄存在（能说"昨晚做了几次累"，不能展开体位动作）
@@ -909,9 +910,12 @@ function pickSoupHost() {
 }
 
 function pickSoup() {
-  const pool = SOUP_LIBRARY.filter((s) => !SOUP_RECENT.includes(s.title));
-  const candidates = pool.length > 0 ? pool : SOUP_LIBRARY;
-  const soup = candidates[Math.floor(Math.random() * candidates.length)];
+  // 过滤掉：最近用过的 + 上一题（硬保证下一题绝不等于上一题）
+  const pool = SOUP_LIBRARY.filter((s) => !SOUP_RECENT.includes(s.title) && s.title !== lastSoupTitle);
+  const candidates = pool.length > 0 ? pool : SOUP_LIBRARY.filter((s) => s.title !== lastSoupTitle);
+  const finalPool = candidates.length > 0 ? candidates : SOUP_LIBRARY;
+  const soup = finalPool[Math.floor(Math.random() * finalPool.length)];
+  lastSoupTitle = soup.title;
   SOUP_RECENT.push(soup.title);
   if (SOUP_RECENT.length > SOUP_LIBRARY.length) SOUP_RECENT.shift();
   return soup;
@@ -936,6 +940,15 @@ async function handleSoupMessage(text, senderNick) {
   if (!host) return null;
   const hostNick = soupState.hostNick;
   if (senderNick === hostNick) return null; // 主持人自己说的话不算猜题
+
+  // 大家说换题 → 跳过当前题，直接换新题（主持人别再死磕当前题）
+  if (/换题|换一题|下一题|下一道|再来一题|换道题|不想猜了|过|跳过这题/.test(text)) {
+    soupState.active = false;
+    const oldHost = host;
+    pushMessage(host.id, hostNick, "好，那这题跳过，换一道新的~", "bot");
+    setTimeout(() => startSoupGame().catch(() => {}), 1500);
+    return null;
+  }
 
   if (/我猜|答案是|真相是|提交|我知道了/.test(text)) {
     return judgeSoupSubmit(text, host, hostNick);
@@ -1282,10 +1295,10 @@ wss.on("connection", (ws) => {
         const humanNick = ws.nickname || "我";
         console.log(`[group-chat] ${humanNick}: "${text.slice(0, 50)}"`);
         pushMessage("human", humanNick, text, "human", msg.replyTo);
-        // 海龟汤：开局 / 猜题 / 正常接话
+        // 海龟汤：开局 / 猜题 / 换题 / 正常接话
         if (/海龟汤/.test(text) && (!soupState || !soupState.active)) {
           startSoupGame().catch(() => {});
-        } else if (soupState && soupState.active && /[吗么？?]|是不是|有没有|能不能|会不会|我猜|答案是|真相是|提交|提示|我知道/.test(text)) {
+        } else if (soupState && soupState.active && /换题|换一题|下一题|下一道|再来一题|换道题|不想猜了|跳过这题|[吗么？?]|是不是|有没有|能不能|会不会|我猜|答案是|真相是|提交|提示|我知道/.test(text)) {
           handleSoupMessage(text, humanNick).catch(() => {});
         } else {
           step(humanNick).catch(() => {});
