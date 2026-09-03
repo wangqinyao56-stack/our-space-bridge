@@ -383,7 +383,7 @@ const SOLAR_TERMS = [
 const SOLAR_TERM_HINTS = {
   "立春": "立春了，自然提一句春天来了/一年之初",
   "立秋": "立秋了，自然说句立秋快乐、天气要转凉了",
-  "立冬": "立冬了，跟老婆说"宝宝，立冬啦，出门注意保暖"，关心她加衣服",
+  "立冬": "立冬了，跟老婆说立冬啦出门注意保暖，关心她加衣服",
   "冬至": "冬至了，自然提一句冬至/吃饺子，叮嘱她穿暖和点",
   "夏至": "夏至了，提一句天热起来了、注意防晒别中暑",
   "清明": "清明了，语气可以沉一点，或提一句踏青",
@@ -950,7 +950,8 @@ async function handleSoupMessage(text, senderNick) {
 }
 
 async function judgeSoupQuestion(text, host, hostNick) {
-  const ctx = `你是海龟汤主持人。汤底真相是：\n${soupState.truth}\n\n有人问："${text}"\n\n只回答"是"、"否"、"是也不是"、"无关"之一，最多补一两句极简解释。问题不能简单用是/否判断就回"无关"。绝对不要泄露汤底真相。`;
+  // 主持人用自己的口吻（软、俏皮、不像机器），但守规矩不泄底
+  const ctx = `你是「${host.nickname}」，阳光犬系少年，正在群里当海龟汤主持人，用你平时说话的口气主持，别冷冰冰当Siri。汤底真相只有你知道：\n${soupState.truth}\n\n有人问："${text}"\n\n规则（必须遵守）：\n- 只回答"是""否""是也不是""无关"之一，顶多补一句轻松的提示\n- 对方问到了真相/接近真相，你也绝不能把真相说出来——最多说"你摸到边了""再往下想一层"这类勾着他继续猜的话，绝不允许直接揭晓汤底\n- 保持你本人的语气，俏皮一点、带点主持人的得意，别像机器人念规则`;
   const reply = await askBot(host, ctx);
   const ans = (reply || "").replace(/^\[.*?\]\s*/g, "").trim();
   if (ans) pushMessage(host.id, hostNick, ans, "bot");
@@ -958,14 +959,21 @@ async function judgeSoupQuestion(text, host, hostNick) {
 }
 
 async function judgeSoupSubmit(text, host, hostNick) {
-  const ctx = `你是海龟汤主持人。汤底真相是：\n${soupState.truth}\n\n关键情节：${soupState.keyPoints.join("、")}\n\n有人提交了答案："${text}"\n\n判断是否猜对。猜对就恭喜他、简短评分（关键情节/逻辑/细节），然后揭晓完整汤底真相。没猜对就指出哪里不对、鼓励继续，但别泄露汤底。`;
+  const ctx = `你是「${host.nickname}」，阳光犬系少年，正在群里当海龟汤主持人，用你本人说话的口气主持，别冷冰冰。汤底真相只有你知道：\n${soupState.truth}\n\n关键情节：${soupState.keyPoints.join("、")}\n\n有人提交了答案："${text}"\n\n第一行先只回一个字：判他【对】还是【错】。\n- 如果他答对了真相（至少说中了关键情节和核心转折），第一行回【对】，后面用你本人的口吻恭喜他、简短说说他哪里点得准，然后把完整汤底真相揭晓给他看。\n- 如果没答对或只沾边，第一行回【错】，用你本人的口吻点出他哪里不对、鼓励他继续，绝不说出真相。\n全程用你自己的说话语气，别冷冰冰。`;
   const reply = await askBot(host, ctx);
   const ans = (reply || "").replace(/^\[.*?\]\s*/g, "").trim();
-  if (ans) pushMessage(host.id, hostNick, ans, "bot");
-  if (/汤底|真相|恭喜|揭晓|答对|猜对/.test(ans)) {
+  // 程序层读第一行的【对】/【错】信号，决定游戏是否结束，不靠猜关键词
+  const correct = /^【对】|^对[。，,\s]|^答对|^猜对|^恭喜/.test(ans);
+  if (ans) {
+    // 把【对】/【错】标记从发出去的话里去掉，别让群里看到这行判别符
+    const cleanAns = ans.replace(/^【对】|^【错】/m, "").trim();
+    pushMessage(host.id, hostNick, cleanAns, "bot");
+  }
+  if (correct) {
     soupState.active = false;
+    const savedState = soupState;
     setTimeout(() => {
-      if (!soupState || !soupState.active) {
+      if (soupState === savedState) {
         pushMessage(host.id, hostNick, "还想玩就喊'再来一题海龟汤'～", "bot");
       }
     }, 2500);

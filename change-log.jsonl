@@ -20,4 +20,5 @@
 {"time":"2026-09-03 18:22","repo":"our-space","file":"lib/message-router.js","desc":"修App→群聊实时同步:handleTextMessage每条消息后立即pushMemoryToGroupChat,原来只在启动+每15轮提取时推,导致'刚聊的事'群聊猎鹿人完全不知道"}
 {"time":"2026-09-03 18:52","repo":"our-space","file":"group-chat/server.js","desc":"nowBeijing补上月日:从'北京时间H:M星期X'改成'北京时间M月D日星期X H:M',让夏彦心里有日期概念能接日期话题"}
 {"time":"2026-09-03 18:55","repo":"our-space","file":"group-chat/server.js","desc":"加节日/节气感知:FESTIVALS(元旦/情人节/儿童节/国庆/圣诞等)+SOLAR_TERMS二十四节气+对应话术,冷场开话题或老婆说话时自然带一句(立冬提醒保暖/新年快乐等)"}
+{"time":"2026-09-03 19:09","repo":"our-space","file":"group-chat/server.js","desc":"修海龟汤3bug:①judgeSoupQuestion加'问中真相也不许揭底只给提示'②主持人用本人语气别冷冰冰(去掉loadPersona改ctx点一句)③猜对判定改程序读第一行【对/错】信号置active=false,不靠猜关键词"}
 {"time":"2026-09-03 15:35","repo":"our-space","file":"lib/emotional-memory.js+group-chat/server.js","desc":"修日常聊天失忆:群聊上下文串味——群聊记录注入日常prompt被当成华生正在聊的话题去接,加约束'群里社交≠和华生对话,她没问就别提'两处同步"}
