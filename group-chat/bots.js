@@ -48,12 +48,12 @@ export const BOTS = [
     model: "[AG七夕按量]claude-opus-4-6",
   },
   {
-    id: "zhima",
+    id: "linyou",
     nickname: "橙子环游记",
     aliases: ["橙子", "橙子环游"],
     wife: "林游", // 老婆名林游；芝麻是她家猫的名字
     trait: "家里有只猫叫芝麻",
-    memoryDir: "/memories/zhima",
+    memoryDir: "/memories/linyou",
     apiKey: "sk-giOsrYqjedrlmGijq7IRwO2Oxvrz8zbY4fJb8A35DhMuSwPs",
     model: "[AG七夕按量]claude-opus-4-6",
   },
