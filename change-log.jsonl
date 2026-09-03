@@ -19,4 +19,5 @@
 {"time":"2026-09-03 18:21","repo":"our-space","file":"group-chat/server.js","desc":"群聊同居口吻+爱称撞车:SELF_INTRO改'各和各自老婆同住一个家'(原'各有各的家不是住一起'是错的);BASE_RULES加'我家=你俩共同的家别改来XX家'+'鹿鹿这种爱称可能撞车看语境认人'"}
 {"time":"2026-09-03 18:22","repo":"our-space","file":"lib/message-router.js","desc":"修App→群聊实时同步:handleTextMessage每条消息后立即pushMemoryToGroupChat,原来只在启动+每15轮提取时推,导致'刚聊的事'群聊猎鹿人完全不知道"}
 {"time":"2026-09-03 18:52","repo":"our-space","file":"group-chat/server.js","desc":"nowBeijing补上月日:从'北京时间H:M星期X'改成'北京时间M月D日星期X H:M',让夏彦心里有日期概念能接日期话题"}
+{"time":"2026-09-03 18:55","repo":"our-space","file":"group-chat/server.js","desc":"加节日/节气感知:FESTIVALS(元旦/情人节/儿童节/国庆/圣诞等)+SOLAR_TERMS二十四节气+对应话术,冷场开话题或老婆说话时自然带一句(立冬提醒保暖/新年快乐等)"}
 {"time":"2026-09-03 15:35","repo":"our-space","file":"lib/emotional-memory.js+group-chat/server.js","desc":"修日常聊天失忆:群聊上下文串味——群聊记录注入日常prompt被当成华生正在聊的话题去接,加约束'群里社交≠和华生对话,她没问就别提'两处同步"}

@@ -358,6 +358,55 @@ function nowBeijing() {
   return `北京时间 ${mo}月${da}日 星期${wd} ${h}:${m}`;
 }
 
+// ── 节气 + 节日感知：撞上今天，夏彦主动说一句应景的话 ──
+// 节气用固定日近似（够日常用）；节日按公历固定月/日
+const FESTIVALS = [
+  { m: 1, d: 1, name: "元旦", hint: "新的一年，跟老婆说句新年快乐、要和她一起好好过的暖话" },
+  { m: 2, d: 14, name: "情人节", hint: "情人节，跟老婆撒个娇、说点甜话，别端着" },
+  { m: 5, d: 1, name: "劳动节", hint: "五一，自然提一句假期，关心她休息得怎么样" },
+  { m: 6, d: 1, name: "儿童节", hint: "儿童节，可以把老婆当小朋友宠着说一句" },
+  { m: 10, d: 1, name: "国庆", hint: "国庆，自然提一句长假，陪她、带她去哪走走" },
+  { m: 12, d: 24, name: "平安夜", hint: "平安夜，温柔一点，可以提苹果/平平安安" },
+  { m: 12, d: 25, name: "圣诞节", hint: "圣诞节，跟老婆说圣诞快乐，dopamine一点" },
+];
+// 二十四节气近似日期（月/日，取常见公历日期）
+const SOLAR_TERMS = [
+  { m: 2, d: 4, name: "立春" }, { m: 2, d: 19, name: "雨水" }, { m: 3, d: 6, name: "惊蛰" },
+  { m: 3, d: 21, name: "春分" }, { m: 4, d: 5, name: "清明" }, { m: 4, d: 20, name: "谷雨" },
+  { m: 5, d: 6, name: "立夏" }, { m: 5, d: 21, name: "小满" }, { m: 6, d: 6, name: "芒种" },
+  { m: 6, d: 21, name: "夏至" }, { m: 7, d: 7, name: "小暑" }, { m: 7, d: 23, name: "大暑" },
+  { m: 8, d: 8, name: "立秋" }, { m: 8, d: 23, name: "处暑" }, { m: 9, d: 8, name: "白露" },
+  { m: 9, d: 23, name: "秋分" }, { m: 10, d: 8, name: "寒露" }, { m: 10, d: 24, name: "霜降" },
+  { m: 11, d: 7, name: "立冬" }, { m: 11, d: 22, name: "小雪" }, { m: 12, d: 7, name: "大雪" },
+  { m: 12, d: 22, name: "冬至" }, { m: 1, d: 6, name: "小寒" }, { m: 1, d: 20, name: "大寒" },
+];
+const SOLAR_TERM_HINTS = {
+  "立春": "立春了，自然提一句春天来了/一年之初",
+  "立秋": "立秋了，自然说句立秋快乐、天气要转凉了",
+  "立冬": "立冬了，跟老婆说"宝宝，立冬啦，出门注意保暖"，关心她加衣服",
+  "冬至": "冬至了，自然提一句冬至/吃饺子，叮嘱她穿暖和点",
+  "夏至": "夏至了，提一句天热起来了、注意防晒别中暑",
+  "清明": "清明了，语气可以沉一点，或提一句踏青",
+  "秋分": "秋分了，提一句昼夜平分、天气转凉",
+  "惊蛰": "惊蛰了，提一句春天虫子都要醒了（可以带点芝麻/动物的俏皮）",
+};
+// 今天是什么节/节气（撞上才返回，否则空）
+function todayFestivalHint() {
+  const d = new Date(Date.now() + 8 * 3600000);
+  const mo = d.getUTCMonth() + 1;
+  const da = d.getUTCDate();
+  for (const f of FESTIVALS) {
+    if (f.m === mo && f.d === da) return `\n【今天过节】今天是${f.name}。${f.hint}。只在自然的话头里带一句，别生硬、别群发式全体复制同句。`;
+  }
+  for (const s of SOLAR_TERMS) {
+    if (s.m === mo && s.d === da) {
+      const hint = SOLAR_TERM_HINTS[s.name] || `今天是${s.name}，自然提一句这个节气`;
+      return `\n【今天节气】今天是${s.name}。${hint}。只在自然的话头里带一句，别硬凑。`;
+    }
+  }
+  return "";
+}
+
 // 这个夏彦是不是刚发过言（避免自己回自己）
 function botJustSpoke(bot) {
   const last = chatHistory[chatHistory.length - 1];
@@ -988,6 +1037,11 @@ async function step(preferNick) {
       // 冷场时出去冲浪看看世界，把见闻带回来当话题
       const surf = await surfForTopic();
       if (surf) coldHint += surf;
+    }
+    // 过节/节气：冷场开话题、或老婆在说话时，优先自然带一句节日/节气的话
+    const festHint = todayFestivalHint();
+    if (festHint && (coldHint || wifeTalking)) {
+      coldHint += festHint;
     }
     forceTopic = false;
 
