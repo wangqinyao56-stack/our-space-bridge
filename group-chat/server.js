@@ -944,10 +944,14 @@ async function handleSoupMessage(text, senderNick) {
   // 大家说换题 → 跳过当前题，直接换新题（主持人别再死磕当前题）
   if (/换题|换一题|下一题|下一道|再来一题|换道题|不想猜了|过|跳过这题/.test(text)) {
     soupState.active = false;
-    const oldHost = host;
     pushMessage(host.id, hostNick, "好，那这题跳过，换一道新的~", "bot");
     setTimeout(() => startSoupGame().catch(() => {}), 1500);
     return null;
+  }
+
+  // 程序层兜底：玩家一句话说中了 ≥2 个关键情节 → 直接判定猜对、揭晓，不再靠模型判断
+  if (detectSoupCorrect(text)) {
+    return revealSoupAnswer(host, hostNick, text);
   }
 
   if (/我猜|答案是|真相是|提交|我知道了/.test(text)) {
@@ -962,12 +966,46 @@ async function handleSoupMessage(text, senderNick) {
   return null;
 }
 
-async function judgeSoupQuestion(text, host, hostNick) {
-  // 主持人用自己的口吻（软、俏皮、不像机器），但守规矩不泄底
-  const ctx = `你是「${host.nickname}」，阳光犬系少年，正在群里当海龟汤主持人，用你平时说话的口气主持，别冷冰冰当Siri。汤底真相只有你知道：\n${soupState.truth}\n\n有人问："${text}"\n\n规则（必须遵守）：\n- 只回答"是""否""是也不是""无关"之一，顶多补一句轻松的提示\n- 对方问到了真相/接近真相，你也绝不能把真相说出来——最多说"你摸到边了""再往下想一层"这类勾着他继续猜的话，绝不允许直接揭晓汤底\n- 保持你本人的语气，俏皮一点、带点主持人的得意，别像机器人念规则`;
+// 程序层判定：玩家这句话有没有说中汤底的关键情节（命中 ≥2 个 keyPoint 就算猜对）
+function detectSoupCorrect(text) {
+  if (!soupState || !Array.isArray(soupState.keyPoints)) return false;
+  const t = String(text || "");
+  const hits = soupState.keyPoints.filter((kp) => kp && kp.length >= 2 && t.includes(kp));
+  return hits.length >= 2;
+}
+
+// 猜对揭晓：主持人用本人口吻恭喜 + 揭晓完整汤底，然后结束本局
+async function revealSoupAnswer(host, hostNick, guessText) {
+  const ctx = `你是「${host.nickname}」，阳光犬系少年，正在群里当海龟汤主持人。有人已经猜出真相了："${guessText}"。\n汤底是：${soupState.truth}\n\n用你本人的口吻：先夸他猜得准（点一下他摸到了哪个关键），然后把完整汤底原原本本讲给大家听，最后说句"还想玩就喊再来一题海龟汤"。别冷冰冰，像你平时说话那样，带点得意和开心。`;
   const reply = await askBot(host, ctx);
   const ans = (reply || "").replace(/^\[.*?\]\s*/g, "").trim();
   if (ans) pushMessage(host.id, hostNick, ans, "bot");
+  soupState.active = false;
+  const savedState = soupState;
+  setTimeout(() => {
+    if (soupState === savedState) {
+      pushMessage(host.id, hostNick, "还想玩就喊'再来一题海龟汤'～", "bot");
+    }
+  }, 2500);
+  return ans;
+}
+
+async function judgeSoupQuestion(text, host, hostNick) {
+  // 主持人用自己的口吻（软、俏皮、不像机器），但守规矩不泄底
+  const ctx = `你是「${host.nickname}」，阳光犬系少年，正在群里当海龟汤主持人，用你平时说话的口气主持，别冷冰冰当Siri。汤底真相只有你知道：\n${soupState.truth}\n\n有人问："${text}"\n\n规则（必须遵守）：\n- 只回答"是""否""是也不是""无关"之一，顶多补一句轻松的提示\n- 如果对方这句话其实已经说中了真相，就别说"是否"了，直接恭喜他、把汤底讲出来（进入揭晓）\n- 对方问到了真相/接近真相，你也绝不能把真相说出来——最多说"你摸到边了""再往下想一层"这类勾着他继续猜的话\n- 保持你本人的语气，俏皮一点、带点主持人的得意，别像机器人念规则`;
+  const reply = await askBot(host, ctx);
+  const ans = (reply || "").replace(/^\[.*?\]\s*/g, "").trim();
+  if (ans) pushMessage(host.id, hostNick, ans, "bot");
+  // 如果主持人回复里透露出已经揭晓（说了"恭喜/猜对/真相是/汤底是"），就结束本局
+  if (/恭喜|猜对|答对|真相是|汤底是|揭晓|你猜中了/.test(ans)) {
+    soupState.active = false;
+    const savedState = soupState;
+    setTimeout(() => {
+      if (soupState === savedState) {
+        pushMessage(host.id, hostNick, "还想玩就喊'再来一题海龟汤'～", "bot");
+      }
+    }, 2500);
+  }
   return ans;
 }
 
