@@ -973,8 +973,8 @@ async function step(preferNick) {
       const parts = text.split("\n").map((s) => s.trim()).filter(Boolean);
       for (let i = 0; i < parts.length; i++) {
         pushMessage(bot.id, bot.nickname, parts[i], "bot");
-        // 间隔按这条文字长短走：像真人在打字，短句 ~1.2s，长句更久，别一股脑涌出来
-        const delay = 1200 + Math.min(parts[i].length * 90, 2200);
+        // 间隔按这条文字长短走：像真人在打字，短句 ~2.2s，长句更久，别一股脑涌出来
+        const delay = 2000 + Math.min(parts[i].length * 130, 3200);
         if (i < parts.length - 1) await new Promise((r) => setTimeout(r, delay));
       }
     }

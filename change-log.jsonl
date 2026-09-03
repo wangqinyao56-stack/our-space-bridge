@@ -11,4 +11,5 @@
 {"time":"2026-09-03 15:49","repo":"our-space","file":"group-chat/public/index.html","desc":"群聊消息进入动画:addMsg挂enter class+slideIn下滑入动画(0.28s),配合后端450ms逐条broadcast,消息按顺序带动画依次滑入不一次性涌出"}
 {"time":"2026-09-03 16:01","repo":"our-space","file":"group-chat/server.js","desc":"拆条间隔改慢:450ms固定→按文字长短动态(1200ms+每字90ms上限2200ms),像真人打字别一股脑涌出"}
 {"time":"2026-09-03 16:17","repo":"our-space","file":"group-chat/server.js","desc":"FRIEND_RULES加'调侃用大白话':斗嘴逗乐说白话别写任务报告/调查记录那种书面报告体"}
+{"time":"2026-09-03 16:25","repo":"our-space","file":"group-chat/server.js+public/index.html","desc":"拆条间隔再慢(2000ms+每字130ms上限3200ms)+动画放慢(0.5s滑入)"}
 {"time":"2026-09-03 15:35","repo":"our-space","file":"lib/emotional-memory.js+group-chat/server.js","desc":"修日常聊天失忆:群聊上下文串味——群聊记录注入日常prompt被当成华生正在聊的话题去接,加约束'群里社交≠和华生对话,她没问就别提'两处同步"}
