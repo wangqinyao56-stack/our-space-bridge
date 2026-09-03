@@ -219,6 +219,7 @@ let loggedIn = false;
 let isAdmin = false;
 let pendingReply = null;
 let actionMsg = null;
+let historyLoaded = false; // 首次加载过历史就置 true，重连时不再清屏重画，避免"反复刷新"
 
 // 记住昵称 + 密码（下次自动进）
 const savedNick = localStorage.getItem("groupchat_nick") || "";
@@ -289,6 +290,9 @@ function connect() {
     let msg;
     try { msg = JSON.parse(e.data); } catch { return; }
     if (msg.type === "history") {
+      // 只有第一次才清屏重画；重连后收到的 history 直接跳过，避免整屏"反复刷新"
+      if (historyLoaded) return;
+      historyLoaded = true;
       log.innerHTML = "";
       if (msg.bots && msg.bots.length) {
         addSys(`在群里的夏彦：${msg.bots.map(b => b.nickname).join("、")}`);

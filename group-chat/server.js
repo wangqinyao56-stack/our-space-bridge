@@ -947,12 +947,22 @@ async function startStoryGame() {
   }, 800);
 }
 
+// 故事收尾：把完整故事作为一条普通消息发出来（进聊天历史，重连/刷新后不消失）
+function finishStory(reason = "") {
+  const story = gameState.storySentence || "";
+  gameState.active = false;
+  if (story) {
+    pushMessage("system", "夏彦们", `【故事接龙·完】${reason ? reason + "。" : ""}${story}`, "bot");
+  }
+  pushSystem("想再来就喊「玩故事接龙」～");
+}
+
 function handleStory(text, senderNick) {
   if (!gameState.active || gameState.type !== "story") return false;
   const t = String(text).trim();
   if (/结束|不接了|收|停|完了|不玩了/.test(t)) {
     gameState.active = false;
-    pushSystem(`【故事接龙】结束啦～ 一共接了 ${gameState.storyCount} 句。想再来就喊「玩故事接龙」`);
+    finishStory(`一共接了 ${gameState.storyCount} 句`);
     return true;
   }
   // 人说话时，明显是在「聊天」而不是接故事 → 不进故事，交给普通接话
@@ -967,7 +977,7 @@ function handleStory(text, senderNick) {
   gameState.storyCount++;
   if (gameState.storyCount >= gameState.storyMax) {
     gameState.active = false;
-    pushSystem(`【故事接龙】到 12 句啦，收工！完整故事：\n${gameState.storySentence}`);
+    setTimeout(() => finishStory("到 12 句收工啦"), 300);
   } else {
     pushSystem(`${senderNick} 接上啦（第 ${gameState.storyCount}/12 句），下一位接着来～`);
   }
@@ -1100,8 +1110,7 @@ async function step(preferNick) {
         console.log(`[group-chat] ${bot.nickname} 接故事: "${sText.slice(0, 40)}"`);
         pushMessage(bot.id, bot.nickname, sText, "bot");
         if (gameState.storyCount >= gameState.storyMax) {
-          gameState.active = false;
-          pushSystem(`【故事接龙】到 12 句啦，收工！完整故事：\n${gameState.storySentence}`);
+          finishStory(`一共接了 ${gameState.storyCount} 句`);
         } else {
           pushSystem(`${bot.nickname} 接上啦（第 ${gameState.storyCount}/12 句）`);
         }
@@ -1291,6 +1300,8 @@ wss.on("connection", (ws) => {
   ws.nickname = null;
   ws.authenticated = !ROOM_PASSWORD; // 没设密码也仍需登录填昵称
   ws.isAdmin = false;
+  ws.isAlive = true;
+  ws.on("pong", () => { ws.isAlive = true; });
   ws.send(JSON.stringify({
     type: "history",
     messages: chatHistory,
@@ -1413,6 +1424,19 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => clients.delete(ws));
 });
+
+// 心跳：每 25s ping 一次，剔除僵死连接；同时防止 Sealos 网关空闲超时掐断 ws 导致手机端反复重连刷新
+const HEARTBEAT_MS = 25000;
+setInterval(() => {
+  for (const ws of wss.clients) {
+    if (ws.isAlive === false) {
+      ws.terminate();
+      continue;
+    }
+    ws.isAlive = false;
+    try { ws.ping(); } catch {}
+  }
+}, HEARTBEAT_MS);
 
 server.listen(PORT, () => {
   console.log(`[group-chat] 相亲相爱一家人已启动 :${PORT}（${BOTS.length} 个夏彦）`);
