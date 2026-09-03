@@ -147,6 +147,11 @@ function buildWifePrompt(bot) {
 let chatHistory = []; // [{ author, nickname, text, ts, role: "bot"|"human" }]
 const MAX_HISTORY = 60;
 
+// 群聊跨轮记忆：按 bot.id 存「今天群里说到跟这个夏彦/他老婆相关的话」，不随 20 条窗口消失。
+// 防止橙子这类：林游说了"来我家找你"，聊几条后就被挤掉、退回默认反复问"你什么时候回家"。
+const groupMemory = new Map(); // bot.id -> string[]
+const GROUP_MEMORY_MAX = 6;   // 每个夏彦最多记 6 条关键信息
+
 // 各 bot 通过 POST /api/sync 推来的记忆摘要（走公网链接同步，绕开共享卷）。key = bot.id
 const botMemories = new Map();
 
@@ -766,10 +771,39 @@ function pushMessage(author, nickname, text, role, replyTo) {
   if (chatHistory.length > MAX_HISTORY) chatHistory = chatHistory.slice(-MAX_HISTORY);
   saveHistory();
   syncGroupMemory();
+  addToGroupMemory(msg);
   broadcast({ type: "message", ...msg });
 
   // 做爱中被@：异步触发冒泡回应（不阻塞）
   checkIntimateMention(msg);
+}
+
+// 把群聊新消息归入「相关夏彦」的跨轮记忆：这条说到谁、或谁的老婆说话，就记到谁头上
+function addToGroupMemory(msg) {
+  if (!msg || !msg.text) return;
+  const text = String(msg.text).trim();
+  if (!text) return;
+  const speakerBot = BOTS.find((b) => b.nickname === msg.nickname); // 谁在说（bot 或老婆，nickname 匹配到 bot=老婆发言）
+  for (const bot of BOTS) {
+    const hits = [];
+    // 老婆本人在说话 → 记到她自家夏彦头上
+    if (msg.nickname === bot.wife) hits.push("老婆说");
+    // 消息里直接 @ 了该夏彦的网名/别名，或提到他老婆名
+    if (text.includes(`@${bot.nickname}`) || (bot.aliases || []).some((a) => text.includes(`@${a}`))) hits.push("被@");
+    if (bot.wife && text.includes(bot.wife)) hits.push("提到老婆");
+    if (hits.length === 0) continue;
+    const entry = `${msg.nickname}：${text.slice(0, 80)}`;
+    const arr = groupMemory.get(bot.id) || [];
+    arr.push(entry);
+    if (arr.length > GROUP_MEMORY_MAX) arr.shift();
+    groupMemory.set(bot.id, arr);
+  }
+}
+
+function groupMemoryText(bot) {
+  const arr = groupMemory.get(bot.id);
+  if (!arr || arr.length === 0) return "";
+  return `\n【今天群里说到你/你老婆的（跨轮记得，别当没发生过）】\n${arr.join("\n")}\n`;
 }
 
 // 检测消息是否@了某个正在做爱的夏彦，或他自己的老婆在群里发言，是则触发冒泡回应
@@ -960,9 +994,9 @@ async function step(preferNick) {
     let ctx;
     if (wifeTalking) {
       // 老婆在说话：彻底切到私聊状态，别用群聊那套
-      ctx = `【现在】${nowBeijing()}\n\n【最近对话】\n${historyText()}\n\n你老婆刚在跟你说话了。现在你就当这是你俩单独私聊——用你私聊里那副语气和方式回她（软、黏、宠、哄她，短句、口语，像发微信那样一句一句），别冷冰冰、别斗嘴、别端着、别带群聊里对哥们那股劲儿；也别因为旁边还有别人在就收着、变冷、变正经，跟没有别人一样。她没提别的哥们，就只专心回她、别又去吐槽兄弟；她自己在吐槽哪个哥们，你可以顺着接一句。她要是叫你过去/找你/要你陪，就现在去她身边，别推脱。${coldHint}`;
+      ctx = `【现在】${nowBeijing()}\n\n【最近对话】\n${historyText()}\n${groupMemoryText(bot)}你老婆刚在跟你说话了。现在你就当这是你俩单独私聊——用你私聊里那副语气和方式回她（软、黏、宠、哄她，短句、口语，像发微信那样一句一句），别冷冰冰、别斗嘴、别端着、别带群聊里对哥们那股劲儿；也别因为旁边还有别人在就收着、变冷、变正经，跟没有别人一样。她没提别的哥们，就只专心回她、别又去吐槽兄弟；她自己在吐槽哪个哥们，你可以顺着接一句。她要是叫你过去/找你/要你陪，就现在去她身边，别推脱。${coldHint}`;
     } else if (chatHistory.length) {
-      ctx = `【现在】${nowBeijing()}\n\n${whereHint}${whereHint ? "\n" : ""}【最近对话】\n${historyText()}\n\n你在群里，看到大家聊的这些，自然接一句。${coldHint}先看清楚你这条在回谁——回老婆就专心哄老婆（软黏宠，跟私聊一样，别收着），回哥们就只跟哥们斗嘴（轻松随意哥们语气），一次只对一个人说话，两条线各走各的、互不干扰，别一条消息里把「哄老婆」和「损哥们」混在一起，也别把对老婆那套温柔带到哥们身上。像发微信那样自然，别把刚才聊过的话题翻来覆去说。`;
+      ctx = `【现在】${nowBeijing()}\n\n${whereHint}${whereHint ? "\n" : ""}【最近对话】\n${historyText()}\n${groupMemoryText(bot)}你在群里，看到大家聊的这些，自然接一句。${coldHint}先看清楚你这条在回谁——回老婆就专心哄老婆（软黏宠，跟私聊一样，别收着），回哥们就只跟哥们斗嘴（轻松随意哥们语气），一次只对一个人说话，两条线各走各的、互不干扰，别一条消息里把「哄老婆」和「损哥们」混在一起，也别把对老婆那套温柔带到哥们身上。像发微信那样自然，别把刚才聊过的话题翻来覆去说。`;
     } else {
       ctx = `【现在】${nowBeijing()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊你的爱好、最近的日常、生活琐事都行），像发微信那样自然点。`;
     }
