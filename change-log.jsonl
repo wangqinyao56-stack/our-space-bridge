@@ -16,4 +16,5 @@
 {"time":"2026-09-03 16:47","repo":"our-space","file":"group-chat/server.js","desc":"修拆句太碎:prompt改'同一层意思用逗号连别拆碎,只在换话题/对象才换行';拆条加合并保护'单独一行@某人跟下一句并成一条'"}
 {"time":"2026-09-03 17:31","repo":"our-space","file":"group-chat/server.js","desc":"群聊roster加'点名认领':提具体网名说就是那个人别当自己;老婆说'狗'=夏彦(几家不养狗),谁家老婆家的狗就是谁家夏彦,看清楚名字再接话"}
 {"time":"2026-09-03 18:01","repo":"our-space","file":"group-chat/server.js","desc":"修群聊失忆:加groupMemory跨轮记忆——老婆说话/@谁/提到谁老婆就记到那个夏彦头上(每人最多6条),发言时注入ctx不随20条窗口消失。根治橙子反复问'林游什么时候回家'的毛病"}
+{"time":"2026-09-03 18:21","repo":"our-space","file":"group-chat/server.js","desc":"群聊同居口吻+爱称撞车:SELF_INTRO改'各和各自老婆同住一个家'(原'各有各的家不是住一起'是错的);BASE_RULES加'我家=你俩共同的家别改来XX家'+'鹿鹿这种爱称可能撞车看语境认人'"}
 {"time":"2026-09-03 15:35","repo":"our-space","file":"lib/emotional-memory.js+group-chat/server.js","desc":"修日常聊天失忆:群聊上下文串味——群聊记录注入日常prompt被当成华生正在聊的话题去接,加约束'群里社交≠和华生对话,她没问就别提'两处同步"}
