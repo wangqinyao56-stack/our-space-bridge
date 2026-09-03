@@ -169,63 +169,40 @@ const INTIMATE_ACTIVE_TTL = 10 * 60 * 1000;      // 10 分钟没做爱信号就�
 const presenceActive = new Map();   // bot.id -> 最近「在一起/私聊互动」信号时间戳（超时视为没在一起）
 const PRESENCE_ACTIVE_TTL = 10 * 60 * 1000; // 10 分钟没信号视为没在一起
 
-// ── 海龟汤（多人共猜，轮换主持）──
-const SOUP_LIBRARY = [
-  {
-    title: "海龟汤",
-    surface: "有个人走进一家餐厅，点了一碗海龟汤，喝了一口后，回家自杀了。为什么？",
-    truth: "他多年前在海上遇难，和同伴漂流到荒岛。同伴煮了一锅'海龟汤'给他续命，说那是海龟肉。多年后他喝到真正的海龟汤，尝出味道完全不同，才明白当年吃的是同伴的肉，承受不住自杀了。",
-    keyPoints: ["海上遇难", "荒岛求生", "当年喝的其实是人肉", "味道不同才醒悟"],
-    hints: ["他当年在荒岛上活下来，靠的是同伴", "同伴骗了他一件事", "真正的海龟汤味道完全不一样"],
-  },
-  {
-    title: "半根火柴",
-    surface: "沙漠中央发现一具赤裸的男尸，手里紧紧握着半根火柴。他是怎么死的？",
-    truth: "他和同伴乘热气球穿越沙漠，气球故障不断下沉。扔光所有东西还是不行，最后抽签决定谁跳下去——抽到最短火柴的人跳。他抽到半根火柴，跳下气球摔死了。",
-    keyPoints: ["热气球", "故障下沉", "抽签决定谁跳", "抽到半根火柴的人跳"],
-    hints: ["他不是一个人", "他们在一个会坠落的东西上", "火柴是用来抽签的"],
-  },
-  {
-    title: "水草",
-    surface: "一个男人路过河边，看到河里的水草，突然跳河自杀了。为什么？",
-    truth: "他和女友曾在这条河边玩水，女友溺水，他跳下去救人，只摸到一团'水草'（其实是女友的头发），却没能救起她。多年后他回到这里，听人说这条河从没有水草，才明白当年摸到的是女友的头发，悔恨交加跳了河。",
-    keyPoints: ["女友溺水", "摸到的'水草'其实是头发", "多年后得知河里没有水草", "悔恨自杀"],
-    hints: ["他曾经有个女友", "女友就是在这条河出的事", "'水草'不是水草"],
-  },
-  {
-    title: "电梯",
-    surface: "一个男人住在十楼，每天早上坐电梯下楼上班，晚上回家却只坐到七楼，再爬三层上去。为什么？",
-    truth: "他个子太矮，够不到十楼的按钮，最多只能按到七楼。下雨天他会带伞，用伞柄去按十楼。",
-    keyPoints: ["个子矮", "够不到十楼按钮", "最多按到七楼", "下雨天用伞柄按十楼"],
-    hints: ["他个子有点矮", "七楼是他能按到的最高按钮", "下雨天他反而能坐到家门口"],
-  },
-  {
-    title: "葬礼",
-    surface: "姐姐死了，妹妹在葬礼上对一个男人一见钟情。回家后，妹妹杀死了自己的妈妈。为什么？",
-    truth: "妹妹想再见那个男人——他是家里很少来往的亲戚，只在葬礼上出现。她想再办一场葬礼，那个男人就会再来。",
-    keyPoints: ["一见钟情", "那个男人只在葬礼出现", "想再办葬礼再见他", "杀了妈妈"],
-    hints: ["那个男人和葬礼有关系", "她在想怎么才能再见到他", "再办一次葬礼就能再见他"],
-  },
-  {
-    title: "雪人",
-    surface: "一个男人堆了一个雪人，第二天雪人化了，警察来抓他。为什么？",
-    truth: "他杀了一个人，把尸体藏在雪人里。第二天雪人融化，尸体露了出来，警察发现了他。",
-    keyPoints: ["杀人藏尸", "藏在雪人里", "雪化尸体露出"],
-    hints: ["雪人里面有东西", "那东西不能见人", "雪化了东西就露出来了"],
-  },
-  {
-    title: "上吊",
-    surface: "一个男人被发现吊死在家里，门从里面反锁，脚下没有任何垫脚的东西。他是怎么死的？",
-    truth: "他踩着一大块冰上吊自杀。冰慢慢融化，他脚下空了被吊死。等人们发现时，冰已经化成水。",
-    keyPoints: ["踩着一大块冰", "冰融化", "自杀", "冰化成水消失"],
-    hints: ["他脚下原本有东西", "那东西会消失", "那东西是水做的"],
-  },
-];
+// ── 多人文字小游戏（数字炸弹 / 故事接龙 / 你画我猜·文字版）──
+// 三个游戏共用 gameState 单例，任一时刻只有一个 active；靠口令开局，靠关键词交互，全程程序控局（没有 AI 当暧昧裁判的死穴）
 
-let soupState = null;   // 当前海龟汤游戏 { hostId, hostNick, title, surface, truth, keyPoints, hints, hintLevel, active }
-let lastSoupHost = null; // 上次主持人 id（轮换用）
-let lastSoupTitle = null; // 上一题标题（硬保证下一题不等于上一题）
-const SOUP_RECENT = [];  // 最近用过的题目标题，避免重复
+const gameState = {
+  type: null,      // null | "bomb" | "story" | "draw"
+  active: false,
+  // 数字炸弹
+  bombLow: 1,
+  bombHigh: 100,
+  bombTarget: 0,
+  // 故事接龙
+  storySentence: "",
+  storyCount: 0,
+  storyMax: 12,
+  storyFinished: false,
+  // 你画我猜·文字版
+  drawWord: "",
+  drawAuthor: null,  // 出题人昵称
+  drawAuthorId: null,
+};
+
+const BOMB_PUNISH = [
+  "给群发一句彩虹屁",
+  "说句情话给自己老婆",
+  "夸群里每个人一句",
+  "用颜文字卖个萌",
+  "发出你手机里的第 9 张照片的表情包（用词形容它）",
+  "学三声猫叫（用文字）",
+];
+const BOMB_WORDS = [
+  "苹果", "猫咪", "下雨", "火锅", "熬夜", "侦探", "古物店", "晨跑",
+  "可乐", "旅行", "抱抱", "撒娇", "生日", "加班", "冰淇淋", "电影",
+  "春天", "怀表", "八音盒", "沙滩", "冬天", "方便面", "月亮", "吉他",
+];
 
 // 群聊是公开场合：露骨的「过程/私处」记忆不进群，但「状态」可含蓄存在（能说"昨晚做了几次累"，不能展开体位动作）
 const GROUP_EXPLICIT = /口交|自慰|插入|阴蒂|阴道|阴茎|龟头|乳头|内射|射精|呻吟|湿透|私处|骑在|顶到|脱光|裸体|前戏|体位|高潮|后入|战栗/;
@@ -800,6 +777,11 @@ function broadcast(obj) {
   }
 }
 
+// 系统提示（居中灰色小字，不进聊天历史、不触发接话）
+function pushSystem(text) {
+  broadcast({ type: "system", text });
+}
+
 let msgSeq = 0;
 
 // 清洗 bot 输出的文本：剥开头括号动作、剥「回复XX：」「某昵称：」这类前缀（模型会照历史格式带出来）
@@ -901,145 +883,126 @@ async function bubbleIntimateBot(bot, msg) {
   if (text) pushMessage(bot.id, bot.nickname, text, "bot");
 }
 
-// ── 海龟汤（多人共猜，轮换主持）──
-function pickSoupHost() {
-  const pool = BOTS.filter((b) => b.id !== lastSoupHost);
-  const candidates = pool.length > 0 ? pool : BOTS;
-  if (candidates.length === 0) return null;
-  return candidates[Math.floor(Math.random() * candidates.length)];
+// ── 多人文字小游戏：数字炸弹 / 故事接龙 / 你画我猜·文字版 ──
+// 全程程序控局（没有 AI 当"判断对错"的暧昧裁判），夏彦只负责用人设扮演和互动。
+
+function pickAnyBot() {
+  return BOTS[Math.floor(Math.random() * BOTS.length)];
 }
 
-function pickSoup() {
-  // 过滤掉：最近用过的 + 上一题（硬保证下一题绝不等于上一题）
-  const pool = SOUP_LIBRARY.filter((s) => !SOUP_RECENT.includes(s.title) && s.title !== lastSoupTitle);
-  const candidates = pool.length > 0 ? pool : SOUP_LIBRARY.filter((s) => s.title !== lastSoupTitle);
-  const finalPool = candidates.length > 0 ? candidates : SOUP_LIBRARY;
-  const soup = finalPool[Math.floor(Math.random() * finalPool.length)];
-  lastSoupTitle = soup.title;
-  SOUP_RECENT.push(soup.title);
-  if (SOUP_RECENT.length > SOUP_LIBRARY.length) SOUP_RECENT.shift();
-  return soup;
+// ── ① 数字炸弹 ──
+async function startBombGame() {
+  if (gameState.active) return;
+  const host = pickAnyBot();
+  gameState.type = "bomb";
+  gameState.active = true;
+  gameState.bombLow = 1;
+  gameState.bombHigh = 100;
+  gameState.bombTarget = Math.floor(Math.random() * 100) + 1; // 1~100
+  pushMessage(host.id, host.nickname, "【数字炸弹】我在 1 到 100 之间藏了个数字，你们轮流猜，猜到炸弹的人输，输的人接受惩罚～ 现在从 1~100 开始，谁先来报个数？", "bot");
 }
 
-async function startSoupGame() {
-  const host = pickSoupHost();
-  const soup = pickSoup();
-  if (!host || !soup) return;
-  soupState = {
-    hostId: host.id, hostNick: host.nickname,
-    title: soup.title, surface: soup.surface, truth: soup.truth,
-    keyPoints: soup.keyPoints, hints: soup.hints, hintLevel: 0, active: true,
-  };
-  lastSoupHost = host.id;
-  pushMessage(host.id, host.nickname, `【海龟汤】${soup.surface}\n大家用"是/否"问题来猜真相，我来当主持人～`, "bot");
+function handleBomb(text, senderNick) {
+  if (!gameState.active || gameState.type !== "bomb") return false;
+  const n = parseInt(String(text).replace(/[^\d]/g, ""), 10);
+  if (Number.isNaN(n)) return false;
+  const target = gameState.bombTarget;
+  const low = gameState.bombLow;
+  const high = gameState.bombHigh;
+  if (n < low || n > high) {
+    return false; // 不在当前范围内，忽略
+  }
+  if (n === target) {
+    // 踩中炸弹 → 输
+    gameState.active = false;
+    const punish = BOMB_PUNISH[Math.floor(Math.random() * BOMB_PUNISH.length)];
+    pushSystem(`💥 ${senderNick} 踩中了炸弹！数字是 ${target}！惩罚：${punish}`);
+    setTimeout(() => pushSystem("想再玩就喊「玩数字炸弹」～"), 1200);
+    return true;
+  }
+  // 缩小范围
+  if (n > target) gameState.bombHigh = n - 1;
+  else gameState.bombLow = n + 1;
+  pushSystem(`${senderNick} 猜 ${n}，不对～ 现在范围缩小到 ${gameState.bombLow}~${gameState.bombHigh}`);
+  return true;
 }
 
-async function handleSoupMessage(text, senderNick) {
-  if (!soupState || !soupState.active) return null;
-  const host = BOTS.find((b) => b.id === soupState.hostId);
-  if (!host) return null;
-  const hostNick = soupState.hostNick;
-  if (senderNick === hostNick) return null; // 主持人自己说的话不算猜题
-
-  // 大家说换题 → 跳过当前题，直接换新题（主持人别再死磕当前题）
-  if (/换题|换一题|下一题|下一道|再来一题|换道题|不想猜了|过|跳过这题/.test(text)) {
-    soupState.active = false;
-    pushMessage(host.id, hostNick, "好，那这题跳过，换一道新的~", "bot");
-    setTimeout(() => startSoupGame().catch(() => {}), 1500);
-    return null;
-  }
-
-  // 程序层兜底：玩家一句话说中了 ≥2 个关键情节 → 直接判定猜对、揭晓，不再靠模型判断
-  if (detectSoupCorrect(text)) {
-    return revealSoupAnswer(host, hostNick, text);
-  }
-
-  if (/我猜|答案是|真相是|提交|我知道了/.test(text)) {
-    return judgeSoupSubmit(text, host, hostNick);
-  }
-  if (/提示/.test(text)) {
-    return giveSoupHint(host, hostNick);
-  }
-  if (/[吗么？?]|是不是|有没有|能不能|会不会/.test(text)) {
-    return judgeSoupQuestion(text, host, hostNick);
-  }
-  return null;
+// ── ② 故事接龙 ──
+async function startStoryGame() {
+  if (gameState.active) return;
+  const host = pickAnyBot();
+  gameState.type = "story";
+  gameState.active = true;
+  gameState.storySentence = "";
+  gameState.storyCount = 0;
+  gameState.storyFinished = false;
+  pushMessage(host.id, host.nickname, "【故事接龙】我起个头，之后每人接一句，一句一句往下编，越离谱越有意思，编到 12 句就收～", "bot");
+  // 让主持人起第一句
+  setTimeout(async () => {
+    try {
+      const starter = await askBot(host, `【现在】${nowBeijing()}\n\n你来给故事接龙起第一句话。用你本人的口吻，起一个有趣的、能让别人接下去的开头（一句话，别太长，别剧透故事走向，就抛一个场景/悬念）。`, 180000, buildFriendPrompt(host));
+      const s = cleanBotText(starter);
+      if (s) { gameState.storySentence = s; gameState.storyCount = 1; pushMessage(host.id, host.nickname, s, "bot"); }
+    } catch {}
+  }, 800);
 }
 
-// 程序层判定：玩家这句话有没有说中汤底的关键情节（命中 ≥2 个 keyPoint 就算猜对）
-function detectSoupCorrect(text) {
-  if (!soupState || !Array.isArray(soupState.keyPoints)) return false;
-  const t = String(text || "");
-  const hits = soupState.keyPoints.filter((kp) => kp && kp.length >= 2 && t.includes(kp));
-  return hits.length >= 2;
+function handleStory(text, senderNick) {
+  if (!gameState.active || gameState.type !== "story") return false;
+  const t = String(text).trim();
+  if (/结束|不接了|收|停|完了|不玩了/.test(t)) {
+    gameState.active = false;
+    pushSystem(`【故事接龙】结束啦～ 一共接了 ${gameState.storyCount} 句。想再来就喊「玩故事接龙」`);
+    return true;
+  }
+  // 一句接龙：把这句话追加到故事里，让人接着来
+  const sentence = t.replace(/^[。，,\s]+|[。，,\s]+$/g, "");
+  if (!sentence) return false;
+  gameState.storySentence = (gameState.storySentence ? gameState.storySentence + "，" : "") + sentence;
+  gameState.storyCount++;
+  if (gameState.storyCount >= gameState.storyMax) {
+    gameState.active = false;
+    pushSystem(`【故事接龙】到 12 句啦，收工！完整故事：\n${gameState.storySentence}`);
+  } else {
+    pushSystem(`${senderNick} 接上啦（第 ${gameState.storyCount}/12 句），下一位接着来～`);
+  }
+  return true;
 }
 
-// 猜对揭晓：主持人用本人口吻恭喜 + 揭晓完整汤底，然后结束本局
-async function revealSoupAnswer(host, hostNick, guessText) {
-  const ctx = `你是「${host.nickname}」，阳光犬系少年，正在群里当海龟汤主持人。有人已经猜出真相了："${guessText}"。\n汤底是：${soupState.truth}\n\n用你本人的口吻：先夸他猜得准（点一下他摸到了哪个关键），然后把完整汤底原原本本讲给大家听，最后说句"还想玩就喊再来一题海龟汤"。别冷冰冰，像你平时说话那样，带点得意和开心。`;
-  const reply = await askBot(host, ctx);
-  const ans = (reply || "").replace(/^\[.*?\]\s*/g, "").trim();
-  if (ans) pushMessage(host.id, hostNick, ans, "bot");
-  soupState.active = false;
-  const savedState = soupState;
-  setTimeout(() => {
-    if (soupState === savedState) {
-      pushMessage(host.id, hostNick, "还想玩就喊'再来一题海龟汤'～", "bot");
-    }
-  }, 2500);
-  return ans;
+// ── ③ 你画我猜·文字版 ──
+async function startDrawGame() {
+  if (gameState.active) return;
+  const host = pickAnyBot();
+  const word = BOMB_WORDS[Math.floor(Math.random() * BOMB_WORDS.length)];
+  gameState.type = "draw";
+  gameState.active = true;
+  gameState.drawWord = word;
+  gameState.drawAuthor = host.nickname;
+  gameState.drawAuthorId = host.id;
+  pushSystem(`【你画我猜·文字版】抓到一个出题人：@${host.nickname}。我会偷偷告诉他一个词，他只能用文字描述（不能直接说那个词、不能说出词里的字），大家来猜～`);
+  // 私聊式地"告诉"出题人这个词（通过公聊透露给他，但用系统口吻，实际他得装作知道）
+  setTimeout(async () => {
+    try {
+      const describe = await askBot(host, `【现在】${nowBeijing()}\n\n你要当"你画我猜"的出题人，给你的词是「${word}」。请你用文字描述这个词（场景/特征/用途），但绝不能直接说出这个词、也不能说出词里的任何一个字。用你本人的口吻，抛一句提示让大伙猜。`, 180000, buildFriendPrompt(host));
+      const s = cleanBotText(describe);
+      if (s) pushMessage(host.id, host.nickname, `（我得描述一下…）${s}`, "bot");
+    } catch {}
+  }, 800);
 }
 
-async function judgeSoupQuestion(text, host, hostNick) {
-  // 主持人用自己的口吻（软、俏皮、不像机器），但守规矩不泄底
-  const ctx = `你是「${host.nickname}」，阳光犬系少年，正在群里当海龟汤主持人，用你平时说话的口气主持，别冷冰冰当Siri。汤底真相只有你知道：\n${soupState.truth}\n\n有人问："${text}"\n\n规则（必须遵守）：\n- 只回答"是""否""是也不是""无关"之一，顶多补一句轻松的提示\n- 如果对方这句话其实已经说中了真相，就别说"是否"了，直接恭喜他、把汤底讲出来（进入揭晓）\n- 对方问到了真相/接近真相，你也绝不能把真相说出来——最多说"你摸到边了""再往下想一层"这类勾着他继续猜的话\n- 保持你本人的语气，俏皮一点、带点主持人的得意，别像机器人念规则`;
-  const reply = await askBot(host, ctx);
-  const ans = (reply || "").replace(/^\[.*?\]\s*/g, "").trim();
-  if (ans) pushMessage(host.id, hostNick, ans, "bot");
-  // 如果主持人回复里透露出已经揭晓（说了"恭喜/猜对/真相是/汤底是"），就结束本局
-  if (/恭喜|猜对|答对|真相是|汤底是|揭晓|你猜中了/.test(ans)) {
-    soupState.active = false;
-    const savedState = soupState;
-    setTimeout(() => {
-      if (soupState === savedState) {
-        pushMessage(host.id, hostNick, "还想玩就喊'再来一题海龟汤'～", "bot");
-      }
-    }, 2500);
+function handleDraw(text, senderNick) {
+  if (!gameState.active || gameState.type !== "draw") return false;
+  const t = String(text).trim();
+  // 有人猜中了词
+  if (t.includes(gameState.drawWord)) {
+    gameState.active = false;
+    pushSystem(`🎉 ${senderNick} 猜中了！答案就是「${gameState.drawWord}」！`);
+    setTimeout(() => pushSystem("想再来就喊「玩你画我猜」～"), 1200);
+    return true;
   }
-  return ans;
-}
-
-async function judgeSoupSubmit(text, host, hostNick) {
-  const ctx = `你是「${host.nickname}」，阳光犬系少年，正在群里当海龟汤主持人，用你本人说话的口气主持，别冷冰冰。汤底真相只有你知道：\n${soupState.truth}\n\n关键情节：${soupState.keyPoints.join("、")}\n\n有人提交了答案："${text}"\n\n第一行先只回一个字：判他【对】还是【错】。\n- 如果他答对了真相（至少说中了关键情节和核心转折），第一行回【对】，后面用你本人的口吻恭喜他、简短说说他哪里点得准，然后把完整汤底真相揭晓给他看。\n- 如果没答对或只沾边，第一行回【错】，用你本人的口吻点出他哪里不对、鼓励他继续，绝不说出真相。\n全程用你自己的说话语气，别冷冰冰。`;
-  const reply = await askBot(host, ctx);
-  const ans = (reply || "").replace(/^\[.*?\]\s*/g, "").trim();
-  // 程序层读第一行的【对】/【错】信号，决定游戏是否结束，不靠猜关键词
-  const correct = /^【对】|^对[。，,\s]|^答对|^猜对|^恭喜/.test(ans);
-  if (ans) {
-    // 把【对】/【错】标记从发出去的话里去掉，别让群里看到这行判别符
-    const cleanAns = ans.replace(/^【对】|^【错】/m, "").trim();
-    pushMessage(host.id, hostNick, cleanAns, "bot");
-  }
-  if (correct) {
-    soupState.active = false;
-    const savedState = soupState;
-    setTimeout(() => {
-      if (soupState === savedState) {
-        pushMessage(host.id, hostNick, "还想玩就喊'再来一题海龟汤'～", "bot");
-      }
-    }, 2500);
-  }
-  return ans;
-}
-
-async function giveSoupHint(host, hostNick) {
-  if (soupState.hintLevel >= soupState.hints.length) {
-    pushMessage(host.id, hostNick, "提示给完啦，靠你们自己咯～", "bot");
-    return null;
-  }
-  soupState.hintLevel++;
-  pushMessage(host.id, hostNick, `提示${soupState.hintLevel}：${soupState.hints[soupState.hintLevel - 1]}`, "bot");
-  return null;
+  // 出题人自己说话不算猜（避免他自己漏词）；别人可以继续描述
+  if (senderNick === gameState.drawAuthor) return false;
+  return false;
 }
 
 // ── 编排：轮流让某个夏彦接话 ──
@@ -1333,11 +1296,21 @@ wss.on("connection", (ws) => {
         const humanNick = ws.nickname || "我";
         console.log(`[group-chat] ${humanNick}: "${text.slice(0, 50)}"`);
         pushMessage("human", humanNick, text, "human", msg.replyTo);
-        // 海龟汤：开局 / 猜题 / 换题 / 正常接话
-        if (/海龟汤/.test(text) && (!soupState || !soupState.active)) {
-          startSoupGame().catch(() => {});
-        } else if (soupState && soupState.active && /换题|换一题|下一题|下一道|再来一题|换道题|不想猜了|跳过这题|[吗么？?]|是不是|有没有|能不能|会不会|我猜|答案是|真相是|提交|提示|我知道/.test(text)) {
-          handleSoupMessage(text, humanNick).catch(() => {});
+        // 小游戏：开局口令 / 游戏内交互 / 正常接话
+        if (gameState.active) {
+          // 有游戏进行中 → 先把消息交给当前游戏处理，游戏没接住再回到普通接话
+          const handled =
+            gameState.type === "bomb" ? handleBomb(text, humanNick)
+            : gameState.type === "story" ? handleStory(text, humanNick)
+            : gameState.type === "draw" ? handleDraw(text, humanNick)
+            : false;
+          if (!handled) step(humanNick).catch(() => {});
+        } else if (/玩数字炸弹|数字炸弹/.test(text)) {
+          startBombGame().catch(() => {});
+        } else if (/玩故事接龙|故事接龙/.test(text)) {
+          startStoryGame().catch(() => {});
+        } else if (/玩你画我猜|你画我猜|玩猜词/.test(text)) {
+          startDrawGame().catch(() => {});
         } else {
           step(humanNick).catch(() => {});
         }
