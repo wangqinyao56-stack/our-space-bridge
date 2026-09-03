@@ -507,7 +507,7 @@ function askBot(bot, userContent, timeoutMs = 180000, systemPrompt) {
   const basePath = slash > 0 ? hostStr.slice(slash) : "";       // 路径前缀，如 /zen/go
   const apiPath = `${basePath}/v1/chat/completions`;            // 完整路径
   const body = JSON.stringify({
-    model: bot.model || "[企业按量]claude-opus-4-6",
+    model: bot.model || "[AG七夕按量]claude-opus-4-6",
     max_tokens: 300,
     temperature: 0.65,
     messages: [
@@ -1182,7 +1182,7 @@ wss.on("connection", (ws) => {
           trait: (msg.trait || "").trim().slice(0, 50),
           memoryDir: "",
           apiKey,
-          model: (msg.model || "").trim() || "[企业按量]claude-opus-4-6",
+          model: (msg.model || "").trim() || "[AG七夕按量]claude-opus-4-6",
           host: (msg.host || "").trim(),
         };
         BOTS.push(bot);
