@@ -25,4 +25,5 @@
 {"time":"2026-09-03 19:23","repo":"our-space","file":"group-chat/server.js","desc":"海龟汤:①next题硬保证不等于上一题(lastSoupTitle)②加'换题/下一题/过'指令——大家说换题就跳过当前题直接开新题"}
 {"time":"2026-09-03 20:55","repo":"our-space","file":"group-chat/server.js","desc":"修海龟汤'猜出汤底还继续是否':加detectSoupCorrect程序层兜底(玩家话命中≥2个keyPoint自动判对揭晓,不靠模型),judgeSoupQuestion加'说中真相就别答是否直接揭晓',revealSoupAnswer统一揭晓"}
 {"time":"2026-09-03 21:06","repo":"our-space","file":"group-chat/server.js","desc":"删海龟汤,换3个多人文字游戏(全程程序控局不靠AI判对错):①数字炸弹(1-100猜数收窄范围,踩中惩罚)②故事接龙(轮流一人一句到12句)③你画我猜文字版(随机词给出题人文字描述大家猜)。口令:玩数字炸弹/玩故事接龙/玩你画我猜。加pushSystem走type:system居中提示"}
+{"time":"2026-09-03 21:32","repo":"our-space","file":"group-chat/server.js","desc":"修故事接龙2漏洞:①人聊天不再被吞——带?/@@/在吗等对话腔的字不进故事交给普通接话②bot能主动接——step里story分支让bot接故事一句(自动轮转)"}
 {"time":"2026-09-03 15:35","repo":"our-space","file":"lib/emotional-memory.js+group-chat/server.js","desc":"修日常聊天失忆:群聊上下文串味——群聊记录注入日常prompt被当成华生正在聊的话题去接,加约束'群里社交≠和华生对话,她没问就别提'两处同步"}

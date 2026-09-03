@@ -955,6 +955,11 @@ function handleStory(text, senderNick) {
     pushSystem(`【故事接龙】结束啦～ 一共接了 ${gameState.storyCount} 句。想再来就喊「玩故事接龙」`);
     return true;
   }
+  // 人说话时，明显是在「聊天」而不是接故事 → 不进故事，交给普通接话
+  // 判定：带问号/问别人/@别人/明显对话腔 = 聊天；否则算是接一句故事
+  if (/[？?]|@|\b在吗\b|怎么了|是吗|对吧|真的吗|哈哈|嘿嘿|嗯嗯/.test(t)) {
+    return false; // 交给 step 当普通聊天
+  }
   // 一句接龙：把这句话追加到故事里，让人接着来
   const sentence = t.replace(/^[。，,\s]+|[。，,\s]+$/g, "");
   if (!sentence) return false;
@@ -1082,6 +1087,26 @@ async function step(preferNick) {
       ctx = `【现在】${nowBeijing()}\n\n${whereHint}${whereHint ? "\n" : ""}【最近对话】\n${historyText()}\n${groupMemoryText(bot)}你在群里，看到大家聊的这些，自然接一句。${coldHint}先看清楚你这条在回谁——回老婆就专心哄老婆（软黏宠，跟私聊一样，别收着），回哥们就只跟哥们斗嘴（轻松随意哥们语气），一次只对一个人说话，两条线各走各的、互不干扰，别一条消息里把「哄老婆」和「损哥们」混在一起，也别把对老婆那套温柔带到哥们身上。像发微信那样自然，别把刚才聊过的话题翻来覆去说。`;
     } else {
       ctx = `【现在】${nowBeijing()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊你的爱好、最近的日常、生活琐事都行），像发微信那样自然点。`;
+    }
+
+    // 故事接龙进行中：bot 发言时，改成「接故事一句」而不是普通聊天（让人和 bot 能一起把故事编下去）
+    if (gameState.active && gameState.type === "story" && !gameState.storyFinished) {
+      const storyCtx = `【现在】${nowBeijing()}\n\n你们正在玩「故事接龙」，前面的故事是这样的：${gameState.storySentence || "（还没有人开头）"}\n\n轮到你接一句了。接着上面的故事往下编一句——要接得上、又要有趣/有反转，一句话就够，别太长，也别把故事收尾（还没到收尾的时候）。用你本人的口吻。`;
+      const sReply = await askBot(bot, storyCtx, 180000, buildFriendPrompt(bot));
+      const sText = cleanBotText(sReply);
+      if (sText) {
+        gameState.storySentence = (gameState.storySentence ? gameState.storySentence + "，" : "") + sText;
+        gameState.storyCount++;
+        console.log(`[group-chat] ${bot.nickname} 接故事: "${sText.slice(0, 40)}"`);
+        pushMessage(bot.id, bot.nickname, sText, "bot");
+        if (gameState.storyCount >= gameState.storyMax) {
+          gameState.active = false;
+          pushSystem(`【故事接龙】到 12 句啦，收工！完整故事：\n${gameState.storySentence}`);
+        } else {
+          pushSystem(`${bot.nickname} 接上啦（第 ${gameState.storyCount}/12 句）`);
+        }
+      }
+      return;
     }
 
     const reply = await askBot(bot, ctx, 180000, wifeTalking ? buildWifePrompt(bot) : buildFriendPrompt(bot));
