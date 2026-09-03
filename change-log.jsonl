@@ -4,3 +4,6 @@
 {"time":"2026-09-03 14:28","repo":"our-space","file":"group-chat/server.js","desc":"群聊FRIEND_RULES加哥们语气:老朋友随意松散不用完整句/一条消息只说一件事/一个梗顶多两三次就翻篇"}
 {"time":"2026-09-03 15:04","repo":"our-space","file":"group-chat/server.js","desc":"WIFE_RULES加:回老婆前先看清她在跟谁说/接谁的梗别急着抢,自己说过的话记住,被调侃认得出这是在说我"}
 {"time":"2026-09-03 15:15","repo":"our-space","file":"group-chat/server.js","desc":"FORMAT_RULES改:不要句号逗号少用短句换行隔开,@不同的人换行别挤一起发"}
+{"time":"2026-09-03 15:37","repo":"our-space","file":"lib/message-router.js","desc":"修日常聊天断片失忆:history平时没有截断,getRecentHistoryMessages返回200条全量塞进prompt,挤掉最近几轮对话致忘记当前话题。timeTaggedChat.slice(-24)只留最近24条真实对话"}
+{"time":"2026-09-03 15:37","repo":"our-space","file":"lib/emotional-memory.js+group-chat/server.js","desc":"修群聊上下文串味:群聊记录注入日常prompt被当成华生在聊,加约束'群里社交≠和华生对话,她没问别提'两处同步"}
+{"time":"2026-09-03 15:35","repo":"our-space","file":"lib/emotional-memory.js+group-chat/server.js","desc":"修日常聊天失忆:群聊上下文串味——群聊记录注入日常prompt被当成华生正在聊的话题去接,加约束'群里社交≠和华生对话,她没问就别提'两处同步"}
