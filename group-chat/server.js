@@ -937,8 +937,9 @@ function handleBomb(text, senderNick) {
     // 踩中炸弹 → 输
     gameState.active = false;
     const punish = BOMB_PUNISH[Math.floor(Math.random() * BOMB_PUNISH.length)];
-    pushSystem(`💥 ${senderNick} 踩中了炸弹！数字是 ${target}！惩罚：${punish}`);
-    setTimeout(() => pushSystem("想再玩就喊「玩数字炸弹」～"), 1200);
+    // 用普通消息发（进历史、bot 也能看到并起哄），而不是 system（会被 historyText 过滤）
+    pushMessage("system", "夏彦们", `💥 ${senderNick} 踩中了炸弹！数字是 ${target}！惩罚：${punish}`, "bot");
+    pushSystem("想再玩就喊「玩数字炸弹」～");
     return true;
   }
   // 缩小范围
@@ -980,8 +981,8 @@ async function botPlayBomb() {
       gameState.active = false;
       const punish = BOMB_PUNISH[Math.floor(Math.random() * BOMB_PUNISH.length)];
       pushMessage(bot.id, bot.nickname, text, "bot");
-      pushSystem(`💥 ${bot.nickname} 踩中了炸弹！数字是 ${gameState.bombTarget}！惩罚：${punish}`);
-      setTimeout(() => pushSystem("想再玩就喊「玩数字炸弹」～"), 1200);
+      pushMessage("system", "夏彦们", `💥 ${bot.nickname} 踩中了炸弹！数字是 ${gameState.bombTarget}！惩罚：${punish}`, "bot");
+      pushSystem("想再玩就喊「玩数字炸弹」～");
     } else {
       // AI 没给有效数，用兜底数推进
       const fallback = guardNum >= low && guardNum <= high ? guardNum : low;
@@ -989,8 +990,8 @@ async function botPlayBomb() {
       else if (fallback < gameState.bombTarget) gameState.bombLow = fallback + 1;
       else {
         gameState.active = false;
-        pushSystem(`💥 ${bot.nickname} 踩中了炸弹！数字是 ${gameState.bombTarget}！`);
-        setTimeout(() => pushSystem("想再玩就喊「玩数字炸弹」～"), 1200);
+        pushMessage("system", "夏彦们", `💥 ${bot.nickname} 踩中了炸弹！数字是 ${gameState.bombTarget}！没收惩罚，直接重开～`, "bot");
+        pushSystem("想再玩就喊「玩数字炸弹」～");
         return;
       }
       pushMessage(bot.id, bot.nickname, `我猜 ${fallback}`, "bot");
