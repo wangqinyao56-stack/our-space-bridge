@@ -9,4 +9,5 @@
 {"time":"2026-09-03 15:44","repo":"our-space","file":"lib/message-router.js","desc":"接记忆检索:华生每句话调searchMemories(含归档)检索情感库,命中注prompt让她提话题时夏彦能想起往事。原searchMemories写好了但从未被调用,这是'聊起很早话题想不起来'的根因"}
 {"time":"2026-09-03 15:48","repo":"our-space","file":"group-chat/server.js","desc":"群聊拆条发送:模型一次生成一大段,系统按换行拆成多条分开发(每条隔450ms),看起来像一条条发。FRIEND_RULES加'一句话一行/@不同的人各占一行'"}
 {"time":"2026-09-03 15:49","repo":"our-space","file":"group-chat/public/index.html","desc":"群聊消息进入动画:addMsg挂enter class+slideIn下滑入动画(0.28s),配合后端450ms逐条broadcast,消息按顺序带动画依次滑入不一次性涌出"}
+{"time":"2026-09-03 16:01","repo":"our-space","file":"group-chat/server.js","desc":"拆条间隔改慢:450ms固定→按文字长短动态(1200ms+每字90ms上限2200ms),像真人打字别一股脑涌出"}
 {"time":"2026-09-03 15:35","repo":"our-space","file":"lib/emotional-memory.js+group-chat/server.js","desc":"修日常聊天失忆:群聊上下文串味——群聊记录注入日常prompt被当成华生正在聊的话题去接,加约束'群里社交≠和华生对话,她没问就别提'两处同步"}
