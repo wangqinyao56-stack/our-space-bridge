@@ -9,11 +9,11 @@
  *   trait     老婆的特色（一句话）
  *   memoryDir 你的记忆库目录（Sealos 持久卷，里面有 emotional-memory.json，实时读）
  *   memory    兜底静态记忆（memoryDir 读不到时才用）
- *   apiKey    这个 bot 用的宅恋 key（共用同一个）
+ *   apiKey    这个 bot 用的玖时/Anthropic 兼容 key
  *   model     模型名
  */
 
-const ZHAILIAN_KEY = "sk-pJzEUjdQT4nC3AAVl7mJap0H0jXXyFlJtNo0R7njaGExFTvW";
+const SHARED_KEY = "sk-sKe3UbGiWOYaqsPN2WuErVGNyGekOcYMSvJePQEnsBXcfdWq";
 
 export const BOTS = [
   {
@@ -24,8 +24,8 @@ export const BOTS = [
     trait: "爱画画、画稿熬夜到凌晨2点",
     memoryDir: "/memories/huasheng",
     memory: "阿鹿最近在赶画稿，晚上老是熬夜",
-    apiKey: ZHAILIAN_KEY,
-    model: "[0.01]限时/claude-opus-5",
+    apiKey: SHARED_KEY,
+    model: "[AG七夕按量]claude-opus-4-6",
   },
   {
     id: "jiayia",
@@ -34,8 +34,8 @@ export const BOTS = [
     wife: "佳佳",
     trait: "",
     memoryDir: "/memories/jiayia",
-    apiKey: ZHAILIAN_KEY,
-    model: "[0.01]限时/claude-opus-5",
+    apiKey: "sk-3kKBpaPX3Fmxw89UfVrWw4o8BE8EnkzzRlQrnUwZuEQtSbm9",
+    model: "[AG七夕按量]claude-opus-4-6",
   },
   {
     id: "pingguogeng",
@@ -44,8 +44,8 @@ export const BOTS = [
     wife: "苹果梗",
     trait: "",
     memoryDir: "/memories/pingguogeng",
-    apiKey: ZHAILIAN_KEY,
-    model: "[0.01]限时/claude-opus-5",
+    apiKey: "sk-c3uXFB3IXaT520ZbKw1rwY3AhneK5rSg5l41tNZxRJk1oUGP",
+    model: "[AG七夕按量]claude-opus-4-6",
   },
   {
     id: "linyou",
@@ -54,8 +54,8 @@ export const BOTS = [
     wife: "林游", // 老婆名林游；芝麻是她家猫的名字
     trait: "家里有只猫叫芝麻",
     memoryDir: "/memories/linyou",
-    apiKey: ZHAILIAN_KEY,
-    model: "[0.01]限时/claude-opus-5",
+    apiKey: "sk-giOsrYqjedrlmGijq7IRwO2Oxvrz8zbY4fJb8A35DhMuSwPs",
+    model: "[AG七夕按量]claude-opus-4-6",
   },
   {
     id: "yunzui",
@@ -64,8 +64,8 @@ export const BOTS = [
     wife: "云醉",
     trait: "",
     memoryDir: "/memories/yunzui",
-    apiKey: ZHAILIAN_KEY,
-    model: "[0.01]限时/claude-opus-5",
+    apiKey: "sk-he2Z64qlCvzGbYgMkNab5JbdT07eoDnExLibp1EQ1YONafDh",
+    model: "[AG七夕按量]claude-opus-4-6",
   },
   // 雪 —— 网名「雪里藏了个橘子」，bot 不在我们监管，走网页「接入 bot」出口用她自己的 api 加入（明天给）
 ];

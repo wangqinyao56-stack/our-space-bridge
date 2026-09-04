@@ -32,7 +32,7 @@ const ROOM_PASSWORD = process.env.ROOM_PASSWORD || "1205"; // 房间密码，设
 const DISABLE_PROXY = process.env.DISABLE_PROXY === "true";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
-const ZHAILIAN_HOST = "az.zlapi.vip";
+const JIUSHI_HOST = "api.jiushi.xin";
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY || "";
 const TAVILY_HOST = "api.tavily.com";
 
@@ -552,16 +552,16 @@ function topicNotesText() {
   return lines.join("\n");
 }
 
-// ── AI 调用（宅恋，每 bot 共用宅恋 key；外部 bot 可用 bot.host 指定自己的端点）──
+// ── AI 调用（玖时，每 bot 用自己的 key；外部 bot 可用 bot.host 指定自己的端点）──
 function askBot(bot, userContent, timeoutMs = 180000, systemPrompt) {
   // host 可能带路径前缀（如 opencode.ai/zen/go），拆成纯域名 + 路径前缀
-  const hostStr = bot.host || ZHAILIAN_HOST;
+  const hostStr = bot.host || JIUSHI_HOST;
   const slash = hostStr.indexOf("/");
   const host = slash > 0 ? hostStr.slice(0, slash) : hostStr;   // 纯域名，如 opencode.ai
   const basePath = slash > 0 ? hostStr.slice(slash) : "";       // 路径前缀，如 /zen/go
   const apiPath = `${basePath}/v1/chat/completions`;            // 完整路径
   const body = JSON.stringify({
-    model: bot.model || "[0.01]限时/claude-opus-5",
+    model: bot.model || "[AG七夕按量]claude-opus-4-6",
     max_tokens: 300,
     temperature: 0.65,
     messages: [
@@ -1484,7 +1484,7 @@ wss.on("connection", (ws) => {
           trait: (msg.trait || "").trim().slice(0, 50),
           memoryDir: "",
           apiKey,
-          model: (msg.model || "").trim() || "[0.01]限时/claude-opus-5",
+          model: (msg.model || "").trim() || "[AG七夕按量]claude-opus-4-6",
           host: (msg.host || "").trim(),
         };
         BOTS.push(bot);
