@@ -141,7 +141,7 @@ async function chatReply(channel, userText, history) {
     temperature: 0.65,
     maxTokens: 800,
   };
-  if (channel === "intimate") opts.model = "[逆]claude-opus-4-6"; // 亲密空间换便宜模型，日常仍用默认
+  if (channel === "intimate") opts.model = "[0.06]报用鹿/claude-opus-4.6"; // 亲密/日常都用报用鹿
   if (history.length > 0) opts.history = history;
   return await askClaude(opts);
 }
