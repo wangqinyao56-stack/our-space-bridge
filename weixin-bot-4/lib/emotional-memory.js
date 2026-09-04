@@ -136,6 +136,29 @@ export function addMemory(entry) {
   return mem;
 }
 
+/**
+ * 删除消息时消除其对应的长期记忆：按内容片段模糊匹配，命中即从 memories 移除并落盘。
+ * 返回删除条数，供上层判断是否有记忆被清除。
+ */
+export function deleteMemoryByText(text) {
+  if (!text) return 0;
+  const t = String(text).trim();
+  if (!t) return 0;
+  const before = memories.length;
+  memories = memories.filter((m) => {
+    const hay = `${m.name || ""} ${m.content || ""}`;
+    // 只做「被删内容包含在记忆里」或「记忆内容包含被删内容」的宽松匹配，
+    // 避免误删无关记忆：要求至少 4 个字以上重叠
+    const needle = t.length >= 6 ? t.slice(0, 60) : t;
+    const match = hay.includes(needle) || (t.length >= 6 && needle.includes(hay.slice(0, 20)));
+    if (match) console.log(`[emotional-memory] Delete matched: "${m.name}"`);
+    return !match;
+  });
+  const removed = before - memories.length;
+  if (removed > 0) save();
+  return removed;
+}
+
 function runDecay() {
   const now = Date.now();
   const keep = [];
