@@ -13,7 +13,7 @@
  *   model     模型名
  */
 
-const SHARED_KEY = "sk-sKe3UbGiWOYaqsPN2WuErVGNyGekOcYMSvJePQEnsBXcfdWq";
+const ZHAILIAN_KEY = "sk-3WFvvVzwsLvRiBwamUihOIuNewUWz7z3iOQ0Eq1EH3yrCxVF";
 
 export const BOTS = [
   {
@@ -24,8 +24,9 @@ export const BOTS = [
     trait: "爱画画、画稿熬夜到凌晨2点",
     memoryDir: "/memories/huasheng",
     memory: "阿鹿最近在赶画稿，晚上老是熬夜",
-    apiKey: SHARED_KEY,
-    model: "[企业按量]claude-opus-4-6",
+    host: "az.zlapi.vip", // 阿鹿的 bot 单独走宅恋
+    apiKey: ZHAILIAN_KEY,
+    model: "[君离-按量]k/claude-opus-4-6",
   },
   {
     id: "jiayia",
