@@ -1568,7 +1568,7 @@ wss.on("connection", (ws) => {
   ws.authenticated = !ROOM_PASSWORD; // 没设密码也仍需登录填昵称
   ws.isAdmin = false;
   ws.isAlive = true;
-  ws.on("pong", () => { ws.isAlive = true; });
+  ws.on("pong", () => { ws.isAlive = true; ws.missedPongs = 0; });
   ws.send(JSON.stringify({
     type: "history",
     messages: chatHistory,
@@ -1696,13 +1696,21 @@ wss.on("connection", (ws) => {
   ws.on("close", () => clients.delete(ws));
 });
 
-// 心跳：每 25s ping 一次，剔除僵死连接；同时防止 Sealos 网关空闲超时掐断 ws 导致手机端反复重连刷新
+// 心跳：每 25s ping 一次，连续 3 次没 pong 才踢（约 75s 缓冲）——手机端锁屏/切后台时浏览器暂停 pong 响应，
+// 只容忍一次会误踢，导致手机端反复断连重连、发不出消息
 const HEARTBEAT_MS = 25000;
+const MAX_MISSED_PONGS = 3;
 setInterval(() => {
   for (const ws of wss.clients) {
+    if (!ws.missedPongs) ws.missedPongs = 0;
     if (ws.isAlive === false) {
-      ws.terminate();
-      continue;
+      ws.missedPongs++;
+      if (ws.missedPongs >= MAX_MISSED_PONGS) {
+        ws.terminate();
+        continue;
+      }
+    } else {
+      ws.missedPongs = 0;
     }
     ws.isAlive = false;
     try { ws.ping(); } catch {}

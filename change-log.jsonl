@@ -61,3 +61,5 @@
 {"time":"2026-09-05 20:10","repo":"our-space","file":"group-chat/server.js","desc":"新增多人色情游戏「手淫调教」:老婆起哄触发(非口令),夏彦抗拒→低头→喘息→进度播报→射精管制→求饶,不写动作不写器官不说脏话,读各家做爱记忆(loadBotEroticMemory),接吻细节举一反三"}
 {"time":"2026-09-05 20:20","repo":"our-space","file":"weixin-bot/system-prompt-intimate.txt","desc":"佳佳亲密空间设定更新(源文件华生→佳佳替换,1213行):新增情事主动不克制/不用问/强势点等规则+措辞微调,删App功能段(佳佳App无那些功能)"}
 {"time":"2026-09-05 20:24","repo":"our-space","file":"weixin-bot-4/lib/api2d.js","desc":"林游api520.pro换新key(旧key已401失效),模型不变熊猫gemini"}
+{"time":"2026-09-05 20:27","repo":"our-space","file":"group-chat/server.js","desc":"群聊心跳放宽(连续3次没pong才踢≈75s缓冲,修手机锁屏切后台被误踢反复断连)"}
+{"time":"2026-09-05 20:27","repo":"our-space","file":"group-chat/public/index.html","desc":"群聊前端断线重连自动重新登录(reconnectLogin),修手机端重连后卡未登录发不出消息"}

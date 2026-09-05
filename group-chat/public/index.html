@@ -283,8 +283,8 @@ function addSticker(m) {
 
 function connect() {
   ws = new WebSocket(WS_URL);
-  ws.onopen = () => { sub.textContent = "已连接"; };
-  ws.onclose = () => { sub.textContent = "断开，重连中…"; setTimeout(connect, 3000); };
+  ws.onopen = () => { sub.textContent = "已连接"; reconnectLogin(); };
+  ws.onclose = () => { loggedIn = false; sub.textContent = "断开，重连中…"; setTimeout(connect, 3000); };
   ws.onerror = () => {};
   ws.onmessage = (e) => {
     let msg;
@@ -347,6 +347,16 @@ function doLogin() {
     ws.send(JSON.stringify({ type: "login", nickname: nick, password: passInput.value }));
     localStorage.setItem("groupchat_nick", nick);
     localStorage.setItem("groupchat_pass", passInput.value);
+  }
+}
+
+// 断线重连后：如果之前登录过（昵称还在），自动重新登录恢复身份，否则手机端会卡在"连接了但发不出消息"
+function reconnectLogin() {
+  const nick = localStorage.getItem("groupchat_nick") || "";
+  const pass = localStorage.getItem("groupchat_pass") || "";
+  if (!nick) return;
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({ type: "login", nickname: nick, password: pass }));
   }
 }
 
