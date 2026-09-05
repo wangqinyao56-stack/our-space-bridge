@@ -85,3 +85,4 @@
 {"time":"2026-09-05 15:43","repo":"our-space","file":"lib/message-router.js","desc":"小屋记忆互通:handlePixelHomeMessage加getBreathContext+searchMemories+getGroupChatContext(读)+parseMemoryTags+runExtraction+pushMemoryToGroupChat(写),小屋对话进长期记忆并推群聊"}
 {"time":"2026-09-05 15:54","repo":"our-space","file":"lib/pixel-home.js+group-chat/server.js","desc":"小屋实时状态推群聊:小屋状态变化时emit顺带POST群聊/api/pixel-home-state,群聊存进pixelHomeState并在whereHint注入,群里被问在干嘛能实时答房间+事件。仅huasheng家夏彦有小屋"}
 {"time":"2026-09-05 16:12","repo":"our-space","file":"group-chat/server.js","desc":"撸射赛重构:兴奋度heat0-10逐级递进(抗拒→紧张→升温→兴奋→癫狂→射),人数门槛≥2,性格化参赛触发(主动型才自己跳),结束截断+aftermath按性格收尾,ctx带audience识别谁在说话+lastLine去重。大富翁反应也按丈夫玩具档位走弧度+五家后期性格差异+停震寸止的难耐反应"}
+{"time":"2026-09-05 16:43","repo":"our-space","file":"lib/pixel-home.js","desc":"修夏彦不知是否与华生同房:getPixelHomePositionContext重写,明确分同房-忙/同房-陪/不同房-忙/不同房-闲四种,旧busy判断有bug(不同房时误说陪着华生)"}
