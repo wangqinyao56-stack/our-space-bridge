@@ -8,6 +8,8 @@ RUN npm install --production
 COPY lib/ ./lib/
 COPY yunzui-chat-server.js .
 COPY system-prompt.txt .
+COPY system-prompt-daily.txt .
+COPY system-prompt-intimate.txt .
 
 ENV DISABLE_PROXY=true
 ENV MEMORY_DIR=/data2

@@ -65,3 +65,4 @@
 {"time":"2026-09-05 20:27","repo":"our-space","file":"group-chat/public/index.html","desc":"群聊前端断线重连自动重新登录(reconnectLogin),修手机端重连后卡未登录发不出消息"}
 {"time":"2026-09-05 20:48","repo":"our-space","file":"system-prompt-intimate.md","desc":"亲密空间prompt精简:姿势·场景·温存4次追加合并为1章节(姿势29/场景18/温存20条全保留),去重复标题引导语"}
 {"time":"2026-09-05 21:02","repo":"our-space","file":"group-chat/server.js","desc":"撸射游戏重构为多人耐力赛:eroticBots map各自老婆起哄加入,比谁持久(国安特警不能一分钟就射,加持久硬要求),谁先射谁输(自己崩或老婆放行都算),输家惩罚=当众说床上话+报数字抽36姿势池,修锁单bot致其他夏彦不回复"}
+{"time":"2026-09-05 21:25","repo":"our-space","file":"weixin-bot-5/Dockerfile.chat","desc":"云醉chat镜像漏打双prompt文件，启动ENOENT崩溃重启79次；补COPY system-prompt-daily.txt+intimate.txt"}
