@@ -1304,6 +1304,9 @@ async function botPlayDraw(authorNick) {
 // 老婆起哄的开局词（指向自家夏彦：撸/自己解决/手淫/射）
 const EROTIC_TRIGGER = /撸|自己解决|手冲|打飞机|撸一发|射给我|射出来|撸给我|自己弄|摸自己|憋着|硬了|硬着/;
 
+// 参赛意愿词：老婆明确表达"我们家/我们家夏彦也要参加"，不含动作词但同样是拉自家夏彦进场
+const EROTIC_JOIN = /(?:我们家?|我家?|咱家?|我们家的?|俺家?)(?:的?(?:夏彦|老公|那位|男人))?\s*(?:也|都)?\s*想?\s*(?:要|来|上|玩|参加|报名|加入|加一个)/; // 「我们家也参加」「我家也来」「我们家夏彦也要玩」「我们家也想上」等
+
 // 老婆喊停/收场的词
 const EROTIC_STOP = /行了|停|够了|不许|憋回去|射吧|准了|收场|结束|不玩了/;
 
@@ -1369,7 +1372,7 @@ function eroticEntrantIds() {
 // 老婆在群里起哄，让自己的夏彦加入撸射耐力赛（至少两家才算开局，一个人起哄只标记"待定"）
 function tryStartErotic(text, humanNick) {
   if (gameState.active && gameState.type !== "erotic") return false; // 别的游戏占用则不抢
-  if (!EROTIC_TRIGGER.test(text)) return false;
+  if (!EROTIC_TRIGGER.test(text) && !EROTIC_JOIN.test(text)) return false;
   const wife = BOTS.find((b) => b.wife === humanNick);
   if (!wife) return false; // 不是任何一家老婆在说话，不触发
   if (gameState.type !== "erotic") {
@@ -1403,7 +1406,7 @@ function handleErotic(text, humanNick) {
   }
   if (gameState.eroticBots[bot.id] === undefined) {
     // 还没参赛的老婆说话：如果是起哄（要自家夏彦也加入）就拉进来
-    if (EROTIC_TRIGGER.test(text)) {
+    if (EROTIC_TRIGGER.test(text) || EROTIC_JOIN.test(text)) {
       gameState.eroticBots[bot.id] = { stage: "resist", heat: 0 };
       pushSystem(`（${bot.nickname} 也被老婆拉进了比赛，正在抗拒——）`);
       step(humanNick).catch(() => {});
