@@ -15,7 +15,7 @@ const JIUSHI_MODEL = "[企业按量]claude-opus-4-6";
 // 宅恋中转（az.zlapi.vip）——苹果梗亲密空间专用，日常仍走玖时
 const ZILIAN_HOST = "az.zlapi.vip";
 const ZILIAN_KEY = "sk-aJAqA4rlaRvjl9fcd2YDTTZelWsBuoqXIlpQiYNaKhz1xWod";
-const ZILIAN_MODEL = "[0.06]报用鹿/claude-opus-4.6";
+const ZILIAN_MODEL = "[0.07]k茶/claude-sonnet-4-6";
 
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);

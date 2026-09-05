@@ -10,7 +10,7 @@ import https from "node:https";
 
 const JIUSHI_KEY = "sk-PuPG6Jrbk1Xj1j6Wt5AbLHzxkjiYa1dKGY7ibERnXY7WHpuc";
 const JIUSHI_HOST = "az.zlapi.vip";
-const JIUSHI_MODEL = "[0.06]报用鹿/claude-opus-4.6";
+const JIUSHI_MODEL = "[0.07]k茶/claude-sonnet-4-6";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
 const DISABLE_PROXY = process.env.DISABLE_PROXY === "true";
