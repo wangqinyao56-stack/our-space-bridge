@@ -63,7 +63,7 @@ import { getPetState, interact as petInteract, setName as petSetName, getProacti
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
-import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence, handleRestReminder, clearRestReminder, clearMusicSwitch, setReading, getReadingContext, clearReadingContext, markGreeted, noteHuashengSpoke, getGreetingAudio, detectHuashengAway, getHuashengAway } from "./lib/pixel-home.js";
+import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence, handleRestReminder, clearRestReminder, clearMusicSwitch, setReading, getReadingContext, clearReadingContext, markGreeted, noteHuashengSpoke, getGreetingAudio, detectHuashengAway, getHuashengAway, wakePixelXiayan, isPixelXiayanSleeping } from "./lib/pixel-home.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery, confirmReturned } from "./lib/scenery.js";
@@ -1971,7 +1971,7 @@ wss.on("connection", (ws, req) => {
         greeted: state.greeted,
         greetAudio: getGreetingAudio(),
         hour: state.hour,
-        sleeping: state.hour >= 23 || state.hour < 7,
+        sleeping: isPixelXiayanSleeping(),
       }));
       huashengInPixelHome = true;
       resetPixelProactiveTimer();
@@ -2010,6 +2010,8 @@ wss.on("connection", (ws, req) => {
         handleRestReminder(msg.content);
         detectHuashengAway(msg.content);
         noteHuashengSpoke();
+        // 华生说话把睡着的夏彦吵醒：睡着→醒，立绘恢复显示
+        wakePixelXiayan();
         const reply = await handlePixelHomeMessage(msg.content, { openingLine: msg.openingLine, quote: msg.quote });
         const segments = splitIntoMessages(reply);
         sendSegments(ws, msg.id, segments);

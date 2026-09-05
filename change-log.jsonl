@@ -55,3 +55,7 @@
 {"time":"2026-09-05 19:08","repo":"our-space","file":"lib/emotional-memory.js","desc":"阿鹿家群聊记忆推送修bug:getMemorySummaryForGroupChat按created倒序→importance降序+过滤digested(和姐妹们对齐),修群聊里记忆模糊抓不住重点"}
 {"time":"2026-09-05 19:09","repo":"our-space","file":"group-chat/server.js","desc":"群聊/api/group-chat返回附加成员背景rosterSnapshot(网名+老婆+近况),让各夏彦私聊被问群里XX时能答上来"}
 {"time":"2026-09-05 19:13","repo":"our-space","file":"group-chat/server.js","desc":"群聊对老婆害羞表达规则重写:禁动作禁身体反应(耳朵红/耳根/脸烫),害羞全从语气(结巴/慌/软),拦不住→委屈随她胡闹,禁不服气语气(好了吧/你满意了吧);loadPersona清洗persona里残留的害羞身体反应描写"}
+{"time":"2026-09-05 19:37","repo":"our-space","file":"lib/message-router.js","desc":"像素小屋handlePixelHomeMessage切熊猫askXiongmao(玖时[逆]claude-opus-4-6已失效降级Kiro乱编故事)"}
+{"time":"2026-09-05 19:37","repo":"our-space","file":"lib/pixel-home.js,server.js","desc":"像素小屋睡着状态修复:sleeping状态+wakePixelXiayan(华生说话吵醒)+卡在睡着兜底(白天自动醒)+sstate下发真实sleeping字段"}
+{"time":"2026-09-05 19:37","repo":"our-space","file":"system-prompt-daily.md","desc":"日常prompt加害羞克制表达规则(语气化禁身体反应禁不服气) + 删被撩脸红到耳根/害羞耳尖泛红身体反应描写"}
+{"time":"2026-09-05 20:10","repo":"our-space","file":"group-chat/server.js","desc":"新增多人色情游戏「手淫调教」:老婆起哄触发(非口令),夏彦抗拒→低头→喘息→进度播报→射精管制→求饶,不写动作不写器官不说脏话,读各家做爱记忆(loadBotEroticMemory),接吻细节举一反三"}

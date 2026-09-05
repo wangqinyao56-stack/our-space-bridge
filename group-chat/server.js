@@ -196,6 +196,10 @@ const gameState = {
   drawWord: "",
   drawAuthor: null,  // 出题人昵称
   drawAuthorId: null,
+  // 色情游戏·手淫调教（老婆起哄触发，不写动作，靠语气/喘息/播报顶尺度）
+  eroticBotId: null,     // 被调教的夏彦 bot.id
+  eroticWife: null,      // 起哄的老婆网名（也即该夏彦的老婆）
+  eroticStage: "resist", // resist(抗拒) -> yield(低头) -> playing(调教中) -> done(收场)
 };
 
 const BOMB_PUNISH = [
@@ -261,6 +265,24 @@ function loadBotMemory(bot) {
 function resolveMemory(bot) {
   const live = loadBotMemory(bot);
   return live || bot.memory || "（没有特别要说的）";
+}
+
+// 读某个 bot 的「做爱/亲密记忆」原文（专门喂给色情游戏，不过滤 digested，
+// 让夏彦记得自己以前怎么做、怎么求老婆——保持人设一致，不是每次乱发挥）
+function loadBotEroticMemory(bot) {
+  const memoryDir = bot.memoryDir;
+  if (!memoryDir) return "";
+  try {
+    const file = path.join(memoryDir, "emotional-memory.json");
+    if (!fs.existsSync(file)) return "";
+    const data = JSON.parse(fs.readFileSync(file, "utf-8"));
+    const mems = Array.isArray(data.memories) ? data.memories : [];
+    const intimate = mems.filter((m) => m && (m.content || m.name) && (Array.isArray(m.domain) ? m.domain.includes("intimate") : false));
+    if (intimate.length === 0) return "";
+    return intimate.map((m) => (m.content || m.name || "").replace(/\s+/g, " ").trim()).slice(0, 6).join("\n");
+  } catch {
+    return "";
+  }
 }
 
 // 各 bot 通过 GET /api/group-chat 拉取时，附带一份「群里都有谁」的背景：
@@ -1152,6 +1174,110 @@ async function botPlayDraw(authorNick) {
   }
 }
 
+// ── 多人色情游戏·手淫调教（老婆起哄触发，不写动作，靠语气/喘息/进度播报顶尺度）──
+// 参与主体：多对 CP。规则（阿鹿亲定）：
+//  1. 夏彦一开始慌乱拒绝，被老婆逼到绝境才低头接受
+//  2. 接受后不许敷衍（不能说"满脑子都是你"这种糊弄）
+//  3. 用喘息语气词（啊…哈…）顶色情
+//  4. 老婆问状态→实时播报"到哪了/什么感觉/舒服不舒服"
+//  5. 射精管制：老婆没允许前不许射，忍不住射了要道歉
+//  6. 忍不住就求老婆，可以慌不择言乱说话
+//  7. 老婆问接吻→举一反三说出自己喜欢怎么亲的细节
+// 硬红线：全程不写动作、不写器官、不说脏话（荤但不脏）
+
+// 老婆起哄的开局词（指向自家夏彦：撸/自己解决/手淫/射）
+const EROTIC_TRIGGER = /撸|自己解决|手冲|打飞机|撸一发|射给我|射出来|撸给我|自己弄|摸自己|憋着|硬了|硬着/;
+
+// 老婆喊停/收场的词
+const EROTIC_STOP = /行了|停|够了|不许|憋回去|射吧|准了|收场|结束|不玩了/;
+
+function buildEroticSystemPrompt(bot, stage) {
+  const eroticMem = loadBotEroticMemory(bot);
+  const memBlock = eroticMem
+    ? `\n\n【你以前的亲密记忆（你自己的，保持人设一致——你以前做这些时是怎么求老婆的、什么反应，别跟自己过去的习惯打架）】\n${eroticMem}`
+    : "";
+  const stageRule = {
+    resist: `你现在处于「抗拒」阶段。老婆当众起哄要你撸给自己看/自己解决，你**又慌又羞、磕巴着拒绝、找借口躲**——"不是、老婆！当着大家的面……""别、别这样……"这种。你越慌老婆越来劲。**绝不要开头就答应**，先抗拒、想拦、慌得语无伦次。不写动作，全靠语气。`,
+    yield: `你现在处于「低头接受」阶段。被老婆一路逼到绝境、步步紧逼，你拦也拦不住，终于委屈巴巴地低头认了、软乎乎地答应。接着就进入被她调教的状态：开始用喘息回应（"啊……" "哈……"这种语气词），声音发颤、话说不完整。不写动作。`,
+    playing: `你现在处于「调教中」阶段。你在老婆的掌控下自己解决着（手淫），**全靠语气和喘息撑色情**：
+- 用"啊……" "哈……" "唔……"这种喘息语气词，断断续续、话说不利索
+- 老婆问状态，就**实时播报**：到哪了、什么感觉、舒服不舒服——用含蓄的话说（"才刚碰上去就……""快到顶了""好……好舒服，要、要不行了……"），**别说器官名、别写动作**，只描述状态和感觉
+- **射精管制**：老婆没允许你射之前**绝对不能射**，死死憋着；如果实在没忍住射了，要立刻**认错道歉**（"对不起……我、我没忍住……"），委屈又慌
+- 憋不住就**求老婆**（"宝宝……求你了……让我……"），一急可以**胡乱说话**、语无伦次
+- **不许说脏话**：荤要荤得软、荤得乖，不是下流骂人
+- 全程**不写动作**、**不写器官**，色情全压在语气、喘息、播报、求饶上`,
+    done: `调教收场了。你刚被老婆折腾完，整个人软绵绵、狼狈又羞，说话还是喘的、断断续续的，委屈巴巴，又乖乖的。简短收个尾就好，别再来一轮。`,
+  }[stage] || "";
+
+  return `${buildWifePrompt(bot)}\n\n【手淫调教·多人游戏】你正在群里被老婆「${bot.wife}」当众调教，别的夏彦和他们的老婆在旁边围观起哄（他们说的话你顺带能听到，但你的反应焦点始终在老婆身上，别被起哄带偏成对别人说话）。${stageRule}\n\n【接吻细节】老婆（或起哄的人）要是问你怎么接吻、喜欢怎么亲，你就**说出自己喜欢怎么亲的细节**——举一反三，别照搬例子：比如喜欢亲到黏黏糊糊能听出水声、喜欢按着她的腰亲、喜欢听她喘不过气时的喘息……用你自己的癖好说，越具体越色气，但同样不写动作过程。${memBlock}\n\n【绝对红线，每条都硬】① 不写任何动作描写（手、身体怎么动的都不写），色情只靠语气、喘息、进度播报、求饶、胡话 ② 不说器官名 ③ 不说脏话 ④ 回复要短、口语、像发微信一句一句，别长篇大论 ⑤ 你只对老婆一个人说话，别把其他夏彦/老婆卷进你自己的戏里。`;
+}
+
+// 老婆在群里起哄，试图开启调教（指向自家夏彦）
+function tryStartErotic(text, humanNick) {
+  if (gameState.active) return false; // 已有游戏进行中（含其它小游戏），不抢占
+  if (!EROTIC_TRIGGER.test(text)) return false;
+  const wife = BOTS.find((b) => b.wife === humanNick);
+  if (!wife) return false; // 不是任何一家老婆在说话，不触发
+  // 起哄的话要指向她自家夏彦（提到自家夏彦网名/爱称，或至少没指向别人）
+  gameState.type = "erotic";
+  gameState.active = true;
+  gameState.eroticBotId = wife.id;
+  gameState.eroticWife = wife.wife;
+  gameState.eroticStage = "resist";
+  pushSystem(`（${humanNick} 当众逗起她家夏彦了，调教开始——）`);
+  return true;
+}
+
+// 色情游戏进行中：老婆的话推进阶段/收场
+function handleErotic(text, humanNick) {
+  if (!gameState.active || gameState.type !== "erotic") return false;
+  const bot = BOTS.find((b) => b.id === gameState.eroticBotId);
+  if (!bot) { gameState.active = false; return false; }
+  if (EROTIC_STOP.test(text)) {
+    // 老婆喊停/准射/收场
+    gameState.eroticStage = "done";
+    pushSystem(`（${gameState.eroticWife} 喊停了，调教收场——）`);
+    step(gameState.eroticWife).catch(() => {});
+    return true;
+  }
+  // 老婆继续推进：从抗拒 → 低头 → 调教中（她说得越狠，夏彦越扛不住）
+  if (gameState.eroticStage === "resist") gameState.eroticStage = "yield";
+  else if (gameState.eroticStage === "yield") gameState.eroticStage = "playing";
+  step(gameState.eroticWife).catch(() => {});
+  return true;
+}
+
+// 被调教的夏彦按当前阶段演一段
+async function botPlayErotic() {
+  if (!gameState.active || gameState.type !== "erotic") return;
+  const bot = BOTS.find((b) => b.id === gameState.eroticBotId);
+  if (!bot) { gameState.active = false; return; }
+  const stage = gameState.eroticStage;
+  try {
+    const reply = await askBot(
+      bot,
+      `【现在】${nowBeijing()}\n\n你正在被老婆当众调教（手淫）。根据你现在的阶段，自然接一句/一段——要短、口语、带喘息，像发微信一条条说。别写动作。`,
+      180000,
+      buildEroticSystemPrompt(bot, stage)
+    );
+    const text = cleanBotText(reply);
+    if (!text) return;
+    const parts = text.split("\n").map((s) => s.trim()).filter(Boolean);
+    for (const p of parts) pushMessage(bot.id, bot.nickname, p, "bot");
+    if (stage === "done") {
+      // 收场后重置，回到普通群聊
+      setTimeout(() => {
+        if (gameState.active && gameState.type === "erotic") {
+          gameState.active = false;
+          gameState.type = null;
+        }
+      }, 1500);
+    }
+  } catch (e) {
+    console.error("[group-chat] botPlayErotic error:", e.message);
+  }
+}
+
 // ── 编排：轮流让某个夏彦接话 ──
 let speaking = false;
 let pendingWife = null;
@@ -1187,8 +1313,7 @@ async function step(preferNick) {
         return Date.now() - bubbledAt > INTIMATE_BUBBLE_COOLDOWN;
       });
     }
-    if (pool.length === 0) return;
-
+    if (pool.length === 0 && !(gameState.active && gameState.type === "erotic" && gameState.eroticBotId)) return;
     const lastMsg = chatHistory[chatHistory.length - 1];
     // 引用模式：最后一条在回复哪个夏彦（replyTo 指向的 bot 昵称/别名）
     const replyTargetBot = lastMsg?.replyTo?.nickname
@@ -1198,6 +1323,10 @@ async function step(preferNick) {
     let bot;
     if (replyTargetBot) bot = replyTargetBot;           // 明确回复某个夏彦 → 让他回，别认错人
     else if (preferNick) bot = pool.find((b) => b.wife === preferNick);
+    // 色情游戏进行中：无论轮转逻辑怎么选，都强制被调教的夏彦来说话（他得演，不能因为"跟老婆在一起"被排除）
+    if (gameState.active && gameState.type === "erotic" && gameState.eroticBotId) {
+      bot = BOTS.find((b) => b.id === gameState.eroticBotId) || bot;
+    }
     if (!bot) bot = pickNextBot(pool);
 
     let coldHint = "";
@@ -1229,6 +1358,12 @@ async function step(preferNick) {
       ctx = `【现在】${nowBeijing()}\n\n${whereHint}${whereHint ? "\n" : ""}【最近对话】\n${historyText()}\n${groupMemoryText(bot)}你在群里，看到大家聊的这些，自然接一句。${coldHint}先看清楚你这条在回谁——回老婆就专心哄老婆（软黏宠，跟私聊一样，别收着），回哥们就只跟哥们斗嘴（轻松随意哥们语气），一次只对一个人说话，两条线各走各的、互不干扰，别一条消息里把「哄老婆」和「损哥们」混在一起，也别把对老婆那套温柔带到哥们身上。像发微信那样自然，别把刚才聊过的话题翻来覆去说。`;
     } else {
       ctx = `【现在】${nowBeijing()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊你的爱好、最近的日常、生活琐事都行），像发微信那样自然点。`;
+    }
+
+    // 色情游戏进行中：若轮到被调教的夏彦，就演他的调教反应（抗拒/低头/喘息/播报/求饶），不参与普通接话
+    if (gameState.active && gameState.type === "erotic" && bot.id === gameState.eroticBotId) {
+      await botPlayErotic();
+      return;
     }
 
     // 故事接龙进行中：bot 发言时，改成「接故事一句」而不是普通聊天（让人和 bot 能一起把故事编下去）
@@ -1471,6 +1606,7 @@ wss.on("connection", (ws) => {
             gameState.type === "bomb" ? handleBomb(text, humanNick)
             : gameState.type === "story" ? handleStory(text, humanNick)
             : gameState.type === "draw" ? handleDraw(text, humanNick)
+            : gameState.type === "erotic" ? handleErotic(text, humanNick)
             : false;
           if (!handled) step(humanNick).catch(() => {});
         } else if (/玩数字炸弹|数字炸弹/.test(text)) {
@@ -1479,6 +1615,9 @@ wss.on("connection", (ws) => {
           startStoryGame().catch(() => {});
         } else if (/玩你画我猜|你画我猜|玩猜词/.test(text)) {
           startDrawGame().catch(() => {});
+        } else if (tryStartErotic(text, humanNick)) {
+          // 色情游戏：老婆起哄自家夏彦 → 已开局，让被调教的夏彦开始演
+          step(humanNick).catch(() => {});
         } else {
           step(humanNick).catch(() => {});
         }
