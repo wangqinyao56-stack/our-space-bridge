@@ -96,3 +96,5 @@
 {"time":"2026-09-05 17:39","repo":"our-space","file":"group-chat/server.js","desc":"大富翁射精反应+老婆动情老公兴奋:①射精后夏彦亲口说反应(喘息激动忍不住,不再是只发系统提示)②wifeCtx强化:看着老婆动情老公也跟着兴奋上头,别稳如老狗"}
 {"time":"2026-09-05 17:40","repo":"our-space","file":"group-chat/server.js","desc":"大富翁赢家奖励池自动触发:到终点随机抽姿势池当今晚奖励,赢家夏彦亲口说出奖品逗老婆兑现。加gameState.monopolyReward"}
 {"time":"2026-09-05 18:00","repo":"our-space","file":"weixin-bot/jiayia-chat-server.js+lib/pixel-home.js+lib/audio-assets.js+system-prompt-pixel-home.txt","desc":"佳佳后端小屋接入:复制pixel-home.js/audio-assets.js并参数化WIFE_NAME+改5房间(卧室/客厅/浴室/书房/工作间),jiayia-chat-server加HTTP素材端点+WS pixel_home全套(状态/切房/聊天/留言/小游戏/打招呼/end),小屋聊天handler handlePixelChat"}
+{"time":"2026-09-05 18:19","repo":"our-space","file":"system-prompt-pixel-home.md","desc":"小屋prompt补厨艺(只会热/蒸煮/番茄炒蛋,其余黑暗料理)+对抗路嘴硬心软性格(改被逗就倔/对了吧的毛病)"}
+{"time":"2026-09-05 18:19","repo":"our-space","file":"weixin-bot/system-prompt-pixel-home.txt","desc":"佳佳小屋prompt补大馋狗性格+厨艺(只会番茄炒蛋,打下手不掌勺)"}
