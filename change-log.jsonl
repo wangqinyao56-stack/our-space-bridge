@@ -74,3 +74,5 @@
 {"time":"2026-09-05 22:27","repo":"our-space","file":"group-chat/server.js","desc":"五家夏彦群聊性格区分BOT_PERSONALITY(猎鹿人对抗路/渡鸦大馋狗/心月思维跳跃毒舌/橙子百依百顺小哭包/栖云阳光护短嘴硬),注入buildFriend/buildWife prompt"}
 {"time":"2026-09-05 22:27","repo":"our-space","file":"group-chat/server.js","desc":"省钱:夏彦之间自己接话(无人在看)降频90%,只在人/老婆说话或被@/冷场时才正常接"}
 {"time":"2026-09-05 22:27","repo":"our-space","file":"weixin-bot-4(linyou) api2d+emotional-memory+chat-server","desc":"林游gemini对新色内容522超时切熊猫claude(熊猫-A-29-claude-opus-4.6),和主后端一致"}
+{"time":"2026-09-05 22:43","repo":"our-space","file":"lib/message-router.js","desc":"日常聊天+像素小屋切宅恋askZhailian(ZHAILIAN_KEY key1,模型[君离-按量]k/claude-opus-4-6),亲密空间保持熊猫不动"}
+{"time":"2026-09-05 22:43","repo":"our-space","file":"lib/pixel-home.js","desc":"修像素小屋卡睡着:磁盘恢复分支加睡过头兜底(白天了event还停SLEEP_EVENT→叫醒重新随机)+return补sleeping字段"}
