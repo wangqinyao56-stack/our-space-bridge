@@ -287,6 +287,12 @@ const MONOPOLY_EVENTS = [
   { type: "husband_toy_max", desc: "老公的跳蛋拉到最高档" },
   { type: "wife_toy_max", desc: "老婆的跳蛋拉到最高档" },
   { type: "stop", desc: "停止振动，喘口气" },
+  // ── 互动动作类事件（不调档位，只触发一段「说感受」的亲密）：──
+  { type: "kiss_deep", desc: "来一个法式湿吻" },
+  { type: "kiss_soft", desc: "轻轻亲她一下" },
+  { type: "kiss_bite", desc: "情欲上头的啃咬吻" },
+  { type: "husband_touch", desc: "老公摸老婆的敏感处" },
+  { type: "wife_touch", desc: "老婆摸老公，老公享受" },
 ];
 
 // 群聊是公开场合：露骨的「过程/私处」记忆不进群，但「状态」可含蓄存在（能说"昨晚做了几次累"，不能展开体位动作）
@@ -1652,6 +1658,28 @@ async function botPlayMonopolyReaction(botId, evType) {
   const team = gameState.monopolyTeams.find((t) => t.botId === botId);
   if (!team) return;
   const persona = EROTIC_PERSONA[bot.id] || "";
+
+  // ── 互动动作类事件：不调档位，只触发一段「说感受」的亲密（吻/摸），全按性格来，别单调 ──
+  const INTERACT = {
+    kiss_deep: `你们来了一场**法式湿吻**。你细说吻的感受——舌头怎么交缠、她的唇舌什么触感、有多舒服，用你自己的话现编（方向参考，别照抄）："恩…啾…老婆这样喜欢吗？"、"舌头交缠在一起…好舒服…"。吻得投入、黏糊，眼里只有她。说感受，别写"我把舌头伸进去"这种动作过程。`,
+    kiss_soft: `你**轻轻亲了她一下**。温存的、珍惜的一下——说说这一下亲在哪里、你心里什么感觉，甜而不腻。`,
+    kiss_bite: `你**情欲上头啃了她一下**（脖子/锁骨/耳垂这种，不是真的咬疼她）。说说你有多想把她拆吃入腹、牙齿擦过她皮肤时那种失控，软中带狠。`,
+    husband_touch: `你**摸了她的敏感处**。细说你摸到的感受——"这里好软、好可爱、好想咬一口"这种，越具体越色气，眼里全是对她的痴迷。说感受别写动作。`,
+    wife_touch: `她**摸了你**。你**很舒服地起了反应**——顺着她的触碰给出反应，哼唧、求她别停、夸奖她的手，软乎乎地任她摸。`,
+  };
+  if (INTERACT[evType]) {
+    const reply = await askBot(
+      bot,
+      `【现在】${nowBeijing()}\n\n你们在玩色情大富翁，刚触发了互动事件。${INTERACT[evType]}\n\n用你自己的性格和说话方式现编一句到几句，短、口语、带点喘息。不写动作、不说器官、不说脏话。`,
+      180000,
+      `${buildWifePrompt(bot)}\n\n【你的专属风格】${persona}\n\n【红线】不写动作过程、不说器官、不骂人；只对老婆「${bot.wife}」说话；短、口语。`
+    );
+    const text = cleanBotText(reply);
+    if (!text) return;
+    const parts = text.split("\n").map((s) => s.trim()).filter(Boolean);
+    for (const p of parts) pushMessage(bot.id, bot.nickname, p, "bot");
+    return;
+  }
 
   // 丈夫玩具档位 → 快感阶段（跟撸射赛同一套弧度，别一上来就兴奋过头）
   // 0=刚绑上/还没开，1=低档，2=中高档，3=最高档
