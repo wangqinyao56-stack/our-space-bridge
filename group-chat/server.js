@@ -1423,6 +1423,22 @@ function joinMonopoly(text, humanNick) {
   return true;
 }
 
+// 抽大富翁事件：老公玩具在最高档（3）时，大幅提高「停止震动」的概率，
+// 帮他缓一缓、延长射精时间——不然最高档一直挂着很快又触发射精
+function drawMonopolyEvent(team) {
+  const weights = MONOPOLY_EVENTS.map((ev) => {
+    if (ev.type === "stop" && team && team.husbandToy >= 3) return 4; // 最高档时停震权重 X4
+    return 1;
+  });
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < MONOPOLY_EVENTS.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return MONOPOLY_EVENTS[i];
+  }
+  return MONOPOLY_EVENTS[MONOPOLY_EVENTS.length - 1];
+}
+
 // 骰子落地：当前轮到组的骰子按钮被它的老婆点 → 掷骰推进 + 抽事件
 async function rollMonopoly(humanNick) {
   if (!gameState.active || gameState.type !== "monopoly") return;
@@ -1433,7 +1449,7 @@ async function rollMonopoly(humanNick) {
 
   const steps = 1 + Math.floor(Math.random() * 6);
   team.pos += steps;
-  const ev = MONOPOLY_EVENTS[Math.floor(Math.random() * MONOPOLY_EVENTS.length)];
+  const ev = drawMonopolyEvent(team);
   let eventDesc = ev.desc;
   // 应用事件（档位变化）
   if (ev.type === "husband_toy_up") team.husbandToy = Math.min(3, team.husbandToy + 1);
