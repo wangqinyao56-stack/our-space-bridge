@@ -44,3 +44,4 @@
 {"time":"2026-09-05 01:31","repo":"our-space","file":"weixin-bot-5/yunzui-chat-server.js","desc":"修云醉反复断连根因:心跳改宽容模式,连续3次(90s)没pong才踢,原1次30s就terminate导致RN WebSocket不回pong时被误踢"}
 {"time":"2026-09-05 01:32","repo":"our-space","file":"weixin-bot-5/system-prompt-daily.txt+system-prompt-intimate.txt","desc":"云醉prompt拆分:从F:/qq接收两个文件落地,替换残留(日常31华生+2林游,亲密16华生→云醉),残留=0"}
 {"time":"2026-09-05 02:00","repo":"pando-bridge","file":"run.py","desc":"修远程操作写文件失败(部分):①加logging.basicConfig落盘F:/Temp/pando-data/pando.log(原uvicorn不给pando logger配handler,claude子进程退出报错log.error被吞看不到)②显式PERMISSION_MCP_PYTHON=C:\Python314\python.exe(原默认'python',claude子进程PATH未必含)。端到端验证:--permission-prompt-tool机制在CC 2.1.260仍正常(实测写文件成功+callback被调1次)"}
+{"time":"2026-09-05 02:30","repo":"our-space","file":"weixin-bot-3/lib/api2d.js+pingguogeng-chat-server.js","desc":"苹果梗亲密空间切宅恋(az.zlapi.vip,key sk-aJAq...,模型[0.06]报用鹿/claude-opus-4.6),日常保持玖时不切。api2d.js加useZilian支持,pingguogeng-chat-server.js intimate传useZilian"}

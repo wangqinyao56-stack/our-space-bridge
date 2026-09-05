@@ -11,21 +11,27 @@ import https from "node:https";
 const JIUSHI_KEY = "sk-c3uXFB3IXaT520ZbKw1rwY3AhneK5rSg5l41tNZxRJk1oUGP";
 const JIUSHI_HOST = "api.jiushi.xin";
 const JIUSHI_MODEL = "[企业按量]claude-opus-4-6";
+
+// 宅恋中转（az.zlapi.vip）——苹果梗亲密空间专用，日常仍走玖时
+const ZILIAN_HOST = "az.zlapi.vip";
+const ZILIAN_KEY = "sk-aJAqA4rlaRvjl9fcd2YDTTZelWsBuoqXIlpQiYNaKhz1xWod";
+const ZILIAN_MODEL = "[0.06]报用鹿/claude-opus-4.6";
+
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
 const DISABLE_PROXY = process.env.DISABLE_PROXY === "true";
 
 // ── Direct HTTPS (Docker/Sealos) ──
 
-function directRequest({ body, timeoutMs }) {
+function directRequest({ body, timeoutMs, host, key }) {
   return new Promise((resolve, reject) => {
     const req = https.request({
-      host: JIUSHI_HOST,
+      host,
       path: "/v1/chat/completions",
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${JIUSHI_KEY}`,
+        "Authorization": `Bearer ${key}`,
       },
       timeout: timeoutMs,
     }, (res) => {
@@ -56,12 +62,12 @@ function directRequest({ body, timeoutMs }) {
 
 // ── Proxy (local dev) ──
 
-function proxyRequest({ body, timeoutMs }) {
+function proxyRequest({ body, timeoutMs, host, key }) {
   return new Promise((resolve, reject) => {
     const req = http.request({
       host: PROXY_HOST, port: PROXY_PORT, method: "CONNECT",
-      path: `${JIUSHI_HOST}:443`,
-      headers: { Host: `${JIUSHI_HOST}:443` },
+      path: `${host}:443`,
+      headers: { Host: `${host}:443` },
     });
     req.on("connect", (res, socket) => {
       if (res.statusCode !== 200) {
@@ -70,11 +76,11 @@ function proxyRequest({ body, timeoutMs }) {
       }
       const r = https.request({
         method: "POST",
-        host: JIUSHI_HOST, port: 443,
+        host, port: 443,
         path: "/v1/chat/completions",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${JIUSHI_KEY}`,
+          "Authorization": `Bearer ${key}`,
         },
         socket,
         timeout: timeoutMs,
@@ -127,13 +133,19 @@ export async function askClaude(opts = {}) {
     systemPrompt,
     userContent,
     history = [],
-    model = JIUSHI_MODEL,
+    model,
     maxTokens = 800,
     temperature = 0.65,
     timeoutMs = 180000,
     imageBase64,
     imageMime,
+    useZilian = false,
   } = opts;
+
+  // 宅恋 vs 玖时：默认玖时；useZilian=true 时走宅恋 key/host/model
+  const host = useZilian ? ZILIAN_HOST : JIUSHI_HOST;
+  const key = useZilian ? ZILIAN_KEY : JIUSHI_KEY;
+  const resolvedModel = model || (useZilian ? ZILIAN_MODEL : JIUSHI_MODEL);
 
   if (!systemPrompt || !userContent) {
     throw new Error("systemPrompt and userContent are required");
@@ -159,7 +171,7 @@ export async function askClaude(opts = {}) {
   ];
 
   const body = JSON.stringify({
-    model,
+    model: resolvedModel,
     max_tokens: maxTokens,
     temperature,
     messages,
@@ -172,7 +184,7 @@ export async function askClaude(opts = {}) {
   let lastErr;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      return await requestFn({ body, timeoutMs });
+      return await requestFn({ body, timeoutMs, host, key });
     } catch (err) {
       lastErr = err;
       const isRateLimited = String(err?.message || "").includes("429");
