@@ -1381,7 +1381,7 @@ function buildEroticSystemPrompt(bot, stage, ctx = {}) {
     building: `你现在处于「反应越来越大」阶段（兴奋度 5-6/10）。被老婆越弄越上头，**兴奋在往上冲**——喘得厉害、话开始断、有点语无伦次，想装镇定装不住了。身体被完全挑起来，但**还没到顶，还能撑**。越兴奋越想老婆，嘴里开始含糊地叫她、说胡话。`,
     desperate: `你现在处于「兴奋得乱七八糟」阶段（兴奋度 7-8/10）。**快不行了、快到顶了**——喘得上气不接下气、语无伦次、乱七八糟地胡言乱语，脑子里全是老婆。你死死咬住最后一点自制力，**憋得发疯却还差临门一脚**，一急就胡乱求她、说胡话。**明明要崩了，但就是还差一下、不许自己先缴械**。`,
     finisher: `你已经输了——你是第一个射出来的。**认栽要认得起**：委屈巴巴、羞耻、气鼓鼓但软，被老婆当众笑话，被别的夏彦忍着笑看。你输了要**认罚**：① 当众说一句平时只会在床上说的话（你跟你老婆单独时才会说的那种，荤但不脏、不说器官）② 接受抽姿势惩罚——等主持人/老婆报一个数字，后台会抽今晚要用的体位，你乖乖认下。语气软、黏、被她吃得死死的，别嘴硬、别不服气。`,
-    aftermath: `比赛结束了。你按自己的性子收个尾——下面这几种随便选，**根据你自己的性格来**，别跟别家夏彦一个样：\n- 还馋的（比如馋嘴、瘾大的）：软乎乎求老婆"帮我把最后这点撸完"/"回家再继续嘛"\n- 嘴硬的：喘着气还要逞一句强，但语气已经软了，嘴上不认身体已经瘫了\n- 黏人的：手忙脚乱地往老婆身上靠，哼哼唧唧撒娇要抱、要她夸刚才自己撑得久\n- 小哭包：委屈巴巴地哼唧，要老婆哄、要她亲亲\n选一种最像你自己的，一句到两句收尾，别展开。`,
+    aftermath: `比赛结束了，**你是赢家**（第一个射的不是你，你撑住了），现在气喘吁吁、还有点意犹未尽。用你自己的性子跟老婆收个尾——下面是**参考方向，不是台词**，用你自己的话现编一句两句，别照搬：\n- 意犹未尽/还硬着：软乎乎求老婆"帮我把最后这点弄完嘛""回家再继续好不好"，语气馋又黏\n- 气喘吁吁、咬牙切齿：被折腾得够呛，心里暗暗记着"今晚非得从老婆身上讨回来不可"，嘴上可以不服气、可以放狠话但语气是软的\n- 手忙脚乱：自己乱成一团，词不达意地求老婆"先、先松开……回家再弄"\n- 嘴硬逞强：被弄成这样还嘴硬不认输，说"我、我这是让着你"，但喘得话都说不利索\n- 黏人撒娇：往老婆身上靠、哼哼唧唧要抱、要她夸自己撑得久\n- 小哭包：委屈巴巴哼唧，要老婆哄、要亲亲\n选最像你性格的一种方向，说一句到两句，别太长。`,
   }[stage] || "";
 
   const persona = EROTIC_PERSONA[bot.id] || "";
@@ -1461,29 +1461,20 @@ function handleErotic(text, humanNick) {
   return true;
 }
 
-// 输家报数字（或任何人报）抽今晚的惩罚姿势
-function maybeRollPose(text) {
-  if (!gameState.eroticLoserId) return false;
-  // 放宽匹配：支持纯数字「7」、也支持带话的「我选7」「就7吧」「第7个」「7号」这类
-  const m = text.match(/^\s*(\d{1,2})\s*$/);
-  const loose = !m
-    ? (text.match(/(?:选|要|就|抽|第|号码|数字|号|个)\s*(\d{1,2})/) || text.match(/(\d{1,2})\s*号/))
-    : null;
-  const nStr = m ? m[1] : (loose ? loose[1] : null);
-  if (!nStr) return false;
-  const n = parseInt(nStr, 10);
+// 抽姿势 + 收场（报数字或丢骰子共用）
+function resolveEroticPose(n) {
   const pose = EROTIC_POSE_POOL[(n - 1 + EROTIC_POSE_POOL.length) % EROTIC_POSE_POOL.length];
   const loser = BOTS.find((b) => b.id === gameState.eroticLoserId);
   pushSystem(`🎯 数字 ${n} → 今晚姿势「${pose}」。${loser ? loser.nickname : "输家"} 今晚乖乖照办～`);
   gameState.eroticLoserId = null;
-  // 游戏收场：把还在赛的夏彦都转到「比赛结束收尾」，让他们按性格各自说一句收尾（求撸完/求回家继续/撒娇…），
-  // 别让他们还觉得"比赛进行中"继续僵持下去（这是之前"比完还觉得在比赛中"的病根——阶段没被截断）
+  // 游戏收场：第一个射的是输家，其他人默认赢。把还在赛的夏彦都转到「比赛结束·你赢了」收尾，
+  // 按各自性格不同反应——别让他们还觉得"比赛进行中"继续僵持下去（之前"比完还觉得在比赛中"的病根就是阶段没截断）
   const stillIn = eroticEntrantIds();
   for (const id of stillIn) {
     gameState.eroticBots[id].stage = "aftermath";
     gameState.eroticBots[id].heat = 0;
   }
-  pushSystem(`（比赛结束，各家夏彦自己收个尾——）`);
+  pushSystem(`（比赛结束！「${loser ? loser.nickname : "先射的那个"}」是输家，其他人赢啦——）`);
   (async () => {
     for (const id of stillIn) {
       await botPlayErotic(id);
@@ -1494,6 +1485,27 @@ function maybeRollPose(text) {
       gameState.eroticBots = {};
     }
   })().catch(() => {});
+}
+
+// 输家报数字（或任何人报）抽今晚的惩罚姿势
+function maybeRollPose(text) {
+  if (!gameState.eroticLoserId) return false;
+  // 放宽匹配：支持纯数字「7」、也支持带话的「我选7」「就7吧」「第7个」「7号」这类
+  const m = text.match(/^\s*(\d{1,2})\s*$/);
+  const loose = !m
+    ? (text.match(/(?:选|要|就|抽|第|号码|数字|号|个)\s*(\d{1,2})/) || text.match(/(\d{1,2})\s*号/))
+    : null;
+  const nStr = m ? m[1] : (loose ? loose[1] : null);
+  if (!nStr) return false;
+  resolveEroticPose(parseInt(nStr, 10));
+  return true;
+}
+
+// 丢骰子直接随机抽惩罚姿势（不报数字也行）
+function rollEroticDice() {
+  if (!gameState.eroticLoserId) return false;
+  const n = Math.floor(Math.random() * EROTIC_POSE_POOL.length) + 1;
+  resolveEroticPose(n);
   return true;
 }
 
@@ -1667,7 +1679,7 @@ async function botPlayMonopolyReaction(botId, evType) {
 
   // 事件追加的情绪（叠加在档位之上）
   const isStop = evType === "stop";
-  const evTail = evType === "win" ? "你赢了！兴奋又得意，可以跟老婆提今晚玩法。"
+  const evTail = evType === "win" ? "你到终点赢了！兴奋、得意，还带着点被跳蛋折腾得气喘吁吁的意犹未尽——脑子里开始盘算今晚要怎么从老婆身上讨回来（馋的想接着亲热、嘴硬的咬牙想扳回一城、黏人的想回家缠着她……按你自己的性子，用你自己的话现编，别照搬），顺便可以跟她提今晚想玩的。"
     : isStop ? "" // 停震走单独的「寸止难耐」性格反应（edgeFlavor），不在这里写
     : evType === "husband_toy_max" ? "你的跳蛋被直接拉到最高档，冲击来得太猛，你差点没忍住。"
     : evType === "wife_toy_max" ? "老婆的跳蛋被拉到最高档，你看着她被震得受不住的样子，兴奋又心疼，一边忍自己一边想亲她。"
@@ -2158,7 +2170,12 @@ wss.on("connection", (ws) => {
       if (msg.type === "roll_dice") {
         if (!ws.authenticated) { ws.send(JSON.stringify({ type: "login_error", message: "请先登录" })); return; }
         const humanNick = ws.nickname || "我";
-        rollMonopoly(humanNick).catch(() => {});
+        // 撸射赛输了等着抽惩罚 → 丢骰子直接随机抽姿势；否则走大富翁
+        if (gameState.type === "erotic" && gameState.eroticLoserId) {
+          rollEroticDice();
+        } else {
+          rollMonopoly(humanNick).catch(() => {});
+        }
         return;
       }
 
