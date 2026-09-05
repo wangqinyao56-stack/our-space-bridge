@@ -69,3 +69,4 @@
 {"time":"2026-09-05 21:26","repo":"our-space","file":"group-chat/server.js","desc":"撸射赛五家夏彦各自色情风格化(EROTIC_PERSONA按bot.id注入)：猎鹿人对抗路嘴硬心软/渡鸦馋嘴求奖励/心月对老婆零抗性/橙子被榨哭汪汪叫/栖云边喘边求持久强"}
 {"time":"2026-09-05 21:26","repo":"our-space","file":"system-prompt-intimate.md","desc":"亲密空间prompt精简：姿势·场景·温存4次追加合并1章节(姿势29/场景18/温存20条全保留)"}
 {"time":"2026-09-05 21:42","repo":"our-space","file":"lib/ai.js,5家bot/emotional-memory.js","desc":"全链路情感提取模型gpt-5.4失效(玖时已无渠道)报model_not_found:主后端askDeepSeek+5家bot EXTRACT_MODEL全改[企业按量]claude-opus-4-6(林游改熊猫gemini)"}
+{"time":"2026-09-05 22:08","repo":"our-space","file":"group-chat/server.js,group-chat/public/index.html","desc":"新增色情大富翁:老婆报名成组绑跳蛋,各组老婆点骰子按钮掷1-6前进,随机事件(开老公/老婆玩具档位+1/拉最高档/停震),夏彦催掷骰+安慰+忍耐语气词+对老婆被震着迷,仅最高档可能射→归零重来,先到30格赢→老公提今晚玩法;前端发送键旁加🎲按钮"}

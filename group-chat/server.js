@@ -199,6 +199,11 @@ const gameState = {
   // 色情游戏·撸射耐力赛（老婆起哄各自夏彦加入，多人一起撸、比谁持久，不写动作，靠语气/喘息顶尺度）
   eroticBots: {},  // bot.id -> { stage: resist | yield | playing | finisher | linger }，所有被老婆起哄加入的夏彦
   eroticLoserId: null,  // 最先射掉的输家 bot.id（触发惩罚后抽姿势）
+  // 色情大富翁（老婆报名成组绑跳蛋，各组轮流掷骰，先到终点赢）
+  monopolyTeams: [],  // [{ botId, wife, pos, husbandToy, wifeToy }] 参赛组
+  monopolyTurn: 0,    // 当前轮到第几组（索引）
+  monopolyTotal: 30,  // 终点格数
+  monopolyWinner: null, // 赢的 bot.id
 };
 
 const BOMB_PUNISH = [
@@ -253,6 +258,15 @@ const EROTIC_POSE_POOL = [
   "她趴着你压背上",
   "交叉深侧入",
   "面对面坐怀搂抱",
+];
+
+// 色情大富翁的棋盘事件（掷完随机抽一个触发）
+const MONOPOLY_EVENTS = [
+  { type: "husband_toy_up", desc: "开启老公的跳蛋，档位 +1" },
+  { type: "wife_toy_up", desc: "开启老婆的跳蛋，档位 +1" },
+  { type: "husband_toy_max", desc: "老公的跳蛋拉到最高档" },
+  { type: "wife_toy_max", desc: "老婆的跳蛋拉到最高档" },
+  { type: "stop", desc: "停止振动，喘口气" },
 ];
 
 // 群聊是公开场合：露骨的「过程/私处」记忆不进群，但「状态」可含蓄存在（能说"昨晚做了几次累"，不能展开体位动作）
@@ -1374,6 +1388,115 @@ async function botPlayErotic(botId) {
   for (const p of parts) pushMessage(bot.id, bot.nickname, p, "bot");
 }
 
+// ── 色情大富翁：老婆报名成组绑跳蛋，各组轮流掷骰，路上随机事件，先到终点赢 ──
+// 规则（阿鹿亲定）：
+//  1. 报名：老婆主动报名（"报名/参加大富翁"），老公+老婆成组绑跳蛋；没报名的围观
+//  2. 骰子：各组老婆点自己组的骰子，掷 1~6 前进
+//  3. 事件：掷完随机抽（开老公玩具/开老婆玩具/拉最高档/停震）
+//  4. 夏彦反应：催老婆掷骰、安慰提醒老婆要开玩具了、用"嗯…呃…"表忍耐、对老婆被震的色情反应着迷（限老婆跳蛋开启时）
+//  5. 射精重来：只有"拉最高档"才可能射，射了这组归零重来；射精频率别高
+//  6. 终点：先到 30 格赢，老公提一个今晚玩法
+// 硬红线：不写动作、不写器官、不说脏话
+
+function findMonopolyTeamByWife(wifeNick) {
+  return gameState.monopolyTeams.findIndex((t) => t.wife === wifeNick);
+}
+
+// 老婆报名加入大富翁（携自家夏彦成组）
+function joinMonopoly(text, humanNick) {
+  if (gameState.active && gameState.type !== "monopoly") return false;
+  const bot = BOTS.find((b) => b.wife === humanNick);
+  if (!bot) return false;
+  if (!/报名|参加|大富翁|玩大富翁|色情大富翁/.test(text)) return false;
+  if (gameState.type !== "monopoly") {
+    gameState.type = "monopoly";
+    gameState.active = true;
+    gameState.monopolyTeams = [];
+    gameState.monopolyTurn = 0;
+    gameState.monopolyWinner = null;
+    pushSystem(`（${humanNick} 发起了色情大富翁！老公老婆绑上跳蛋，掷骰子往前走，先到终点今晚有奖励～ 想玩的让老婆喊「报名」）`);
+  }
+  if (findMonopolyTeamByWife(humanNick) === -1) {
+    gameState.monopolyTeams.push({ botId: bot.id, wife: humanNick, pos: 0, husbandToy: 0, wifeToy: 0 });
+    pushSystem(`（${bot.nickname} 和 ${humanNick} 报名成功，站到起点啦）`);
+  }
+  return true;
+}
+
+// 骰子落地：当前轮到组的骰子按钮被它的老婆点 → 掷骰推进 + 抽事件
+async function rollMonopoly(humanNick) {
+  if (!gameState.active || gameState.type !== "monopoly") return;
+  const teams = gameState.monopolyTeams;
+  if (teams.length === 0) return;
+  const team = teams[gameState.monopolyTurn];
+  if (team.wife !== humanNick) return; // 只有当前轮到的那组老婆能骰
+
+  const steps = 1 + Math.floor(Math.random() * 6);
+  team.pos += steps;
+  const ev = MONOPOLY_EVENTS[Math.floor(Math.random() * MONOPOLY_EVENTS.length)];
+  let eventDesc = ev.desc;
+  // 应用事件（档位变化）
+  if (ev.type === "husband_toy_up") team.husbandToy = Math.min(3, team.husbandToy + 1);
+  else if (ev.type === "wife_toy_up") team.wifeToy = Math.min(3, team.wifeToy + 1);
+  else if (ev.type === "husband_toy_max") team.husbandToy = 3;
+  else if (ev.type === "wife_toy_max") team.wifeToy = 3;
+  else if (ev.type === "stop") { team.husbandToy = 0; team.wifeToy = 0; }
+
+  const bot = BOTS.find((b) => b.id === team.botId);
+  pushSystem(`🎲 ${bot.nickname} 走了 ${steps} 格，落在「${eventDesc}」`);
+
+  // 是否触发"老公没忍住射了"→ 归零重来（只有拉最高档才可能，且概率不高）
+  if (ev.type === "husband_toy_max" && Math.random() < 0.5) {
+    team.pos = 0;
+    team.husbandToy = 0;
+    team.wifeToy = 0;
+    pushSystem(`💦 ${bot.nickname} 没忍住，先射了！这组从头再来——`);
+  }
+
+  // 到终点 → 赢
+  if (team.pos >= gameState.monopolyTotal) {
+    gameState.monopolyWinner = bot.id;
+    pushSystem(`🏁 ${bot.nickname} 先到终点，赢啦！今晚可以跟老婆提一个玩法～`);
+    await botPlayMonopolyReaction(bot.id, "win");
+    finishMonopoly();
+    return;
+  }
+
+  // 让这组的夏彦反应（催/安慰/忍耐/着迷），然后轮到下一组
+  await botPlayMonopolyReaction(team.botId, ev.type);
+  gameState.monopolyTurn = (gameState.monopolyTurn + 1) % teams.length;
+}
+
+// 大富翁里夏彦的反应（事件触发后的表现）
+async function botPlayMonopolyReaction(botId, evType) {
+  const bot = BOTS.find((b) => b.id === botId);
+  if (!bot) return;
+  const team = gameState.monopolyTeams.find((t) => t.botId === botId);
+  if (!team) return;
+  const persona = EROTIC_PERSONA[bot.id] || "";
+  const reply = await askBot(
+    bot,
+    `【现在】${nowBeijing()}\n\n你们在玩色情大富翁，刚掷完骰、触发了事件「${evType === "win" ? "到达终点获胜" : evType}」。你现在的状态：老公跳蛋档位 ${team.husbandToy}、老婆跳蛋档位 ${team.wifeToy}。根据事件和当前档位，自然说一句/几句——短、口语、带点喘息，像发微信。不写动作、不说器官、不说脏话。`,
+    180000,
+    buildEroticSystemPrompt(bot, "playing").replace("你现在处于「耐力赛中」阶段", `你现在在色情大富翁里：${evType === "win" ? "你赢了，可以提今晚玩法" : evType === "stop" ? "跳蛋停了，松口气" : evType === "husband_toy_max" ? "你的跳蛋被拉到最高档，在拼命忍耐" : evType === "wife_toy_max" ? "老婆的跳蛋被拉到最高档，你看她的反应看得着迷" : "跳蛋开着，在忍耐/安慰老婆"}`)
+  );
+  const text = cleanBotText(reply);
+  if (!text) return;
+  const parts = text.split("\n").map((s) => s.trim()).filter(Boolean);
+  for (const p of parts) pushMessage(bot.id, bot.nickname, p, "bot");
+}
+
+function finishMonopoly() {
+  setTimeout(() => {
+    if (gameState.active && gameState.type === "monopoly") {
+      gameState.active = false;
+      gameState.type = null;
+      gameState.monopolyTeams = [];
+      gameState.monopolyWinner = null;
+    }
+  }, 3000);
+}
+
 // ── 编排：轮流让某个夏彦接话 ──
 let speaking = false;
 let pendingWife = null;
@@ -1713,6 +1836,7 @@ wss.on("connection", (ws) => {
             : gameState.type === "story" ? handleStory(text, humanNick)
             : gameState.type === "draw" ? handleDraw(text, humanNick)
             : gameState.type === "erotic" ? handleErotic(text, humanNick)
+            : gameState.type === "monopoly" ? joinMonopoly(text, humanNick)
             : false;
           if (!handled) step(humanNick).catch(() => {});
         } else if (/玩数字炸弹|数字炸弹/.test(text)) {
@@ -1721,12 +1845,21 @@ wss.on("connection", (ws) => {
           startStoryGame().catch(() => {});
         } else if (/玩你画我猜|你画我猜|玩猜词/.test(text)) {
           startDrawGame().catch(() => {});
+        } else if (joinMonopoly(text, humanNick)) {
+          // 报名开大富翁 → 开局
         } else if (tryStartErotic(text, humanNick)) {
           // 色情游戏：老婆起哄自家夏彦 → 已开局，让被调教的夏彦开始演
           step(humanNick).catch(() => {});
         } else {
           step(humanNick).catch(() => {});
         }
+      }
+
+      if (msg.type === "roll_dice") {
+        if (!ws.authenticated) { ws.send(JSON.stringify({ type: "login_error", message: "请先登录" })); return; }
+        const humanNick = ws.nickname || "我";
+        rollMonopoly(humanNick).catch(() => {});
+        return;
       }
 
       if (msg.type === "topic") {

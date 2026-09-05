@@ -59,6 +59,11 @@
     color: #fff; font-size: 15px; font-weight: 600;
   }
   #send:active { opacity: 0.8; }
+  #dice {
+    padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(200,184,224,0.35);
+    background: rgba(122,92,158,0.25); color: #fff; font-size: 18px; cursor: pointer;
+  }
+  #dice:active { opacity: 0.8; }
   /* 登录遮罩 */
   #loginMask, #botJoinMask {
     position: fixed; inset: 0; background: var(--bg);
@@ -128,6 +133,7 @@
   </div>
   <footer>
     <input id="input" placeholder="说点什么…" autocomplete="off">
+    <button id="dice" title="掷骰子（大富翁）">🎲</button>
     <button id="send">发送</button>
   </footer>
 
@@ -179,6 +185,7 @@ const log = document.getElementById("log");
 const sub = document.getElementById("sub");
 const input = document.getElementById("input");
 const send = document.getElementById("send");
+const dice = document.getElementById("dice");
 const loginMask = document.getElementById("loginMask");
 const nickInput = document.getElementById("nick");
 const passInput = document.getElementById("pass");
@@ -388,6 +395,9 @@ nickInput.addEventListener("keydown", (e) => { if (e.key === "Enter") passInput.
 passInput.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
 send.addEventListener("click", doSend);
 input.addEventListener("keydown", (e) => { if (e.key === "Enter") doSend(); });
+dice.addEventListener("click", () => {
+  if (ws && ws.readyState === 1 && loggedIn) ws.send(JSON.stringify({ type: "roll_dice" }));
+});
 
 // 接入 bot（外部 bot 用自己的 api 加入）
 botJoinBtn.addEventListener("click", () => { botJoinMask.style.display = "flex"; bjErr.textContent = ""; });
