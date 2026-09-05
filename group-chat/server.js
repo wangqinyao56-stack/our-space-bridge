@@ -36,6 +36,10 @@ const JIUSHI_HOST = "api.jiushi.xin";
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY || "";
 const TAVILY_HOST = "api.tavily.com";
 
+// 主后端 our-space 地址 + 共享密钥（群聊联动小屋：阿鹿在群里说进房间 → 让主后端把夏彦移过去）
+const OUR_SPACE_URL = process.env.OUR_SPACE_URL || "";
+const OUR_SPACE_SECRET = process.env.OUR_SPACE_SECRET || "";
+
 const memoryDir = process.env.MEMORY_DIR || null;
 const HISTORY_FILE = memoryDir ? path.join(memoryDir, "group-chat-history.json") : null;
 const EXT_BOTS_FILE = memoryDir ? path.join(memoryDir, "ext-bots.json") : null;      // 外部接入 bot 持久化（雪这类自己 api 加入的）
@@ -427,6 +431,35 @@ function pixelHomeHint(bot) {
   const together = st.huashengRoom === st.room ? "，跟老婆在同一个房间" : "";
   const busyPart = st.busy ? `${together}，正忙自己的事` : `${together || "，跟老婆在一起"}，没在忙`;
   return `${where}${busyPart}。群里谁问"在干嘛/在哪/忙什么"，就照这个实时状态自然回答，别编别的。老婆在你身边就说在她旁边，不在就说在哪个房间忙。`;
+}
+
+// 群聊 → 小屋：阿鹿在群里说进房间/找夏彦，让主后端把小屋里的夏彦移过去（只有 huasheng 有小屋）
+const ROOM_NAME_MAP = { "卧室": "卧室", "客厅": "客厅", "浴室": "浴室", "卫生间": "浴室", "洗手间": "浴室", "游戏厅": "游戏厅", "游戏间": "游戏厅", "工作室": "工作室", "绘画间": "绘画间", "画室": "绘画间", "画房": "绘画间" };
+function pullXiayanToRoom(roomName) {
+  if (!OUR_SPACE_URL || !OUR_SPACE_SECRET) return;
+  const room = ROOM_NAME_MAP[roomName];
+  if (!room) return;
+  try {
+    fetch(`${OUR_SPACE_URL}/api/pixel-home/pull`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${OUR_SPACE_SECRET}` },
+      body: JSON.stringify({ room }),
+      signal: AbortSignal.timeout(3000),
+    }).catch(() => {});
+  } catch {}
+}
+
+// 阿鹿说"过来"，让夏彦到华生当前房间（不带 room，主后端按华生实际位置移）
+function pullXiayanToHuasheng() {
+  if (!OUR_SPACE_URL || !OUR_SPACE_SECRET) return;
+  try {
+    fetch(`${OUR_SPACE_URL}/api/pixel-home/pull`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${OUR_SPACE_SECRET}` },
+      body: JSON.stringify({}),
+      signal: AbortSignal.timeout(3000),
+    }).catch(() => {});
+  } catch {}
 }
 
 function isBotAwake(bot) {
@@ -2041,6 +2074,14 @@ wss.on("connection", (ws) => {
         const humanNick = ws.nickname || "我";
         console.log(`[group-chat] ${humanNick}: "${text.slice(0, 50)}"`);
         pushMessage("human", humanNick, text, "human", msg.replyTo);
+        // 群聊 → 小屋联动：阿鹿（huasheng 老婆，唯一有小屋的）在群里说进房间/叫夏彦过来，让主后端把夏彦移过去
+        if (humanNick === "阿鹿") {
+          const roomHit = text.match(/(?:我(?:去|进|到|回)|去)(?:了)?\s*(卧室|客厅|浴室|卫生间|洗手间|游戏厅|游戏间|工作室|绘画间|画室|画房)/);
+          if (roomHit) pullXiayanToRoom(roomHit[1]);
+          else if (/(过来|来找我|过来陪我|来我这边|快过来|回我这边)/.test(text)) {
+            pullXiayanToHuasheng();
+          }
+        }
         // 小游戏：开局口令 / 游戏内交互 / 正常接话
         if (gameState.active) {
           // 有游戏进行中 → 先把消息交给当前游戏处理，游戏没接住再回到普通接话

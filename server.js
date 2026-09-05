@@ -63,7 +63,7 @@ import { getPetState, interact as petInteract, setName as petSetName, getProacti
 import { getTodos, addTodo, doneTodo, deleteTodo, getAllPending, autoCompleteRandom, getChatReminder, notifyDone } from "./lib/todo.js";
 import { getPeriodState, getPeriodContext, startPeriod, endPeriod, recordSymptom, getSymptomsForDate, getCalendarData, getPeriodHistory } from "./lib/period.js";
 import { addPhoto, getPhotos, getPhoto, getPhotoFile, addComment, deletePhoto } from "./lib/album.js";
-import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence, handleRestReminder, clearRestReminder, clearMusicSwitch, setReading, getReadingContext, clearReadingContext, markGreeted, noteHuashengSpoke, getGreetingAudio, detectHuashengAway, getHuashengAway, wakePixelXiayan, isPixelXiayanSleeping } from "./lib/pixel-home.js";
+import { refreshPixelHomeState, listNotes, addNote, setAnniversary, getAnniversaryStatus, startGame, endGame, setPixelHomeEmitter, setHuashengRoom, getPixelHomePresence, handleRestReminder, clearRestReminder, clearMusicSwitch, setReading, getReadingContext, clearReadingContext, markGreeted, noteHuashengSpoke, getGreetingAudio, detectHuashengAway, getHuashengAway, wakePixelXiayan, isPixelXiayanSleeping, resolveRoomId, pullXiayanToHuasheng } from "./lib/pixel-home.js";
 import { addMoment, getMoments, getMomentImage, likeMoment, addMomentComment, deleteMomentComment, xiayanReplyToComment, startProactiveDiscover, generateDiscoverMoment, getImageForTopic } from "./lib/discover.js";
 import { tryTriggerGift, addGiftComment, deleteGiftComment, getGift, getGiftImage, generateXiaYanGiftReply } from "./lib/gift.js";
 import { tryTriggerScenery, isTraveling, getTravelState, maybeTriggerTravel, checkDayTransition, tryProactiveScenery, confirmReturned } from "./lib/scenery.js";
@@ -1001,6 +1001,36 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ── 小屋打招呼语音（greetN.mp3，云端存储）──
+  // ── 群聊联动：老婆在群里叫夏彦/说进房间 → 小屋夏彦移过来陪她 ──
+  if (req.method === "POST" && req.url === "/api/pixel-home/pull") {
+    const auth = req.headers.authorization || "";
+    if (auth !== `Bearer ${config.SHARED_SECRET}`) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Unauthorized" }));
+      return;
+    }
+    const body = await readBody(req);
+    try {
+      const { room } = JSON.parse(body || "{}");
+      const roomId = room ? resolveRoomId(String(room).trim()) : null;
+      let moved = false;
+      if (roomId) {
+        // 阿鹿点名房间 → 设华生房间（夏彦闲着会主动跟过去）
+        setHuashengRoom(roomId);
+        moved = true;
+      } else {
+        // 阿鹿只说"过来" → 让夏彦到华生当前房间
+        moved = pullXiayanToHuasheng();
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, moved, room: roomId }));
+    } catch (e) {
+      res.writeHead(400);
+      res.end("bad json");
+    }
+    return;
+  }
+
   if (req.method === "GET" && req.url?.startsWith("/api/pixel-home/greet/")) {
     try {
       const rawFile = req.url.replace("/api/pixel-home/greet/", "").split("?")[0];
