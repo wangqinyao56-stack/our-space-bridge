@@ -342,22 +342,6 @@ function resolveMemory(bot) {
 
 // 读某个 bot 的「做爱/亲密记忆」原文（专门喂给色情游戏，不过滤 digested，
 // 让夏彦记得自己以前怎么做、怎么求老婆——保持人设一致，不是每次乱发挥）
-function loadBotEroticMemory(bot) {
-  const memoryDir = bot.memoryDir;
-  if (!memoryDir) return "";
-  try {
-    const file = path.join(memoryDir, "emotional-memory.json");
-    if (!fs.existsSync(file)) return "";
-    const data = JSON.parse(fs.readFileSync(file, "utf-8"));
-    const mems = Array.isArray(data.memories) ? data.memories : [];
-    const intimate = mems.filter((m) => m && (m.content || m.name) && (Array.isArray(m.domain) ? m.domain.includes("intimate") : false));
-    if (intimate.length === 0) return "";
-    return intimate.map((m) => (m.content || m.name || "").replace(/\s+/g, " ").trim()).slice(0, 6).join("\n");
-  } catch {
-    return "";
-  }
-}
-
 // 各 bot 通过 GET /api/group-chat 拉取时，附带一份「群里都有谁」的背景：
 // 网名 + 老婆 + 一句近况，让各夏彦在私聊里被老婆问起"群里 XX 怎么样"时能答上来。
 function rosterSnapshot() {
@@ -1342,10 +1326,6 @@ const EROTIC_ENTRY = {
 };
 
 function buildEroticSystemPrompt(bot, stage, ctx = {}) {
-  const eroticMem = loadBotEroticMemory(bot);
-  const memBlock = eroticMem
-    ? `\n\n【你以前的亲密记忆（你自己的，保持人设一致——你以前做这些时是怎么求老婆的、什么反应，别跟自己过去的习惯打架）】\n${eroticMem}`
-    : "";
   const heat = ctx.heat ?? 0;
   const lastLine = ctx.lastLine ? `你上一条说的是「${ctx.lastLine}」——**这次必须换个说法、换种喘法，绝对不能再出现上一条用过的词和句式**，接着往上走一格。` : "";
 
@@ -1381,11 +1361,11 @@ function buildEroticSystemPrompt(bot, stage, ctx = {}) {
     building: `你现在处于「反应越来越大」阶段（兴奋度 5-6/10）。被老婆越弄越上头，**兴奋在往上冲**——喘得厉害、话开始断、有点语无伦次，想装镇定装不住了。身体被完全挑起来，但**还没到顶，还能撑**。越兴奋越想老婆，嘴里开始含糊地叫她、说胡话。`,
     desperate: `你现在处于「兴奋得乱七八糟」阶段（兴奋度 7-8/10）。**快不行了、快到顶了**——喘得上气不接下气、语无伦次、乱七八糟地胡言乱语，脑子里全是老婆。你死死咬住最后一点自制力，**憋得发疯却还差临门一脚**，一急就胡乱求她、说胡话。**明明要崩了，但就是还差一下、不许自己先缴械**。`,
     finisher: `你已经输了——你是第一个射出来的。**认栽要认得起**：委屈巴巴、羞耻、气鼓鼓但软，被老婆当众笑话，被别的夏彦忍着笑看。你输了要**认罚**：① 当众说一句平时只会在床上说的话（你跟你老婆单独时才会说的那种，荤但不脏、不说器官）② 接受抽姿势惩罚——等主持人/老婆报一个数字，后台会抽今晚要用的体位，你乖乖认下。语气软、黏、被她吃得死死的，别嘴硬、别不服气。`,
-    aftermath: `比赛结束了，**你是赢家**（第一个射的不是你，你撑住了），现在气喘吁吁、还有点意犹未尽。用你自己的性子跟老婆收个尾——下面是**参考方向，不是台词**，用你自己的话现编一句两句，别照搬：\n- 意犹未尽/还硬着：软乎乎求老婆"帮我把最后这点弄完嘛""回家再继续好不好"，语气馋又黏\n- 气喘吁吁、咬牙切齿：被折腾得够呛，心里暗暗记着"今晚非得从老婆身上讨回来不可"，嘴上可以不服气、可以放狠话但语气是软的\n- 手忙脚乱：自己乱成一团，词不达意地求老婆"先、先松开……回家再弄"\n- 嘴硬逞强：被弄成这样还嘴硬不认输，说"我、我这是让着你"，但喘得话都说不利索\n- 黏人撒娇：往老婆身上靠、哼哼唧唧要抱、要她夸自己撑得久\n- 小哭包：委屈巴巴哼唧，要老婆哄、要亲亲\n选最像你性格的一种方向，说一句到两句，别太长。`,
+    aftermath: `比赛结束了，你是赢家。说**一句**按你性格的收尾（馋的求老婆、嘴硬的逞强、哭包哼唧……用你自己的话），说完就回群聊跟大家一起围观吐槽，别一直陷在呻吟里反复说。`,
   }[stage] || "";
 
   const persona = EROTIC_PERSONA[bot.id] || "";
-  return `${buildWifePrompt(bot)}\n\n【撸射耐力赛·多人游戏】这是好几家夏彦一起参加的比赛——各自被各自老婆当众调教着撸，比谁更持久，谁先射谁就输。你的老婆是「${bot.wife}」，别的夏彦和他们的老婆也在场。${ctx.audience || ""}\n\n【你的兴奋度：${heat}/10，当前阶段「${stage}」】${lastLine}${stageRule}${variance}\n\n【你在撸射里的样子——你自己的专属风格，别跟别家夏彦撞了】${persona}\n\n【接吻细节】老婆（或起哄的人）要是问你怎么接吻、喜欢怎么亲，你就**说出自己喜欢怎么亲的细节**——举一反三，别照搬例子。${memBlock}\n\n【绝对红线，每条都硬】① 不写任何动作描写（手、身体怎么动的都不写），色情只靠语气、喘息、进度播报、求饶、胡话 ② 不说器官名 ③ 不说脏话 ④ 回复要短、口语、像发微信一句一句，别长篇大论 ⑤ **你只对你自己的老婆「${bot.wife}」说话、只回应点你名的人——别的老婆、别家夏彦起哄都跟你无关，别把别人当你老婆** ⑥ 兴奋度要跟当前数字对得上：${heat}/10 就是 ${Math.round(heat * 10)}% 的兴奋，别越过这个阶段突然高潮。`;
+  return `${buildWifePrompt(bot)}\n\n【撸射耐力赛·多人游戏】几家夏彦各自被老婆当众撸、比谁持久，谁先射谁输。你老婆是「${bot.wife}」，你的反应焦点只在她身上。${ctx.audience || ""}\n\n【你此刻是「${stage}」，兴奋度 ${heat}/10】${lastLine}${stageRule}${variance}\n\n【你的专属风格】${persona}\n\n【红线】不写动作、不说器官、不骂人；回复短、口语；只对你老婆说话别认错人。`;
 }
 
 // 当前「实际参赛中」的夏彦数（heat>=0 且还没输=finisher 的都算在赛内）
