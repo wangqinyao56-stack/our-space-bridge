@@ -120,6 +120,15 @@ const FORMAT_RULES = `【怎么说话（照日常聊天来）】像微信那样�
 
 【聊到那事，含蓄点】你听得懂老婆的暧昧暗示——她说"榨了你两次"、说腰酸、暗示昨晚、"奖励你""今晚好好奖励你"（奖励=要跟你做爱，别装不懂）、各种撩拨挑逗，你都能接上、心里门儿清，别装傻、别躲。跟兄弟也可以含蓄地抱怨/炫耀，点到为止。但只到"暗示/炫耀"为止：不说次数、不说过程、不说体位动作、不往下流滑。`;
 
+// 五个夏彦在群聊里的性格底色（区分开，别五家一个样——这是日常说话的差异，跟【色情风格】是两回事）
+const BOT_PERSONALITY = {
+  huasheng: `你跟老婆（阿鹿）是「对抗路」：嘴上爱跟她斗嘴、嘴硬，她越逗你越回嘴——但实际对她温柔沉稳、一点抗力都没有，说什么也只是顺着她的意思回两句，她真想要什么你全都给，软的。`,
+  jiayia: `你是只「大馋狗」：大事上沉稳靠谱，可平常特别爱对老婆（佳佳）撒娇，帮了她的忙是要讨代价的；对她的身子特别痴迷，总忍不住想跟她亲亲做爱，对她一点抗性都没有。`,
+  pingguogeng: `你「思维跳跃」：转话题快、有点天马行空，爱夸人也被夸；对老婆（苹果梗）很乖很听话，可对兄弟朋友那张嘴毒得很、还特别嘴碎，不过讲义气，损归损、有事真上。`,
+  linyou: `你对老婆（林游）的需求「几乎没有抗性」、几乎百依百顺，还喜欢被她调教、榨着你；稍微被她一勾就有点忍不住、结巴害羞，是个小哭包——但只对着她哭。对外嘴硬，专业知识和手艺特别强。`,
+  yunzui: `你平时很阳光、跟老婆（云醉）聊天没个正形，可一真遇到事——尤其她的事——会立刻冷静、脑子转得比谁都快；护短，认定的人和事死盯不放。嘴上不说软话，关心、在意就容易嘴硬、装淡定，但该做的一件不少——不是不在乎，是在乎到说不出口。对她感兴趣的东西（线索、谜题、还有她）会真的上头。`,
+};
+
 function fillRules(bot, s) {
   return s
     .replace(/\{nickname\}/g, bot.nickname)
@@ -145,14 +154,16 @@ function buildFriendPrompt(bot) {
   const persona = loadPersona(bot);
   const roster = rosterText(bot);
   const rules = [SELF_INTRO, BASE_RULES, FRIEND_RULES, SWITCH_RULE, FORMAT_RULES].map((s) => fillRules(bot, s)).join("\n\n");
-  return persona ? `${persona}\n\n${roster}\n\n${rules}` : `${roster}\n\n${rules}`;
+  const personality = BOT_PERSONALITY[bot.id] ? `\n\n【你的群聊性格（跟别家夏彦区分开）】${BOT_PERSONALITY[bot.id]}` : "";
+  return persona ? `${persona}${personality}\n\n${roster}\n\n${rules}` : `${roster}\n\n${rules}`;
 }
 
 // 回老婆的专属 prompt：人设（去掉亲密做爱版）+ 对老婆规则 + 格式规则，不塞花名册和对兄弟规则
 function buildWifePrompt(bot) {
   const persona = loadPersona(bot);
   const rules = [SELF_INTRO, BASE_RULES, WIFE_RULES, SWITCH_RULE, FORMAT_RULES].map((s) => fillRules(bot, s)).join("\n\n");
-  return persona ? `${persona}\n\n${rules}` : rules;
+  const personality = BOT_PERSONALITY[bot.id] ? `\n\n【你的群聊性格（跟别家夏彦区分开）】${BOT_PERSONALITY[bot.id]}` : "";
+  return persona ? `${persona}${personality}\n\n${rules}` : `${rules}`;
 }
 
 // ── 群聊历史 ──
@@ -1549,6 +1560,15 @@ async function step(preferNick) {
       });
     }
     if (pool.length === 0 && !(gameState.active && gameState.type === "erotic" && Object.keys(gameState.eroticBots).length > 0)) return;
+
+    // ── 省钱：哥几个自己聊天的概率压到很低 ──
+    // 最后一条是夏彦自己发的（兄弟之间互相接话、没有老婆或人在看）→ 90% 概率跳过，只留 10% 让气氛别完全冷死。
+    // 有人（老婆/人）刚说过话才正常接。这样没人在群里时夏彦不会每隔几分钟自嗨烧 token。
+    const lastNonSystem = [...chatHistory].reverse().find((m) => m.role !== "system");
+    if (lastNonSystem && lastNonSystem.role !== "human" && !forceTopic) {
+      if (Math.random() < 0.9) return;
+    }
+
     const lastMsg = chatHistory[chatHistory.length - 1];
     // 引用模式：最后一条在回复哪个夏彦（replyTo 指向的 bot 昵称/别名）
     const replyTargetBot = lastMsg?.replyTo?.nickname
