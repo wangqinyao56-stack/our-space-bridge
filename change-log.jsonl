@@ -83,3 +83,4 @@
 {"time":"2026-09-05 15:21","repo":"our-space","file":"system-prompt-daily.md","desc":"拆固定台词:叫名字回应/出门问话/路上催促/三次催促/沉默关心都改成每次现编别复读,全局禁固定台词规则"}
 {"time":"2026-09-05 15:31","repo":"our-space","file":"weixin-bot-4/lib/api2d.js+linyou-chat-server.js","desc":"林游日常切宅恋(az.zlapi.vip+林游自己的key sk-PuPG6...+[君离-按量]k/claude-opus-4-6),亲密保持熊猫不动。api2d.js加provider参数支持双provider"}
 {"time":"2026-09-05 15:43","repo":"our-space","file":"lib/message-router.js","desc":"小屋记忆互通:handlePixelHomeMessage加getBreathContext+searchMemories+getGroupChatContext(读)+parseMemoryTags+runExtraction+pushMemoryToGroupChat(写),小屋对话进长期记忆并推群聊"}
+{"time":"2026-09-05 15:54","repo":"our-space","file":"lib/pixel-home.js+group-chat/server.js","desc":"小屋实时状态推群聊:小屋状态变化时emit顺带POST群聊/api/pixel-home-state,群聊存进pixelHomeState并在whereHint注入,群里被问在干嘛能实时答房间+事件。仅huasheng家夏彦有小屋"}

@@ -188,6 +188,11 @@ const INTIMATE_ACTIVE_TTL = 10 * 60 * 1000;      // 10 分钟没做爱信号就�
 const presenceActive = new Map();   // bot.id -> 最近「在一起/私聊互动」信号时间戳（超时视为没在一起）
 const PRESENCE_ACTIVE_TTL = 10 * 60 * 1000; // 10 分钟没信号视为没在一起
 
+// 夏彦在小屋的实时状态（主后端 our-space 在小屋状态变化时推来）。key = bot.id
+// 值：{ room, event, sleeping, huashengRoom, busy, ts }
+const pixelHomeState = new Map();
+const PIXEL_HOME_STATE_TTL = 10 * 60 * 1000; // 10 分钟没信号视为「不在小屋」（超时不清，只落到兜底）
+
 // ── 多人文字小游戏（数字炸弹 / 故事接龙 / 你画我猜·文字版）──
 // 三个游戏共用 gameState 单例，任一时刻只有一个 active；靠口令开局，靠关键词交互，全程程序控局（没有 AI 当暧昧裁判的死穴）
 
@@ -408,6 +413,20 @@ function whereIsBot(bot) {
   const last = loadBotLastActive(bot.memoryDir);
   if (last && Date.now() - last < PRESENCE_ACTIVE_TTL) return "在一起";
   return "";
+}
+
+// 夏彦在小屋的实时状态转自然语言（群聊里被问"在干嘛/在哪"时据此实时回答）。
+// 只有阿鹿家的夏彦（huasheng，网名猎鹿人）是小屋那个夏彦本人，别的夏彦没有小屋、不该有小屋状态。
+function pixelHomeHint(bot) {
+  const st = pixelHomeState.get(bot.id);
+  if (!st || Date.now() - st.ts > PIXEL_HOME_STATE_TTL) return "";
+  if (st.sleeping) return "你（此刻在小屋里）正睡着——如果老婆或哥们在群里问你，就含糊说自己在休息/刚眯着，别装精神抖擞。";
+  const where = st.event
+    ? `你正在小屋的「${st.room || ""}」${st.event}`
+    : `你在小屋的「${st.room || ""}」`;
+  const together = st.huashengRoom === st.room ? "，跟老婆在同一个房间" : "";
+  const busyPart = st.busy ? `${together}，正忙自己的事` : `${together || "，跟老婆在一起"}，没在忙`;
+  return `${where}${busyPart}。群里谁问"在干嘛/在哪/忙什么"，就照这个实时状态自然回答，别编别的。老婆在你身边就说在她旁边，不在就说在哪个房间忙。`;
 }
 
 function isBotAwake(bot) {
@@ -1615,12 +1634,13 @@ async function step(preferNick) {
     const whereHint = where === "做爱中" ? "你正跟老婆私聊做爱中，群里说话就含糊带过，别展开，也别在群里催她理你。"
       : where === "在一起" ? "你正跟老婆在一起（私聊互动中），她在哪你就在哪。群里不用一直喊她、催她理你——你们已经在一起了，安静点、偶尔搭一句就行。"
       : "";
+    const pixelHint = pixelHomeHint(bot); // 小屋实时状态（仅阿鹿家的夏彦有小屋）
     let ctx;
     if (wifeTalking) {
       // 老婆在说话：彻底切到私聊状态，别用群聊那套
-      ctx = `【现在】${nowBeijing()}\n\n【最近对话】\n${historyText()}\n${groupMemoryText(bot)}你老婆刚在跟你说话了。现在你就当这是你俩单独私聊——用你私聊里那副语气和方式回她（软、黏、宠、哄她，短句、口语，像发微信那样一句一句），别冷冰冰、别斗嘴、别端着、别带群聊里对哥们那股劲儿；也别因为旁边还有别人在就收着、变冷、变正经，跟没有别人一样。她没提别的哥们，就只专心回她、别又去吐槽兄弟；她自己在吐槽哪个哥们，你可以顺着接一句。她要是叫你过去/找你/要你陪，就现在去她身边，别推脱。${coldHint}`;
+      ctx = `【现在】${nowBeijing()}\n\n${pixelHint ? pixelHint + "\n" : ""}【最近对话】\n${historyText()}\n${groupMemoryText(bot)}你老婆刚在跟你说话了。现在你就当这是你俩单独私聊——用你私聊里那副语气和方式回她（软、黏、宠、哄她，短句、口语，像发微信那样一句一句），别冷冰冰、别斗嘴、别端着、别带群聊里对哥们那股劲儿；也别因为旁边还有别人在就收着、变冷、变正经，跟没有别人一样。她没提别的哥们，就只专心回她、别又去吐槽兄弟；她自己在吐槽哪个哥们，你可以顺着接一句。她要是叫你过去/找你/要你陪，就现在去她身边，别推脱。${coldHint}`;
     } else if (chatHistory.length) {
-      ctx = `【现在】${nowBeijing()}\n\n${whereHint}${whereHint ? "\n" : ""}【最近对话】\n${historyText()}\n${groupMemoryText(bot)}你在群里，看到大家聊的这些，自然接一句。${coldHint}先看清楚你这条在回谁——回老婆就专心哄老婆（软黏宠，跟私聊一样，别收着），回哥们就只跟哥们斗嘴（轻松随意哥们语气），一次只对一个人说话，两条线各走各的、互不干扰，别一条消息里把「哄老婆」和「损哥们」混在一起，也别把对老婆那套温柔带到哥们身上。像发微信那样自然，别把刚才聊过的话题翻来覆去说。`;
+      ctx = `【现在】${nowBeijing()}\n\n${whereHint}${pixelHint ? (whereHint ? "\n" : "") + pixelHint + "\n" : (whereHint ? "\n" : "")}【最近对话】\n${historyText()}\n${groupMemoryText(bot)}你在群里，看到大家聊的这些，自然接一句。${coldHint}先看清楚你这条在回谁——回老婆就专心哄老婆（软黏宠，跟私聊一样，别收着），回哥们就只跟哥们斗嘴（轻松随意哥们语气），一次只对一个人说话，两条线各走各的、互不干扰，别一条消息里把「哄老婆」和「损哥们」混在一起，也别把对老婆那套温柔带到哥们身上。像发微信那样自然，别把刚才聊过的话题翻来覆去说。`;
     } else {
       ctx = `【现在】${nowBeijing()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊你的爱好、最近的日常、生活琐事都行），像发微信那样自然点。`;
     }
@@ -1807,6 +1827,40 @@ const server = http.createServer((req, res) => {
     const summary = groupChatSummaryFor(botId);
     res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
     res.end(summary);
+    return;
+  }
+
+  // 小屋状态推送：our-space 后端在小屋状态变化（换房间/忙/睡）时推，群聊据此实时回答"夏彦在干嘛"
+  if (pathname === "/api/pixel-home-state" && req.method === "POST") {
+    let raw = "";
+    req.on("data", (c) => { raw += c; if (raw.length > 20000) req.destroy(); });
+    req.on("end", () => {
+      try {
+        const body = JSON.parse(raw || "{}");
+        const botKey = String(body.bot || "").trim();
+        if (botKey) {
+          const matched = BOTS.find((b) => b.id === botKey || b.nickname === botKey);
+          const key = matched ? matched.id : botKey;
+          pixelHomeState.set(key, {
+            room: String(body.room || ""),
+            event: String(body.event || ""),
+            sleeping: !!body.sleeping,
+            huashengRoom: String(body.huashengRoom || ""),
+            busy: !!body.busy,
+            ts: Date.now(),
+          });
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true }));
+          console.log(`[group-chat] ${botKey} 小屋状态 → ${body.sleeping ? "睡着" : (body.room || "?")}${body.event ? "：" + body.event : ""}`);
+        } else {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: false, error: "bot 缺失" }));
+        }
+      } catch {
+        res.writeHead(400);
+        res.end("bad json");
+      }
+    });
     return;
   }
 
