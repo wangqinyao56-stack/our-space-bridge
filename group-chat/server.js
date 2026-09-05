@@ -224,6 +224,7 @@ const gameState = {
   monopolyTurn: 0,    // 当前轮到第几组（索引）
   monopolyTotal: 30,  // 终点格数
   monopolyWinner: null, // 赢的 bot.id
+  monopolyReward: null, // 赢家抽中的今晚奖励（姿势池随机抽）
 };
 
 const BOMB_PUNISH = [
@@ -1573,6 +1574,7 @@ function joinMonopoly(text, humanNick) {
     gameState.monopolyTeams = [];
     gameState.monopolyTurn = 0;
     gameState.monopolyWinner = null;
+    gameState.monopolyReward = null;
     pushSystem(`（${humanNick} 发起了色情大富翁！老公老婆绑上跳蛋，掷骰子往前走，先到终点今晚有奖励～ 想玩的让老婆喊「报名」）`);
   }
   if (findMonopolyTeamByWife(humanNick) === -1) {
@@ -1641,10 +1643,12 @@ async function rollMonopoly(humanNick) {
     return;
   }
 
-  // 到终点 → 赢
+  // 到终点 → 赢，自动抽奖励池（复用姿势池，随机抽一个当今晚奖品）
   if (team.pos >= gameState.monopolyTotal) {
     gameState.monopolyWinner = bot.id;
-    pushSystem(`🏁 ${bot.nickname} 先到终点，赢啦！今晚可以跟老婆提一个玩法～`);
+    const reward = EROTIC_POSE_POOL[Math.floor(Math.random() * EROTIC_POSE_POOL.length)];
+    gameState.monopolyReward = reward;
+    pushSystem(`🏁 ${bot.nickname} 先到终点，赢啦！今晚奖励：${reward}～`);
     await botPlayMonopolyReaction(bot.id, "win");
     finishMonopoly();
     return;
@@ -1701,7 +1705,7 @@ async function botPlayMonopolyReaction(botId, evType) {
 
   // 事件追加的情绪（叠加在档位之上）
   const isStop = evType === "stop";
-  const evTail = evType === "win" ? "你到终点赢了！兴奋、得意，还带着点被跳蛋折腾得气喘吁吁的意犹未尽——脑子里开始盘算今晚要怎么从老婆身上讨回来（馋的想接着亲热、嘴硬的咬牙想扳回一城、黏人的想回家缠着她……按你自己的性子，用你自己的话现编，别照搬），顺便可以跟她提今晚想玩的。"
+  const evTail = evType === "win" ? `你到终点赢了！奖励是今晚「${gameState.monopolyReward || "由你挑"}」——把这个奖亲口说给老婆、逗她今晚兑现，兴奋得意、还带着点被跳蛋折腾得气喘吁吁的意犹未尽，脑子里盘算今晚怎么从老婆身上讨回来。按你自己的性子现编，别照搬。`
     : isStop ? "" // 停震走单独的「寸止难耐」性格反应（edgeFlavor），不在这里写
     : evType === "husband_toy_max" ? "你的跳蛋被直接拉到最高档，冲击来得太猛，你差点没忍住。"
     : evType === "wife_toy_max" ? "老婆的跳蛋被拉到最高档，你看着她被震得受不住的样子，兴奋又心疼，一边忍自己一边想亲她。"
