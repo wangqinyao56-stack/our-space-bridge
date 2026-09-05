@@ -88,3 +88,4 @@
 {"time":"2026-09-05 16:43","repo":"our-space","file":"lib/pixel-home.js","desc":"修夏彦不知是否与华生同房:getPixelHomePositionContext重写,明确分同房-忙/同房-陪/不同房-忙/不同房-闲四种,旧busy判断有bug(不同房时误说陪着华生)"}
 {"time":"2026-09-05 16:48","repo":"our-space","file":"lib/message-router.js","desc":"修小屋上下文丢失:小屋对话/亲密空间原来unshift进history被slice(-40)掐掉(日常超40条就丢),夏彦刚亲完转头就忘。改ctxMessages独立收集放slice之前"}
 {"time":"2026-09-05 16:57","repo":"our-space","file":"group-chat/server.js","desc":"修比赛期间老婆撞车老公不回+pendingWife覆盖改成pendingWives队列逐个回;pending回话加1500-4000ms延迟+全局4s最小发言间隔防泄洪"}
+{"time":"2026-09-05 17:03","repo":"our-space","file":"group-chat/server.js","desc":"撸射赛去重+惩罚奖池触发修复:①同一档位每次随机抽不同反应角度(warming/building/desperate各4-5条池)降低重复率 ②maybeRollPose数字正则放宽,原来只认纯数字(我选7/就7/5号都不触发)"}

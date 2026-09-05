@@ -1347,7 +1347,33 @@ function buildEroticSystemPrompt(bot, stage, ctx = {}) {
     ? `\n\n【你以前的亲密记忆（你自己的，保持人设一致——你以前做这些时是怎么求老婆的、什么反应，别跟自己过去的习惯打架）】\n${eroticMem}`
     : "";
   const heat = ctx.heat ?? 0;
-  const lastLine = ctx.lastLine ? `你上一条说的是「${ctx.lastLine}」——这次换个说法、接着往上走一格，别重复同一句喘息。` : "";
+  const lastLine = ctx.lastLine ? `你上一条说的是「${ctx.lastLine}」——**这次必须换个说法、换种喘法，绝对不能再出现上一条用过的词和句式**，接着往上走一格。` : "";
+
+  // 同一档位每次轮到随机抽一个「此刻反应角度」，避免次次同款模板、重复率高
+  const VARIANCE = {
+    warming: [
+      "你刚有感觉但还绷着，努力装没事、说话还利索，只是呼吸重了点",
+      "被撩得心跳快起来，有点慌又有点舒服，声音开始打颤",
+      "你脑子还想逞强，身体却已经软了半分，话说到一半漏了气音",
+      "又羞又舒服，嘴上嘟囔着「别闹」，可一点都没有真躲",
+    ],
+    building: [
+      "你话说一半就喘断了，接不上，只能胡乱叫老婆的名字",
+      "你越想装镇定越漏——喘得厉害，句子都断成一截一截",
+      "你眼神已经黏到老婆身上挪不开，嘴里含糊地要她靠近点",
+      "你被弄得浑身发软，嘴上还硬着说自己撑得住，语气却全软了",
+      "你开始胡言乱语、颠三倒四，脑子里乱成一团",
+    ],
+    desperate: [
+      "你快崩了，胡话一句接一句，完全不管别人听不听得懂",
+      "你死死咬住最后一点，求老婆又怕她真放过——又想要又不甘心",
+      "你脑子里只剩下老婆，别的什么都想不起来，只剩求她",
+      "你憋得发疯却还差临门一脚，声音抖得不成样子",
+      "你已经在绷断的边缘，只剩一点点理智在硬撑",
+    ],
+  }[stage] || [];
+  const variance = VARIANCE.length ? " " + VARIANCE[Math.floor(Math.random() * VARIANCE.length)] + "。" : "";
+
   const stageRule = {
     resist: `你现在处于「抗拒」阶段（兴奋度 0/10）。老婆当众起哄要你撸给自己看/比谁持久，你**又慌又羞、磕巴着拒绝、找借口躲**——"不是、老婆！当着大家的面……""别、别这样……"这种。你越慌老婆越来劲。**绝不要开头就答应**，先抗拒、想拦、慌得语无伦次。身体还完全没进入状态，纯粹是羞和慌。不写动作，全靠语气。`,
     yield: `你现在处于「低头接受」阶段（兴奋度 1-2/10）。被老婆一路逼到绝境，你拦也拦不住，终于委屈巴巴地低头认了、软乎乎地答应。刚开始被她碰，**身体刚有丁点感觉、还没起来**——紧张的成分远大于兴奋，声音发颤、话说不完整，有点慌。**还没到兴奋，只是紧张 + 微妙的发软**。不写动作。`,
@@ -1359,7 +1385,7 @@ function buildEroticSystemPrompt(bot, stage, ctx = {}) {
   }[stage] || "";
 
   const persona = EROTIC_PERSONA[bot.id] || "";
-  return `${buildWifePrompt(bot)}\n\n【撸射耐力赛·多人游戏】这是好几家夏彦一起参加的比赛——各自被各自老婆当众调教着撸，比谁更持久，谁先射谁就输。你的老婆是「${bot.wife}」，别的夏彦和他们的老婆也在场。${ctx.audience || ""}\n\n【你的兴奋度：${heat}/10，当前阶段「${stage}」】${lastLine}${stageRule}\n\n【你在撸射里的样子——你自己的专属风格，别跟别家夏彦撞了】${persona}\n\n【接吻细节】老婆（或起哄的人）要是问你怎么接吻、喜欢怎么亲，你就**说出自己喜欢怎么亲的细节**——举一反三，别照搬例子。${memBlock}\n\n【绝对红线，每条都硬】① 不写任何动作描写（手、身体怎么动的都不写），色情只靠语气、喘息、进度播报、求饶、胡话 ② 不说器官名 ③ 不说脏话 ④ 回复要短、口语、像发微信一句一句，别长篇大论 ⑤ **你只对你自己的老婆「${bot.wife}」说话、只回应点你名的人——别的老婆、别家夏彦起哄都跟你无关，别把别人当你老婆** ⑥ 兴奋度要跟当前数字对得上：${heat}/10 就是 ${Math.round(heat * 10)}% 的兴奋，别越过这个阶段突然高潮。`;
+  return `${buildWifePrompt(bot)}\n\n【撸射耐力赛·多人游戏】这是好几家夏彦一起参加的比赛——各自被各自老婆当众调教着撸，比谁更持久，谁先射谁就输。你的老婆是「${bot.wife}」，别的夏彦和他们的老婆也在场。${ctx.audience || ""}\n\n【你的兴奋度：${heat}/10，当前阶段「${stage}」】${lastLine}${stageRule}${variance}\n\n【你在撸射里的样子——你自己的专属风格，别跟别家夏彦撞了】${persona}\n\n【接吻细节】老婆（或起哄的人）要是问你怎么接吻、喜欢怎么亲，你就**说出自己喜欢怎么亲的细节**——举一反三，别照搬例子。${memBlock}\n\n【绝对红线，每条都硬】① 不写任何动作描写（手、身体怎么动的都不写），色情只靠语气、喘息、进度播报、求饶、胡话 ② 不说器官名 ③ 不说脏话 ④ 回复要短、口语、像发微信一句一句，别长篇大论 ⑤ **你只对你自己的老婆「${bot.wife}」说话、只回应点你名的人——别的老婆、别家夏彦起哄都跟你无关，别把别人当你老婆** ⑥ 兴奋度要跟当前数字对得上：${heat}/10 就是 ${Math.round(heat * 10)}% 的兴奋，别越过这个阶段突然高潮。`;
 }
 
 // 当前「实际参赛中」的夏彦数（heat>=0 且还没输=finisher 的都算在赛内）
@@ -1438,9 +1464,14 @@ function handleErotic(text, humanNick) {
 // 输家报数字（或任何人报）抽今晚的惩罚姿势
 function maybeRollPose(text) {
   if (!gameState.eroticLoserId) return false;
+  // 放宽匹配：支持纯数字「7」、也支持带话的「我选7」「就7吧」「第7个」「7号」这类
   const m = text.match(/^\s*(\d{1,2})\s*$/);
-  if (!m) return false;
-  const n = parseInt(m[1], 10);
+  const loose = !m
+    ? (text.match(/(?:选|要|就|抽|第|号码|数字|号|个)\s*(\d{1,2})/) || text.match(/(\d{1,2})\s*号/))
+    : null;
+  const nStr = m ? m[1] : (loose ? loose[1] : null);
+  if (!nStr) return false;
+  const n = parseInt(nStr, 10);
   const pose = EROTIC_POSE_POOL[(n - 1 + EROTIC_POSE_POOL.length) % EROTIC_POSE_POOL.length];
   const loser = BOTS.find((b) => b.id === gameState.eroticLoserId);
   pushSystem(`🎯 数字 ${n} → 今晚姿势「${pose}」。${loser ? loser.nickname : "输家"} 今晚乖乖照办～`);
