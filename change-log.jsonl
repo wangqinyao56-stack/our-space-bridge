@@ -47,3 +47,5 @@
 {"time":"2026-09-05 02:30","repo":"our-space","file":"weixin-bot-3/lib/api2d.js+pingguogeng-chat-server.js","desc":"苹果梗亲密空间切宅恋(az.zlapi.vip,key sk-aJAq...,模型[0.06]报用鹿/claude-opus-4.6),日常保持玖时不切。api2d.js加useZilian支持,pingguogeng-chat-server.js intimate传useZilian"}
 {"time":"2026-09-05 03:00","repo":"our-space","file":"weixin-bot-3/system-prompt-intimate.txt","desc":"苹果梗亲密prompt更新(从docx提取,华生为爱称原样保留不倒替换月儿)"}
 {"time":"2026-09-05 03:30","repo":"our-space","file":"多个后端","desc":"报用鹿死绝(成功率0%)全部换[0.07]k茶/claude-sonnet-4-6:主后端message-router.js 2处+佳佳api2d+苹果梗api2d+林游api2d+linyou-chat-server,共7处。云醉[逆]没动"}
+{"time":"2026-09-05 17:41","repo":"our-space","file":"lib/memory.js,lib/message-router.js,server.js","desc":"像素小屋删除消息连带删另一侧回复(deleteMessagePair)，修退出再进消息又冒出来"}
+{"time":"2026-09-05 17:41","repo":"our-space","file":"weixin-bot/jiayia-chat-server.js,weixin-bot-4/linyou-chat-server.js","desc":"佳佳亲密逆系列([逆]claude-opus-4-6)替代宅恋useZilian；林游stale注释清理"}

@@ -141,7 +141,7 @@ async function chatReply(channel, userText, history) {
     temperature: 0.65,
     maxTokens: 800,
   };
-  if (channel === "intimate") opts.model = "[0.07]k茶/claude-sonnet-4-6"; // 亲密/日常都用宅恋k茶sonnet
+  if (channel === "intimate") opts.model = "熊猫-顶级特供-X-17-gemini-3.1-pro-preview"; // 亲密走熊猫gemini
   if (history.length > 0) opts.history = history;
   return await askClaude(opts);
 }

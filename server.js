@@ -28,6 +28,7 @@ import {
   clearIntimateHistory,
   clearBlindBoxHistory,
   deleteChatMessage,
+  deleteChatMessagePair,
   deleteIntimateHistoryMessage,
   setWeatherCity,
   sttDebugLog,
@@ -2431,6 +2432,9 @@ wss.on("connection", (ws, req) => {
         deleteAffectionMessage(channel, content, from);
       } else if (channel === "intimate") {
         deleteIntimateHistoryMessage(content, from);
+      } else if (channel === "pixel_home") {
+        // 像素小屋一日一对话，删一条要连带删掉它另一侧的回复，否则退出再进又冒出来
+        deleteChatMessagePair(content, from, "pixel_home");
       } else {
         deleteChatMessage(content, from);
       }
