@@ -38,7 +38,7 @@ const SCORE_FEEL = 50.0;
 const PINNED_CAP = 20;
 
 const EXTRACT_INTERVAL = 15;
-const EXTRACT_MODEL = "熊猫-顶级特供-X-17-gemini-3.1-pro-preview"; // 提取/做梦用主模型(熊猫站没有 gpt-5.4 这个便宜模型了)
+const EXTRACT_MODEL = "熊猫-A-29-claude-opus-4.6"; // 提取/做梦用主模型(和阿鹿家同款claude)
 
 let memories = [];
 let archive = [];

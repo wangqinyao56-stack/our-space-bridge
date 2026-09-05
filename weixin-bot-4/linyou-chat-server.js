@@ -141,7 +141,7 @@ async function chatReply(channel, userText, history) {
     temperature: 0.65,
     maxTokens: 800,
   };
-  if (channel === "intimate") opts.model = "熊猫-顶级特供-X-17-gemini-3.1-pro-preview"; // 亲密走熊猫gemini
+  if (channel === "intimate") opts.model = "熊猫-A-29-claude-opus-4.6"; // 亲密走熊猫claude(和阿鹿家同款，gemini对情色超时522)
   if (history.length > 0) opts.history = history;
   return await askClaude(opts);
 }
