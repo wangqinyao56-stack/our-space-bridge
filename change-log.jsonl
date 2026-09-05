@@ -95,3 +95,4 @@
 {"time":"2026-09-05 17:37","repo":"our-space","file":"group-chat/server.js","desc":"大富翁加互动动作事件:法式湿吻/轻吻/啃咬吻/老公摸老婆/老婆摸老公5种,不调档位只触发说感受的亲密,按性格差异化"}
 {"time":"2026-09-05 17:39","repo":"our-space","file":"group-chat/server.js","desc":"大富翁射精反应+老婆动情老公兴奋:①射精后夏彦亲口说反应(喘息激动忍不住,不再是只发系统提示)②wifeCtx强化:看着老婆动情老公也跟着兴奋上头,别稳如老狗"}
 {"time":"2026-09-05 17:40","repo":"our-space","file":"group-chat/server.js","desc":"大富翁赢家奖励池自动触发:到终点随机抽姿势池当今晚奖励,赢家夏彦亲口说出奖品逗老婆兑现。加gameState.monopolyReward"}
+{"time":"2026-09-05 18:00","repo":"our-space","file":"weixin-bot/jiayia-chat-server.js+lib/pixel-home.js+lib/audio-assets.js+system-prompt-pixel-home.txt","desc":"佳佳后端小屋接入:复制pixel-home.js/audio-assets.js并参数化WIFE_NAME+改5房间(卧室/客厅/浴室/书房/工作间),jiayia-chat-server加HTTP素材端点+WS pixel_home全套(状态/切房/聊天/留言/小游戏/打招呼/end),小屋聊天handler handlePixelChat"}
