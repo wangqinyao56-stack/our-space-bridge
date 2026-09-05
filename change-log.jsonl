@@ -93,3 +93,4 @@
 {"time":"2026-09-05 17:11","repo":"our-space","file":"group-chat/server.js","desc":"精简撸射赛后prompt:aftermath收尾改一句(说完回群聊围观不再反复呻吟),删掉枚举式6方向参考(反而逼重复),删loadBotEroticMemory死代码+memBlock,红线规则压成一行"}
 {"time":"2026-09-05 17:28","repo":"our-space","file":"group-chat/server.js","desc":"大富翁修射太快+老公意识到老婆玩具开:①射精改忍耐度endure机制(憋满3轮才可能射,概率0.12/0.28,起步根本不射,替代原来husband_toy_max即0.5射) ②team加endure字段 ③botPlayMonopolyReaction加wifeCtx:老婆玩具开着(无论几档)老公都要看到她有反应、顾着她"}
 {"time":"2026-09-05 17:37","repo":"our-space","file":"group-chat/server.js","desc":"大富翁加互动动作事件:法式湿吻/轻吻/啃咬吻/老公摸老婆/老婆摸老公5种,不调档位只触发说感受的亲密,按性格差异化"}
+{"time":"2026-09-05 17:39","repo":"our-space","file":"group-chat/server.js","desc":"大富翁射精反应+老婆动情老公兴奋:①射精后夏彦亲口说反应(喘息激动忍不住,不再是只发系统提示)②wifeCtx强化:看着老婆动情老公也跟着兴奋上头,别稳如老狗"}
