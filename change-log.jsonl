@@ -59,3 +59,4 @@
 {"time":"2026-09-05 19:37","repo":"our-space","file":"lib/pixel-home.js,server.js","desc":"像素小屋睡着状态修复:sleeping状态+wakePixelXiayan(华生说话吵醒)+卡在睡着兜底(白天自动醒)+sstate下发真实sleeping字段"}
 {"time":"2026-09-05 19:37","repo":"our-space","file":"system-prompt-daily.md","desc":"日常prompt加害羞克制表达规则(语气化禁身体反应禁不服气) + 删被撩脸红到耳根/害羞耳尖泛红身体反应描写"}
 {"time":"2026-09-05 20:10","repo":"our-space","file":"group-chat/server.js","desc":"新增多人色情游戏「手淫调教」:老婆起哄触发(非口令),夏彦抗拒→低头→喘息→进度播报→射精管制→求饶,不写动作不写器官不说脏话,读各家做爱记忆(loadBotEroticMemory),接吻细节举一反三"}
+{"time":"2026-09-05 20:20","repo":"our-space","file":"weixin-bot/system-prompt-intimate.txt","desc":"佳佳亲密空间设定更新(源文件华生→佳佳替换,1213行):新增情事主动不克制/不用问/强势点等规则+措辞微调,删App功能段(佳佳App无那些功能)"}
