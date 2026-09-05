@@ -38,7 +38,7 @@ const SCORE_FEEL = 50.0;
 const PINNED_CAP = 20;
 
 const EXTRACT_INTERVAL = 15;
-const EXTRACT_MODEL = "gpt-5.4"; // 便宜模型做提取，省 opus 预算
+const EXTRACT_MODEL = "[企业按量]claude-opus-4-6"; // 提取/做梦改用主模型(玖时已无 gpt-5.4 渠道)
 
 let memories = [];
 let archive = [];
