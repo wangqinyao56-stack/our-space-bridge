@@ -2482,6 +2482,10 @@ wss.on("connection", (ws, req) => {
       if (channel === "intimate") {
         const { deleteIntimateMessages } = await import("./lib/intimate-memory.js");
         deleteIntimateMessages(items);
+      } else if (channel === "pixel_home") {
+        // 小屋一日一对话，批量删也要连带删每条的另一侧回复，否则退出再进残句又冒出来
+        const { deleteMessagePairs } = await import("./lib/memory.js");
+        deleteMessagePairs(items, "pixel_home");
       } else {
         const { deleteMessages } = await import("./lib/memory.js");
         deleteMessages(items);
