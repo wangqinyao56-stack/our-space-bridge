@@ -538,14 +538,14 @@ async function streamVoiceReply(ws, replyTo, text, opts = {}) {
 
 // Trigger gift and scenery events (non-blocking, fires once per message batch)
 let _multimediaCooldown = 0;
-async function triggerMultimediaEvents(ws, replyTo) {
+async function triggerMultimediaEvents(ws, replyTo, stickerAllowed = true) {
   // Cooldown: only check once per 15 seconds to avoid spamming
   const now = Date.now();
   if (now - _multimediaCooldown < 15000) return;
   _multimediaCooldown = now;
 
-  // Sticker: 8% chance, separate from scenery/gift
-  if (Math.random() < 0.08) {
+  // Sticker: 8% chance, separate from scenery/gift（亲密空间不发表情包）
+  if (stickerAllowed && Math.random() < 0.08) {
     const stickers = [
       { id: "cute", name: "可爱" },
       { id: "yes", name: "肯定" },
@@ -898,12 +898,15 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url?.startsWith("/api/audio/list")) {
     try {
       const qs = (req.url || "").split("?")[1] || "";
-      const category = new URLSearchParams(qs).get("category");
+      const params = new URLSearchParams(qs);
+      const category = params.get("category");
+      const mime = params.get("mime");
       const { listAudioAssets } = await import("./lib/audio-assets.js");
-      const all = listAudioAssets();
-      const filtered = category ? all.filter(a => a.category === category) : all;
+      let all = listAudioAssets();
+      if (category) all = all.filter(a => a.category === category);
+      if (mime) all = all.filter(a => a.mime === mime);
       res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" });
-      res.end(JSON.stringify(filtered));
+      res.end(JSON.stringify(all));
     } catch (e) {
       res.writeHead(500);
       res.end(e.message);
@@ -1843,8 +1846,8 @@ wss.on("connection", (ws, req) => {
         // 夏彦回复后也刷新"最近互动"，主动贴贴的静默窗口从这轮对话结束时重新起算
         intimateLastUserMsg = Date.now();
 
-        // Trigger gift/scenery for intimate space too
-        triggerMultimediaEvents(ws, msg.id);
+        // Trigger gift/scenery for intimate space too（但亲密空间不发表情包）
+        triggerMultimediaEvents(ws, msg.id, false);
       } catch (err) {
         console.error("[ws] Intimate text error:", err.message);
         intimateDebugLog.push({ timestamp: new Date().toISOString(), stage: "ws_error", error: err.message });
@@ -1874,7 +1877,7 @@ wss.on("connection", (ws, req) => {
           blindBox: blindBox ? { name: blindBox.name } : null,
         }));
         intimateLastUserMsg = Date.now();
-        triggerMultimediaEvents(ws, msg.id);
+        triggerMultimediaEvents(ws, msg.id, false);
       } catch (err) {
         console.error("[ws] Intimate image error:", err.message);
         intimateDebugLog.push({ timestamp: new Date().toISOString(), stage: "ws_error", error: err.message });

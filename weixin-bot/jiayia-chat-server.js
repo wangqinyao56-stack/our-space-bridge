@@ -17,7 +17,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { askClaude } from "./lib/api2d.js";
-import { getBreathContext, getGroupChatContext, parseMemoryTags, onChatTurn, shouldExtract, runExtraction, pushMemoryToGroupChat } from "./lib/emotional-memory.js";
+import { getBreathContext, getGroupChatContext, parseMemoryTags, onChatTurn, shouldExtract, runExtraction, pushMemoryToGroupChat, deleteMemoryByText } from "./lib/emotional-memory.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DAILY_PROMPT = fs.readFileSync(path.join(__dirname, "system-prompt-daily.txt"), "utf-8");
@@ -83,6 +83,35 @@ function getHistory(channel) {
   return CHANNELS[channel].history.slice(-MAX_HISTORY * 2);
 }
 
+// 按 role+content 从后往前删除第一条完全匹配的历史条目，返回是否命中
+function deleteFromHistory(channel, role, text) {
+  const arr = CHANNELS[channel].history;
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (arr[i].role === role && arr[i].content === text) {
+      arr.splice(i, 1);
+      saveHistory(channel);
+      return true;
+    }
+  }
+  return false;
+}
+
+// 删除某条 user 消息对应的 assistant 回复：先找 user 条目，再删除紧随其后的一条 assistant
+function deletePairFromHistory(channel, userText) {
+  const arr = CHANNELS[channel].history;
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (arr[i].role === "user" && arr[i].content === userText) {
+      arr.splice(i, 1);
+      if (i < arr.length && arr[i].role === "assistant") {
+        arr.splice(i, 1);
+      }
+      saveHistory(channel);
+      return true;
+    }
+  }
+  return false;
+}
+
 // ── AI 调用 ──
 async function chatReply(channel, userText, history) {
   let systemPrompt = CHANNELS[channel].prompt;
@@ -111,7 +140,8 @@ async function chatReply(channel, userText, history) {
     temperature: 0.65,
     maxTokens: 800,
   };
-  if (channel === "intimate") opts.model = "[逆]claude-opus-4-6"; // 亲密空间换便宜模型，日常仍用默认
+  // 亲密空间走宅恋（useZilian），日常仍走玖时默认
+  if (channel === "intimate") opts.useZilian = true;
   if (history.length > 0) opts.history = history;
   return await askClaude(opts);
 }
@@ -166,6 +196,29 @@ wss.on("connection", (ws) => {
           runExtraction(recent).catch(() => {});
         }
 
+        ws.send(JSON.stringify({ type: "reply", channel, text: cleanReply }));
+      } else if (msg.type === "delete" && msg.role) {
+        const channel = msg.channel === "intimate" ? "intimate" : "daily";
+        const content = (msg.content || "").trim();
+        if (!content) { ws.send(JSON.stringify({ type: "deleted", channel })); return; }
+        const hit = deleteFromHistory(channel, msg.role, content);
+        const removedMem = deleteMemoryByText(content);
+        console.log(`[jiayia-chat] 删除 ${channel}/${msg.role}: hit=${hit} memRemoved=${removedMem}`);
+        ws.send(JSON.stringify({ type: "deleted", channel, role: msg.role, content, ok: hit || true }));
+      } else if (msg.type === "regenerate" && (msg.content || "").trim()) {
+        const channel = msg.channel === "intimate" ? "intimate" : "daily";
+        const userText = msg.content.trim();
+        deletePairFromHistory(channel, userText);
+        deleteMemoryByText(userText);
+        const history = getHistory(channel);
+        const reply = await chatReply(channel, userText, history);
+        const tagResult = parseMemoryTags(reply);
+        let cleanReply = reply;
+        if (tagResult.count > 0) cleanReply = tagResult.text;
+        addToHistory(channel, "user", userText);
+        addToHistory(channel, "assistant", cleanReply);
+        onChatTurn();
+        pushMemoryToGroupChat().catch(() => {});
         ws.send(JSON.stringify({ type: "reply", channel, text: cleanReply }));
       }
     } catch (e) {

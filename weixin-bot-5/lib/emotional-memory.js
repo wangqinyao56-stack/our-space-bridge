@@ -425,3 +425,21 @@ export async function getGroupChatContext() {
 }
 
 load();
+
+// 删除消息时同步消除对应的长期记忆（不进记忆卷）
+export function deleteMemoryByText(text) {
+  if (!text) return 0;
+  const t = String(text).trim();
+  if (!t) return 0;
+  const before = memories.length;
+  memories = memories.filter((m) => {
+    const hay = `${m.name || ""} ${m.content || ""}`;
+    const needle = t.length >= 6 ? t.slice(0, 60) : t;
+    const match = hay.includes(needle) || (t.length >= 6 && needle.includes(hay.slice(0, 20)));
+    if (match) console.log(`[emotional-memory] Delete matched: "${m.name}"`);
+    return !match;
+  });
+  const removed = before - memories.length;
+  if (removed > 0) save();
+  return removed;
+}

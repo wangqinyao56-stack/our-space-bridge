@@ -32,3 +32,15 @@
 {"time":"2026-09-03 23:11","repo":"our-space","file":"group-chat/server.js","desc":"数字炸弹+猜词加bot参与:①handleBomb人报数后botPlayBomb随机一个夏彦报范围内数(带人设,踩炸弹也判输含兜底数)②startDrawGame出题人描述后botPlayDraw随机一个夏彦猜词(猜中判赢)"}
 {"time":"2026-09-03 23:14","repo":"our-space","file":"group-chat/server.js","desc":"惩罚让夏彦看到:踩中炸弹的惩罚从pushSystem(被historyText过滤bot不可见)改成pushMessage进历史,bot能看到惩罚并起哄"}
 {"time":"2026-09-03 15:35","repo":"our-space","file":"lib/emotional-memory.js+group-chat/server.js","desc":"修日常聊天失忆:群聊上下文串味——群聊记录注入日常prompt被当成华生正在聊的话题去接,加约束'群里社交≠和华生对话,她没问就别提'两处同步"}
+{"time":"2026-09-05 00:00","repo":"our-space","file":"lib/huasheng-travel.js","desc":"修华生出差误触发根因:DEPART_PATTERNS删掉两条危险正则(/我去XXX了(?:玩|旅游|旅行|出差)?$/ 和 /我要去XXX(?:玩|旅游|旅行|出差|几天)/),其中'了'那条的可选分组会把'我去洗澡了''我去玩了'都误判成出差。只保留明确出差/出远门语义。RETURN_PATTERNS加'我在家/我没出差'纠偏词。isHuashengTraveling加10天自动过期,防误激活后永久卡'出差中'"}
+{"time":"2026-09-05 00:05","repo":"our-space","file":"lib/message-router.js","desc":"修日常聊天'接着昨天话题'不断层:之前timeTaggedChat.slice(-24)把昨天消息也当当前语境注入(虽有日期标记+prompt提示,模型仍被带着续聊)。改成按_isPast分层——今天的对话留24条可续聊,昨天的只留3条带日期标记作'自然回忆'素材。对齐亲密空间4小时过滤的思路"}
+{"time":"2026-09-05 01:00","repo":"our-space","file":"weixin-bot/lib/api2d.js","desc":"佳佳模型分key:api2d.js加宅恋(az.zlapi.vip)第二套配置,askClaude支持useZilian参数切换host/key/model。日常走玖时默认,亲密传useZilian=true走宅恋[0.06]报用鹿/claude-opus-4.6"}
+{"time":"2026-09-05 01:01","repo":"our-space","file":"weixin-bot/jiayia-chat-server.js","desc":"佳佳:①亲密空间useZilian=true切宅恋(原[逆]claude-opus-4-6),日常不变②加delete/regenerate消息处理+deleteFromHistory/deletePairFromHistory辅助函数"}
+{"time":"2026-09-05 01:02","repo":"our-space","file":"weixin-bot/lib/emotional-memory.js","desc":"佳佳emotional-memory.js加deleteMemoryByText(删除消息同步清长期记忆)"}
+{"time":"2026-09-05 01:03","repo":"our-space","file":"weixin-bot-5/yunzui-chat-server.js","desc":"云醉后端加delete/regenerate消息处理(单频道,无channel)+deleteFromHistory/deletePairFromHistory辅助函数。模型不变"}
+{"time":"2026-09-05 01:04","repo":"our-space","file":"weixin-bot-5/lib/emotional-memory.js","desc":"云醉emotional-memory.js加deleteMemoryByText"}
+{"time":"2026-09-05 01:15","repo":"our-space","file":"server.js","desc":"修番茄钟音乐列表混播:/api/audio/list加mime过滤参数,番茄钟只拉mime=audio/mp4(m4a),云端旧278首mp3 OST不再混入音乐列表"}
+{"time":"2026-09-05 01:30","repo":"our-space","file":"weixin-bot-5/yunzui-chat-server.js","desc":"云醉单频道→双频道重构:读daily/intimate两个prompt,CHANNELS结构,addToHistory/getHistory/delete/regenerate全加channel参数,ws推两套history。模型保持[逆]claude-opus-4-6不动"}
+{"time":"2026-09-05 01:31","repo":"our-space","file":"weixin-bot-5/yunzui-chat-server.js","desc":"修云醉反复断连根因:心跳改宽容模式,连续3次(90s)没pong才踢,原1次30s就terminate导致RN WebSocket不回pong时被误踢"}
+{"time":"2026-09-05 01:32","repo":"our-space","file":"weixin-bot-5/system-prompt-daily.txt+system-prompt-intimate.txt","desc":"云醉prompt拆分:从F:/qq接收两个文件落地,替换残留(日常31华生+2林游,亲密16华生→云醉),残留=0"}
+{"time":"2026-09-05 02:00","repo":"pando-bridge","file":"run.py","desc":"修远程操作写文件失败(部分):①加logging.basicConfig落盘F:/Temp/pando-data/pando.log(原uvicorn不给pando logger配handler,claude子进程退出报错log.error被吞看不到)②显式PERMISSION_MCP_PYTHON=C:\Python314\python.exe(原默认'python',claude子进程PATH未必含)。端到端验证:--permission-prompt-tool机制在CC 2.1.260仍正常(实测写文件成功+callback被调1次)"}
