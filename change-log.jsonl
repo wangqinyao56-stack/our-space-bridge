@@ -76,3 +76,8 @@
 {"time":"2026-09-05 22:27","repo":"our-space","file":"weixin-bot-4(linyou) api2d+emotional-memory+chat-server","desc":"林游gemini对新色内容522超时切熊猫claude(熊猫-A-29-claude-opus-4.6),和主后端一致"}
 {"time":"2026-09-05 22:43","repo":"our-space","file":"lib/message-router.js","desc":"日常聊天+像素小屋切宅恋askZhailian(ZHAILIAN_KEY key1,模型[君离-按量]k/claude-opus-4-6),亲密空间保持熊猫不动"}
 {"time":"2026-09-05 22:43","repo":"our-space","file":"lib/pixel-home.js","desc":"修像素小屋卡睡着:磁盘恢复分支加睡过头兜底(白天了event还停SLEEP_EVENT→叫醒重新随机)+return补sleeping字段"}
+
+{"time":"2026-09-05 15:05","repo":"our-space","file":"lib/pixel-home.js","desc":"修磁盘恢复分支:夏彦不忙时补挂scheduleNextMove续命,否则恢复后永远停留陪在身边不再主动去别的房间"}
+{"time":"2026-09-05 15:08","repo":"our-space","file":"system-prompt-pixel-home.md","desc":"新增小屋精简版prompt(独立于daily全文),handlePixelHomeMessage从复用378行daily全文改为复用瘦身版"}
+{"time":"2026-09-05 15:08","repo":"our-space","file":"lib/message-router.js+config.js","desc":"加PIXEL_HOME_PROMPT_PATH+getPixelHomeSystemPrompt,小屋聊天不再拼9段inline块"}
+{"time":"2026-09-05 15:21","repo":"our-space","file":"system-prompt-daily.md","desc":"拆固定台词:叫名字回应/出门问话/路上催促/三次催促/沉默关心都改成每次现编别复读,全局禁固定台词规则"}

@@ -25,6 +25,7 @@ export default {
   AFFECTION_DATE_PROMPT_PATH: join(__dirname, "system-prompt-affection-date.md"),
   COUPLE_TRAVEL_PROMPT_PATH: join(__dirname, "system-prompt-couple-travel.md"),
   BLINDBOX_PROMPT_PATH: join(__dirname, "system-prompt-blindbox.md"),
+  PIXEL_HOME_PROMPT_PATH: join(__dirname, "system-prompt-pixel-home.md"),
   SENTINEL_PROMPT_PATH: join(__dirname, "system-prompt-sentinel.md"),
   SENTINEL_SFW_PROMPT_PATH: join(__dirname, "system-prompt-sentinel-sfw.md"),
   PHONE_CALL_PROMPT_PATH: join(__dirname, "system-prompt-phone-call.md"),
