@@ -992,6 +992,7 @@ function pushMessage(author, nickname, text, role, replyTo) {
   }
   chatHistory.push(msg);
   if (chatHistory.length > MAX_HISTORY) chatHistory = chatHistory.slice(-MAX_HISTORY);
+  if (role === "bot") lastBotSpeakAt = Date.now();
   saveHistory();
   syncGroupMemory();
   addToGroupMemory(msg);
@@ -1695,14 +1696,19 @@ function finishMonopoly() {
 
 // ── 编排：轮流让某个夏彦接话 ──
 let speaking = false;
-let pendingWife = null;
+let pendingWives = []; // 排队等待回应的老婆（撞车时逐个回，别被后一条覆盖掉）
 let forceTopic = false;
+let lastBotSpeakAt = 0; // 上一条夏彦消息的时间戳（全局节流，防泄洪）
 
 async function step(preferNick) {
   if (speaking) {
-    // 正有夏彦在生成回复、老婆又说话了：记下来，这轮结束立刻回她
-    if (preferNick) pendingWife = preferNick;
+    // 正有夏彦在生成回复、老婆又说话了：记进队列，这轮结束后依次回她（别覆盖，多个老婆撞车都能回上）
+    if (preferNick && !pendingWives.includes(preferNick)) pendingWives.push(preferNick);
     return;
+  }
+  // 全局节流：距上一条夏彦消息太近就退让，避免多个夏彦像泄洪一样连珠炮涌出来
+  if (!preferNick) {
+    if (Date.now() - lastBotSpeakAt < 4000) return;
   }
   if (BOTS.length === 0) return;
   speaking = true;
@@ -1867,10 +1873,10 @@ async function step(preferNick) {
     console.error("[group-chat] step error:", e.message);
   } finally {
     speaking = false;
-    if (pendingWife) {
-      const n = pendingWife;
-      pendingWife = null;
-      step(n).catch(() => {});
+    if (pendingWives.length > 0) {
+      const n = pendingWives.shift();
+      // 隔一小段再回下一个老婆，别几个人连珠炮一样涌出来
+      setTimeout(() => step(n).catch(() => {}), 1500 + Math.random() * 2500);
     }
   }
 }

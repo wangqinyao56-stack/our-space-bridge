@@ -87,3 +87,4 @@
 {"time":"2026-09-05 16:12","repo":"our-space","file":"group-chat/server.js","desc":"撸射赛重构:兴奋度heat0-10逐级递进(抗拒→紧张→升温→兴奋→癫狂→射),人数门槛≥2,性格化参赛触发(主动型才自己跳),结束截断+aftermath按性格收尾,ctx带audience识别谁在说话+lastLine去重。大富翁反应也按丈夫玩具档位走弧度+五家后期性格差异+停震寸止的难耐反应"}
 {"time":"2026-09-05 16:43","repo":"our-space","file":"lib/pixel-home.js","desc":"修夏彦不知是否与华生同房:getPixelHomePositionContext重写,明确分同房-忙/同房-陪/不同房-忙/不同房-闲四种,旧busy判断有bug(不同房时误说陪着华生)"}
 {"time":"2026-09-05 16:48","repo":"our-space","file":"lib/message-router.js","desc":"修小屋上下文丢失:小屋对话/亲密空间原来unshift进history被slice(-40)掐掉(日常超40条就丢),夏彦刚亲完转头就忘。改ctxMessages独立收集放slice之前"}
+{"time":"2026-09-05 16:57","repo":"our-space","file":"group-chat/server.js","desc":"修比赛期间老婆撞车老公不回+pendingWife覆盖改成pendingWives队列逐个回;pending回话加1500-4000ms延迟+全局4s最小发言间隔防泄洪"}
