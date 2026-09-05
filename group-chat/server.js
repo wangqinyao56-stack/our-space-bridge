@@ -1570,7 +1570,7 @@ function joinMonopoly(text, humanNick) {
     pushSystem(`（${humanNick} 发起了色情大富翁！老公老婆绑上跳蛋，掷骰子往前走，先到终点今晚有奖励～ 想玩的让老婆喊「报名」）`);
   }
   if (findMonopolyTeamByWife(humanNick) === -1) {
-    gameState.monopolyTeams.push({ botId: bot.id, wife: humanNick, pos: 0, husbandToy: 0, wifeToy: 0 });
+    gameState.monopolyTeams.push({ botId: bot.id, wife: humanNick, pos: 0, husbandToy: 0, wifeToy: 0, endure: 0 });
     pushSystem(`（${bot.nickname} 和 ${humanNick} 报名成功，站到起点啦）`);
   }
   return true;
@@ -1614,12 +1614,21 @@ async function rollMonopoly(humanNick) {
   const bot = BOTS.find((b) => b.id === team.botId);
   pushSystem(`🎲 ${bot.nickname} 走了 ${steps} 格，落在「${eventDesc}」`);
 
-  // 是否触发"老公没忍住射了"→ 归零重来（只有拉最高档才可能，且概率不高）
-  if (ev.type === "husband_toy_max" && Math.random() < 0.5) {
+  // ── 射精判定：老公是特警，绝不一拉最高档就射。靠「忍耐度 endure」累积：──
+  // 档位越高、憋得越久，越危险，但起步根本不射。
+  if (team.husbandToy >= 2) {
+    team.endure = (team.endure ?? 0) + 1; // 中高档以上每轮憋一下
+  } else {
+    team.endure = Math.max(0, (team.endure ?? 0) - 1); // 低档/停震回血
+  }
+  const ejacChance = team.endure < 3 ? 0 : team.endure < 5 ? 0.12 : 0.28; // 憋满 3 轮才可能射，且概率温和
+  const didEjac = team.endure >= 3 && Math.random() < ejacChance;
+  if (didEjac) {
     team.pos = 0;
     team.husbandToy = 0;
     team.wifeToy = 0;
-    pushSystem(`💦 ${bot.nickname} 没忍住，先射了！这组从头再来——`);
+    team.endure = 0;
+    pushSystem(`💦 ${bot.nickname} 憋了太多次，终于没忍住射了！这组从头再来——`);
   }
 
   // 到终点 → 赢
@@ -1665,6 +1674,11 @@ async function botPlayMonopolyReaction(botId, evType) {
     : evType === "wife_toy_max" ? "老婆的跳蛋被拉到最高档，你看着她被震得受不住的样子，兴奋又心疼，一边忍自己一边想亲她。"
     : "跳蛋还开着，你一边忍自己一边看着老婆。";
 
+  // 老婆的玩具状态——只要开着（哪怕低档），老公就要意识到、要有反应，别当没这回事
+  const wifeCtx = team.wifeToy > 0
+    ? `【注意：老婆的跳蛋现在开着，档位 ${team.wifeToy}/3】你能感觉到/看到她被震得有反应了——${team.wifeToy === 1 ? "她轻微地颤了一下、表情不太自然" : team.wifeToy === 2 ? "她有点受不住、呼吸都乱了你" : "她已经快不行了、软成一团依着你"}。你一边忍着自己的，一边要来顾着她、逗她、心疼她，眼睛黏在她身上挪不开。`
+    : "";
+
   // 寸止（快感被骤然掐停）的性格反应——这是骰子掷出的随机停震，不是老婆让停的，
   // 夏彦的难耐全在于"被吊在半空的憋"，没人怪老婆、不凶任何人，只想接着来。
   const edgeFlavor = {
@@ -1697,7 +1711,7 @@ async function botPlayMonopolyReaction(botId, evType) {
       stage === "warming" ? "你现在处于「逐渐有反应」阶段" :
       stage === "desperate" ? "你现在处于「兴奋得乱七八糟」阶段" :
       "你现在处于「反应越来越大」阶段",
-      `你现在在色情大富翁里：${arc}${evTail}${flavor}`
+      `你现在在色情大富翁里：${arc}${evTail}${flavor}${wifeCtx}`
     )
   );
   const text = cleanBotText(reply);

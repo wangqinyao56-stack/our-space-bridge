@@ -91,3 +91,4 @@
 {"time":"2026-09-05 17:03","repo":"our-space","file":"group-chat/server.js","desc":"撸射赛去重+惩罚奖池触发修复:①同一档位每次随机抽不同反应角度(warming/building/desperate各4-5条池)降低重复率 ②maybeRollPose数字正则放宽,原来只认纯数字(我选7/就7/5号都不触发)"}
 {"time":"2026-09-05 17:08","repo":"our-space","file":"group-chat/server.js","desc":"撸射赛+大富翁结束收尾差异化:①第一个射=输家其他人默认赢 ②赢家aftermath按性格(馋求撸完/累求松手回家/咬牙切齿讨回来)给方向不定死话 ③惩罚奖池:老婆投骰子直接随机抽(roll_dice路由到rollEroticDice),bot不能投"}
 {"time":"2026-09-05 17:11","repo":"our-space","file":"group-chat/server.js","desc":"精简撸射赛后prompt:aftermath收尾改一句(说完回群聊围观不再反复呻吟),删掉枚举式6方向参考(反而逼重复),删loadBotEroticMemory死代码+memBlock,红线规则压成一行"}
+{"time":"2026-09-05 17:28","repo":"our-space","file":"group-chat/server.js","desc":"大富翁修射太快+老公意识到老婆玩具开:①射精改忍耐度endure机制(憋满3轮才可能射,概率0.12/0.28,起步根本不射,替代原来husband_toy_max即0.5射) ②team加endure字段 ③botPlayMonopolyReaction加wifeCtx:老婆玩具开着(无论几档)老公都要看到她有反应、顾着她"}
