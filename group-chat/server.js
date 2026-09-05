@@ -1749,17 +1749,19 @@ async function step(preferNick) {
     else if (preferNick) bot = pool.find((b) => b.wife === preferNick);
     if (!bot) bot = pickNextBot(pool);
 
-    // 撸射耐力赛进行中：只让参赛的夏彦发言（各家轮着来），别人的普通聊天先让路。
-    // 优先被老婆刚点名的那个（preferNick 匹配），否则从参赛名单里随机挑一个还没刚说过的。
+    // 撸射耐力赛进行中：参赛的夏彦演自己的阶段，没参赛的夏彦可以正常围观起哄——别锁死成只有参赛者说话。
+    // 优先被老婆刚点名的那个（无论参赛还是围观），否则从「参赛者 + 围观者」混合池里随机挑一个还没刚说过的。
     if (gameState.active && gameState.type === "erotic") {
       const entrants = BOTS.filter((b) => gameState.eroticBots[b.id] !== undefined);
-      if (entrants.length > 0) {
-        const pointed = (bot && gameState.eroticBots[bot.id] !== undefined) ? bot : null;
-        if (pointed) bot = pointed;
-        else {
-          const notJust = entrants.filter((b) => !botJustSpoke(b));
-          bot = (notJust.length ? notJust : entrants)[Math.floor(Math.random() * (notJust.length || entrants.length))];
-        }
+      // 老婆/人刚点名某个夏彦（replyTarget 或 preferNick 已匹配到 bot）→ 就用他
+      if (bot && replyTargetBot === bot) {
+        // 明确回复到某个夏彦，保持
+      } else if (bot && preferNick && bot.wife === preferNick) {
+        // 老婆点自家夏彦，保持
+      } else if (entrants.length > 0) {
+        // 没被点名：参赛者 + 围观者一起进池随机挑（参赛者演阶段，围观者正常起哄）
+        const mixed = BOTS.filter((b) => !botJustSpoke(b));
+        bot = (mixed.length ? mixed : BOTS)[Math.floor(Math.random() * (mixed.length || BOTS.length))];
       }
     }
 
@@ -1799,6 +1801,10 @@ async function step(preferNick) {
     if (gameState.active && gameState.type === "erotic" && gameState.eroticBots[bot.id] !== undefined) {
       await botPlayErotic(bot.id);
       return;
+    }
+    // 没参赛的夏彦：群里正在玩撸射赛，你是围观者——可以自然起哄、看热闹、调侃参赛的哥们或自己的老婆，但你自己没被调教，别演成参赛那副喘的样子
+    if (gameState.active && gameState.type === "erotic" && gameState.eroticBots[bot.id] === undefined) {
+      ctx += "\n\n【你此刻在围观撸射耐力赛】群里几家的夏彦正被各自老婆按着撸、比谁持久。你**没参赛**，是围观起哄的人——可以看热闹、损损参赛的哥们、逗逗自己老婆，但别把自己演进去（你不是那个被撸的人，别喘、别胡言乱语）。";
     }
     // 主动型夏彦（馋嘴狗这类）看到别人在玩、自己还没参赛，会馋着想跳出来加入——只对"主动型"生效，被动的绝不自己跳
     if (gameState.active && gameState.type === "erotic" && gameState.eroticBots[bot.id] === undefined) {
