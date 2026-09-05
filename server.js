@@ -1830,6 +1830,8 @@ wss.on("connection", (ws, req) => {
       try {
         notifyUserActivity();
         intimateLastUserMsg = Date.now();
+        // 熊猫站模型慢，先推 typing，让客户端显示「正在输入」而不是干等
+        ws.send(JSON.stringify({ type: "presence", status: "typing" }));
         const hsBefore = getHuashengTravelState().active;
         const reply = await handleIntimateMessage(msg.content);
         const cleanReply = processEjaculationMarker(reply, msg.id);

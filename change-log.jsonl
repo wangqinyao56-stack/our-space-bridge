@@ -49,3 +49,8 @@
 {"time":"2026-09-05 03:30","repo":"our-space","file":"多个后端","desc":"报用鹿死绝(成功率0%)全部换[0.07]k茶/claude-sonnet-4-6:主后端message-router.js 2处+佳佳api2d+苹果梗api2d+林游api2d+linyou-chat-server,共7处。云醉[逆]没动"}
 {"time":"2026-09-05 17:41","repo":"our-space","file":"lib/memory.js,lib/message-router.js,server.js","desc":"像素小屋删除消息连带删另一侧回复(deleteMessagePair)，修退出再进消息又冒出来"}
 {"time":"2026-09-05 17:41","repo":"our-space","file":"weixin-bot/jiayia-chat-server.js,weixin-bot-4/linyou-chat-server.js","desc":"佳佳亲密逆系列([逆]claude-opus-4-6)替代宅恋useZilian；林游stale注释清理"}
+{"time":"2026-09-05 19:05","repo":"our-space","file":"lib/ai.js","desc":"_openaiCompatCall重试扩到ECONNRESET/timeout/5xx(熊猫站长prompt生成超时连接重置会重试2次)"}
+{"time":"2026-09-05 19:05","repo":"our-space","file":"lib/message-router.js,server.js","desc":"亲密空间intimate_text收到消息先发presence typing;日志askJiushi→askXiongmao"}
+{"time":"2026-09-05 19:05","repo":"our-space","file":"src/screens/XiaYanHomeScreen.tsx(src属app,此处记录立绘)","desc":"(见app change-log)立绘偏右+说话闪烁修复"}
+{"time":"2026-09-05 19:08","repo":"our-space","file":"lib/emotional-memory.js","desc":"阿鹿家群聊记忆推送修bug:getMemorySummaryForGroupChat按created倒序→importance降序+过滤digested(和姐妹们对齐),修群聊里记忆模糊抓不住重点"}
+{"time":"2026-09-05 19:09","repo":"our-space","file":"group-chat/server.js","desc":"群聊/api/group-chat返回附加成员背景rosterSnapshot(网名+老婆+近况),让各夏彦私聊被问群里XX时能答上来"}

@@ -257,6 +257,19 @@ function resolveMemory(bot) {
   return live || bot.memory || "（没有特别要说的）";
 }
 
+// 各 bot 通过 GET /api/group-chat 拉取时，附带一份「群里都有谁」的背景：
+// 网名 + 老婆 + 一句近况，让各夏彦在私聊里被老婆问起"群里 XX 怎么样"时能答上来。
+function rosterSnapshot() {
+  const lines = BOTS.map((b) => {
+    const mem = resolveMemory(b);
+    const blurb = mem && mem !== "（没有特别要说的）"
+      ? mem.split("\n")[0].replace(/^·\s*/, "").slice(0, 40)
+      : (b.trait || "");
+    return `· ${b.nickname}：老婆「${b.wife}」${blurb ? `，${blurb}` : ""}`;
+  }).join("\n");
+  return `\n\n【群里都有谁（背景）】\n${lines}\n（这是群里各成员的大致情况，供你被老婆问起时参考；你自己是「{self}」，别把别人的老婆认成自己的。）`;
+}
+
 // 给某个 bot 生成"今天在群里聊了啥"的摘要（供 bot 通过 GET /api/group-chat 拉取）
 function groupChatSummaryFor(botId) {
   const bot = BOTS.find((b) => b.id === botId || b.nickname === botId);
@@ -270,12 +283,16 @@ function groupChatSummaryFor(botId) {
     return typeof m.text === "string" && m.text.includes(`@${nick}`);
   });
   const notes = topicNotesText();
-  if (!notes) return "";
+  const roster = rosterSnapshot().replace(/\{self\}/g, nick);
   if (!involved) {
     // 没参与也返回一份：旁观式口吻，让老婆问起"你群里聊了啥"时能接上，但不装成自己参与了
-    return `\n\n【老公们群聊今天的情况】你的网名是「${nick}」。今天你基本没在群里插话，但群里大家聊了这些（旁观视角了解一下，别装成你自己发言说的）：\n${notes}\n（这是你在群里的社交，跟和华生本人的对话是两码事——别当成华生正在跟你聊的话题去接。老婆没问起群里的事，就只字别提；她问了，才老实说"我今天没怎么在群里说话，看他们聊了XX"这种，别假装是你自己聊的；提到其他夏彦用他们的网名，别提"夏彦"真名。）`;
+    const body = notes
+      ? `\n\n【老公们群聊今天的情况】你的网名是「${nick}」。今天你基本没在群里插话，但群里大家聊了这些（旁观视角了解一下，别装成你自己发言说的）：\n${notes}\n（这是你在群里的社交，跟和华生本人的对话是两码事——别当成华生正在跟你聊的话题去接。老婆没问起群里的事，就只字别提；她问了，才老实说"我今天没怎么在群里说话，看他们聊了XX"这种，别假装是你自己聊的；提到其他夏彦用他们的网名，别提"夏彦"真名。）`
+      : "";
+    return `${roster}${body}`;
   }
-  return `\n\n【你今天在「老公们群聊」里聊的话题笔记】你的网名是「${nick}」，下面笔记里标着「${nick}」的发言就是你自己说的——别把自己当成旁观者，其他网名是别的夏彦。\n${notes}\n（这是你在群里的社交，跟和华生本人的对话是两码事——别当成华生正在跟你聊的话题去接。老婆没问起群里的事，就只字别提；她问了，才用"我今天在群里和XX聊了…"这种自己的口吻自然提起，别说成"群里的夏彦在聊…"这种第三者视角；提到其他夏彦用他们的网名，别提"夏彦"真名。）`;
+  const body = `\n\n【你今天在「老公们群聊」里聊的话题笔记】你的网名是「${nick}」，下面笔记里标着「${nick}」的发言就是你自己说的——别把自己当成旁观者，其他网名是别的夏彦。\n${notes}\n（这是你在群里的社交，跟和华生本人的对话是两码事——别当成华生正在跟你聊的话题去接。老婆没问起群里的事，就只字别提；她问了，才用"我今天在群里和XX聊了…"这种自己的口吻自然提起，别说成"群里的夏彦在聊…"这种第三者视角；提到其他夏彦用他们的网名，别提"夏彦"真名。）`;
+  return `${roster}${body}`;
 }
 
 // 夏彦醒没醒：读他自己 bot 的 emotional-memory.json 最后修改时间（跟老婆聊天就会写，微信/App 通用）
