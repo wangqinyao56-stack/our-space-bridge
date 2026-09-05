@@ -9,6 +9,7 @@ COPY lib/ ./lib/
 COPY jiayia-chat-server.js .
 COPY system-prompt-daily.txt .
 COPY system-prompt-intimate.txt .
+COPY system-prompt-pixel-home.txt .
 
 ENV DISABLE_PROXY=true
 ENV MEMORY_DIR=/data2
