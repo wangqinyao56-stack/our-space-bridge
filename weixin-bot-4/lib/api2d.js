@@ -8,7 +8,7 @@
 import http from "node:http";
 import https from "node:https";
 
-const JIUSHI_KEY = "sk-XzNsmmTNmnhRhmRTrZvxNCE7w0Vw8CAF";
+const JIUSHI_KEY = "sk-hnzbDQ7LvalirMGxk3t7OPGovnNsx8K6GDOFFTXhq5GSkag4";
 const JIUSHI_HOST = "api520.pro";
 const JIUSHI_MODEL = "熊猫-顶级特供-X-17-gemini-3.1-pro-preview";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
