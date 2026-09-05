@@ -81,3 +81,4 @@
 {"time":"2026-09-05 15:08","repo":"our-space","file":"system-prompt-pixel-home.md","desc":"新增小屋精简版prompt(独立于daily全文),handlePixelHomeMessage从复用378行daily全文改为复用瘦身版"}
 {"time":"2026-09-05 15:08","repo":"our-space","file":"lib/message-router.js+config.js","desc":"加PIXEL_HOME_PROMPT_PATH+getPixelHomeSystemPrompt,小屋聊天不再拼9段inline块"}
 {"time":"2026-09-05 15:21","repo":"our-space","file":"system-prompt-daily.md","desc":"拆固定台词:叫名字回应/出门问话/路上催促/三次催促/沉默关心都改成每次现编别复读,全局禁固定台词规则"}
+{"time":"2026-09-05 15:31","repo":"our-space","file":"weixin-bot-4/lib/api2d.js+linyou-chat-server.js","desc":"林游日常切宅恋(az.zlapi.vip+林游自己的key sk-PuPG6...+[君离-按量]k/claude-opus-4-6),亲密保持熊猫不动。api2d.js加provider参数支持双provider"}

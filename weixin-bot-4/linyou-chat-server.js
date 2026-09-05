@@ -141,7 +141,11 @@ async function chatReply(channel, userText, history) {
     temperature: 0.65,
     maxTokens: 800,
   };
-  if (channel === "intimate") opts.model = "熊猫-A-29-claude-opus-4.6"; // 亲密走熊猫claude(和阿鹿家同款，gemini对情色超时522)
+  if (channel === "intimate") {
+    opts.model = "熊猫-A-29-claude-opus-4.6"; // 亲密走熊猫claude(和阿鹿家同款，gemini对情色超时522)
+  } else {
+    opts.provider = "zhailian"; // 日常走宅恋(az.zlapi.vip + 林游自己的key + 阿鹿同款模型名)
+  }
   if (history.length > 0) opts.history = history;
   return await askClaude(opts);
 }

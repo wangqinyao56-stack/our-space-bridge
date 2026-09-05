@@ -11,21 +11,26 @@ import https from "node:https";
 const JIUSHI_KEY = "sk-hnzbDQ7LvalirMGxk3t7OPGovnNsx8K6GDOFFTXhq5GSkag4";
 const JIUSHI_HOST = "api520.pro";
 const JIUSHI_MODEL = "熊猫-A-29-claude-opus-4.6";
+
+// 宅恋（林游日常）——az.zlapi.vip + 林游自己的 key，和阿鹿家同款模型名
+const ZHAILIAN_KEY = "sk-PuPG6Jrbk1Xj1j6Wt5AbLHzxkjiYa1dKGY7ibERnXY7WHpuc";
+const ZHAILIAN_HOST = "az.zlapi.vip";
+const ZHAILIAN_MODEL = "[君离-按量]k/claude-opus-4-6";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
 const DISABLE_PROXY = process.env.DISABLE_PROXY === "true";
 
 // ── Direct HTTPS (Docker/Sealos) ──
 
-function directRequest({ body, timeoutMs }) {
+function directRequest({ body, timeoutMs, host, key, errTag }) {
   return new Promise((resolve, reject) => {
     const req = https.request({
-      host: JIUSHI_HOST,
+      host,
       path: "/v1/chat/completions",
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${JIUSHI_KEY}`,
+        "Authorization": `Bearer ${key}`,
       },
       timeout: timeoutMs,
     }, (res) => {
@@ -34,7 +39,7 @@ function directRequest({ body, timeoutMs }) {
       res.on("end", () => {
         if (res.statusCode !== 200) {
           const errBody = Buffer.concat(chunks).toString().slice(0, 300);
-          reject(new Error(`jiushi ${res.statusCode}: ${errBody}`));
+          reject(new Error(`${errTag} ${res.statusCode}: ${errBody}`));
           return;
         }
         try {
@@ -56,12 +61,12 @@ function directRequest({ body, timeoutMs }) {
 
 // ── Proxy (local dev) ──
 
-function proxyRequest({ body, timeoutMs }) {
+function proxyRequest({ body, timeoutMs, host, key, errTag }) {
   return new Promise((resolve, reject) => {
     const req = http.request({
       host: PROXY_HOST, port: PROXY_PORT, method: "CONNECT",
-      path: `${JIUSHI_HOST}:443`,
-      headers: { Host: `${JIUSHI_HOST}:443` },
+      path: `${host}:443`,
+      headers: { Host: `${host}:443` },
     });
     req.on("connect", (res, socket) => {
       if (res.statusCode !== 200) {
@@ -70,11 +75,11 @@ function proxyRequest({ body, timeoutMs }) {
       }
       const r = https.request({
         method: "POST",
-        host: JIUSHI_HOST, port: 443,
+        host, port: 443,
         path: "/v1/chat/completions",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${JIUSHI_KEY}`,
+          "Authorization": `Bearer ${key}`,
         },
         socket,
         timeout: timeoutMs,
@@ -84,7 +89,7 @@ function proxyRequest({ body, timeoutMs }) {
         resp.on("end", () => {
           if (resp.statusCode !== 200) {
             const errBody = Buffer.concat(chunks).toString().slice(0, 300);
-            reject(new Error(`jiushi ${resp.statusCode}: ${errBody}`));
+            reject(new Error(`${errTag} ${resp.statusCode}: ${errBody}`));
             return;
           }
           try {
@@ -127,13 +132,20 @@ export async function askClaude(opts = {}) {
     systemPrompt,
     userContent,
     history = [],
-    model = JIUSHI_MODEL,
+    model,
     maxTokens = 800,
     temperature = 0.65,
     timeoutMs = 180000,
     imageBase64,
     imageMime,
+    provider = "xiongmao",
   } = opts;
+
+  const isZhailian = provider === "zhailian";
+  const host = isZhailian ? ZHAILIAN_HOST : JIUSHI_HOST;
+  const key = isZhailian ? ZHAILIAN_KEY : JIUSHI_KEY;
+  const errTag = isZhailian ? "zhailian" : "xiongmao";
+  const resolvedModel = model || (isZhailian ? ZHAILIAN_MODEL : JIUSHI_MODEL);
 
   if (!systemPrompt || !userContent) {
     throw new Error("systemPrompt and userContent are required");
@@ -159,7 +171,7 @@ export async function askClaude(opts = {}) {
   ];
 
   const body = JSON.stringify({
-    model,
+    model: resolvedModel,
     max_tokens: maxTokens,
     temperature,
     messages,
@@ -167,12 +179,12 @@ export async function askClaude(opts = {}) {
 
   const requestFn = DISABLE_PROXY ? directRequest : proxyRequest;
 
-  // 429 限流退避重试：玖时提示 quota reset after 1s，撞上限流停一下再试基本就过
+  // 429 限流退避重试：玖时/宅恋提示 quota reset after 1s，撞上限流停一下再试基本就过
   const MAX_RETRIES = 2;
   let lastErr;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      return await requestFn({ body, timeoutMs });
+      return await requestFn({ body, timeoutMs, host, key, errTag });
     } catch (err) {
       lastErr = err;
       const isRateLimited = String(err?.message || "").includes("429");
