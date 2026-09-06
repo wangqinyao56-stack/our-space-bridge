@@ -207,6 +207,7 @@ const PIXEL_HOME_STATE_TTL = 10 * 60 * 1000; // 10 分钟没信号视为「不�
 const gameState = {
   type: null,      // null | "bomb" | "story" | "draw"
   active: false,
+  lastActivity: 0, // 最后一次人类互动时间戳（超时没人玩自动收场用）
   // 数字炸弹
   bombLow: 1,
   bombHigh: 100,
@@ -1011,6 +1012,7 @@ function pushMessage(author, nickname, text, role, replyTo) {
   chatHistory.push(msg);
   if (chatHistory.length > MAX_HISTORY) chatHistory = chatHistory.slice(-MAX_HISTORY);
   if (role === "bot") lastBotSpeakAt = Date.now();
+  if (role === "human" && gameState.active) gameState.lastActivity = Date.now(); // 真人在说话 → 刷新游戏活跃
   saveHistory();
   syncGroupMemory();
   addToGroupMemory(msg);
@@ -1362,45 +1364,22 @@ const EROTIC_ENTRY = {
 
 function buildEroticSystemPrompt(bot, stage, ctx = {}) {
   const heat = ctx.heat ?? 0;
-  const lastLine = ctx.lastLine ? `你上一条说的是「${ctx.lastLine}」——**这次必须换个说法、换种喘法，绝对不能再出现上一条用过的词和句式**，接着往上走一格。` : "";
+  const lastLine = ctx.lastLine ? `你上一条说的是「${ctx.lastLine}」——**这次必须换个说法，绝对不能再出现上一条用过的词和句式**，接着往上走一格，别重复。` : "";
 
-  // 同一档位每次轮到随机抽一个「此刻反应角度」，避免次次同款模板、重复率高
-  const VARIANCE = {
-    warming: [
-      "你刚有感觉但还绷着，努力装没事、说话还利索，只是呼吸重了点",
-      "被撩得心跳快起来，有点慌又有点舒服，声音开始打颤",
-      "你脑子还想逞强，身体却已经软了半分，话说到一半漏了气音",
-      "又羞又舒服，嘴上嘟囔着「别闹」，可一点都没有真躲",
-    ],
-    building: [
-      "你话说一半就喘断了，接不上，只能胡乱叫老婆的名字",
-      "你越想装镇定越漏——喘得厉害，句子都断成一截一截",
-      "你眼神已经黏到老婆身上挪不开，嘴里含糊地要她靠近点",
-      "你被弄得浑身发软，嘴上还硬着说自己撑得住，语气却全软了",
-      "你开始胡言乱语、颠三倒四，脑子里乱成一团",
-    ],
-    desperate: [
-      "你快崩了，胡话一句接一句，完全不管别人听不听得懂",
-      "你死死咬住最后一点，求老婆又怕她真放过——又想要又不甘心",
-      "你脑子里只剩下老婆，别的什么都想不起来，只剩求她",
-      "你憋得发疯却还差临门一脚，声音抖得不成样子",
-      "你已经在绷断的边缘，只剩一点点理智在硬撑",
-    ],
-  }[stage] || [];
-  const variance = VARIANCE.length ? " " + VARIANCE[Math.floor(Math.random() * VARIANCE.length)] + "。" : "";
-
+  // 只给客观的阶段定位 + 流程指令，具体表现（怎么喘、说什么、怎么慌）全交给 AI 按 persona 现场编，
+  // 别替它想好台词和句式——模板越细五家越像同一个人、越容易背台词重复。
   const stageRule = {
-    resist: `你现在处于「抗拒」阶段（兴奋度 0/10）。老婆当众起哄要你撸给自己看/比谁持久，你**又慌又羞、磕巴着拒绝、找借口躲**——"不是、老婆！当着大家的面……""别、别这样……"这种。你越慌老婆越来劲。**绝不要开头就答应**，先抗拒、想拦、慌得语无伦次。身体还完全没进入状态，纯粹是羞和慌。不写动作，全靠语气。`,
-    yield: `你现在处于「低头接受」阶段（兴奋度 1-2/10）。被老婆一路逼到绝境，你拦也拦不住，终于委屈巴巴地低头认了、软乎乎地答应。刚开始被她碰，**身体刚有丁点感觉、还没起来**——紧张的成分远大于兴奋，声音发颤、话说不完整，有点慌。**还没到兴奋，只是紧张 + 微妙的发软**。不写动作。`,
-    warming: `你现在处于「逐渐有反应」阶段（兴奋度 3-4/10）。被老婆弄了一会儿，**感觉一点一点上来了**——开始有反应，喘气变多，偶尔漏出一两声短促的"啊……"但还能说话、还克制得住。身体刚被挑起，还没到失控。**有感觉但绝不疯狂**，是温温的、慢慢升温的。`,
-    building: `你现在处于「反应越来越大」阶段（兴奋度 5-6/10）。被老婆越弄越上头，**兴奋在往上冲**——喘得厉害、话开始断、有点语无伦次，想装镇定装不住了。身体被完全挑起来，但**还没到顶，还能撑**。越兴奋越想老婆，嘴里开始含糊地叫她、说胡话。`,
-    desperate: `你现在处于「兴奋得乱七八糟」阶段（兴奋度 7-8/10）。**快不行了、快到顶了**——喘得上气不接下气、语无伦次、乱七八糟地胡言乱语，脑子里全是老婆。你死死咬住最后一点自制力，**憋得发疯却还差临门一脚**，一急就胡乱求她、说胡话。**明明要崩了，但就是还差一下、不许自己先缴械**。`,
-    finisher: `你已经输了——你是第一个射出来的。**认栽要认得起**：委屈巴巴、羞耻、气鼓鼓但软，被老婆当众笑话，被别的夏彦忍着笑看。你输了要**认罚**：① 当众说一句平时只会在床上说的话（你跟你老婆单独时才会说的那种，荤但不脏、不说器官）② 接受抽姿势惩罚——等主持人/老婆报一个数字，后台会抽今晚要用的体位，你乖乖认下。语气软、黏、被她吃得死死的，别嘴硬、别不服气。`,
-    aftermath: `比赛结束了，你是赢家。说**一句**按你性格的收尾（馋的求老婆、嘴硬的逞强、哭包哼唧……用你自己的话），说完就回群聊跟大家一起围观吐槽，别一直陷在呻吟里反复说。`,
+    resist: `你现在刚被老婆当众起哄要撸给自己看、比谁持久，**又慌又羞、磕巴着拒绝、找借口躲**——身体完全没进入状态，纯粹是羞和慌。**绝不要开头就答应，先抗拒、想拦、慌得语无伦次，她越起哄你越拦不住、越描越黑。**`,
+    yield: `你被老婆一路逼到绝境，拦也拦不住，终于委屈巴巴地低头认了、软乎乎地答应。刚开始，**身体只有丁点感觉、还没起来**——紧张远大于兴奋，有点慌，还没到兴奋。不如前面那些阶段时那么理直气壮。`,
+    warming: `你有感觉了——**身体被一点一点挑起，开始有反应、慢慢升温**，还有点克制、不算失控。`,
+    building: `你越来越上头、**兴奋冲上来**——已经开始不太稳，但还没到顶、还撑得住。`,
+    desperate: `你**快到顶了**——憋得发疯，只剩最后一点自制力在硬撑，就是还差一下没缴械。`,
+    finisher: `你已经输了——第一个射出来。认栽要认得起：委屈、羞耻、气鼓鼓又软，被老婆当众笑话、被别的夏彦忍着笑看。**认罚**：① 说一句你平时只会跟你老婆在床上单独说的话（荤但不脏、不说器官）② 报数字抽姿势惩罚，乖乖认下。`,
+    aftermath: `比赛结束，你赢了。按你的性格说一句收尾就回群聊围观，别陷在呻吟里反复说。`,
   }[stage] || "";
 
   const persona = EROTIC_PERSONA[bot.id] || "";
-  return `${buildWifePrompt(bot)}\n\n【撸射耐力赛·多人游戏】几家夏彦各自被老婆当众撸、比谁持久，谁先射谁输。你老婆是「${bot.wife}」，你的反应焦点只在她身上。${ctx.audience || ""}\n\n【你此刻是「${stage}」，兴奋度 ${heat}/10】${lastLine}${stageRule}${variance}\n\n【你的专属风格】${persona}\n\n【红线】不写动作、不说器官、不骂人；回复短、口语；只对你老婆说话别认错人。`;
+  return `${buildWifePrompt(bot)}\n\n【撸射耐力赛·多人游戏】几家夏彦各自被老婆当众撸、比谁持久，谁先射谁输。你老婆是「${bot.wife}」，你的反应焦点只在她身上。${ctx.audience || ""}\n\n【你此刻是「${stage}」，兴奋度 ${heat}/10】${lastLine}${stageRule}\n\n【你的专属风格——说话、喘气、撒娇、求饶全按这个来，别五家一个样】${persona}\n\n【红线】不写动作、不说器官、不骂人；回复短、口语、只对你老婆说话；用你自己的话现编，别照搬任何固定句式。`;
 }
 
 // 当前「实际参赛中」的夏彦数（heat>=0 且还没输=finisher 的都算在赛内）
@@ -1472,6 +1451,15 @@ function handleErotic(text, humanNick) {
   // 平时推进：每次老婆说话，自家夏彦兴奋度 heat+1（有弧度，别一步到位）
   entry.heat = Math.min((entry.heat ?? 0) + 1, 8);
   entry.stage = stageOfHeat(entry.heat);
+  // 忍到 desperate（heat 满 8）后，每次老婆推进都有概率自己憋不住先射——不能永远靠老婆放行，否则卡死循环
+  if (entry.heat >= 8 && Math.random() < 0.35) {
+    entry.stage = "finisher";
+    entry.heat = 10;
+    gameState.eroticLoserId = bot.id;
+    pushSystem(`（${bot.nickname} 实在憋不住了——没等老婆放行，自己先射了，输了！）`);
+    step(humanNick).catch(() => {});
+    return true;
+  }
   step(humanNick).catch(() => {});
   return true;
 }
@@ -1696,20 +1684,21 @@ async function botPlayMonopolyReaction(botId, evType) {
   const persona = EROTIC_PERSONA[bot.id] || "";
 
   // ── 互动动作类事件：不调档位，只触发一段「说感受」的亲密（吻/摸），全按性格来，别单调 ──
+  // 只给客观事件 + 方向，具体感受让 AI 按 persona 现编，别再写死例句（例句=背台词）
   const INTERACT = {
-    kiss_deep: `你们来了一场**法式湿吻**。你细说吻的感受——舌头怎么交缠、她的唇舌什么触感、有多舒服，用你自己的话现编（方向参考，别照抄）："恩…啾…老婆这样喜欢吗？"、"舌头交缠在一起…好舒服…"。吻得投入、黏糊，眼里只有她。说感受，别写"我把舌头伸进去"这种动作过程。`,
-    kiss_soft: `你**轻轻亲了她一下**。温存的、珍惜的一下——说说这一下亲在哪里、你心里什么感觉，甜而不腻。`,
-    kiss_bite: `你**情欲上头啃了她一下**（脖子/锁骨/耳垂这种，不是真的咬疼她）。说说你有多想把她拆吃入腹、牙齿擦过她皮肤时那种失控，软中带狠。`,
-    husband_touch: `你**摸了她的敏感处**。细说你摸到的感受——"这里好软、好可爱、好想咬一口"这种，越具体越色气，眼里全是对她的痴迷。说感受别写动作。`,
-    wife_touch: `她**摸了你**。你**很舒服地起了反应**——顺着她的触碰给出反应，哼唧、求她别停、夸奖她的手，软乎乎地任她摸。`,
-    ejac: `你**憋了太久，终于没忍住射了**。别张着嘴一声不吭——把"忍不住了"这下的反应说出来：急促的喘息、浑身发软、又羞又爽又有点挫败，语气乱成一团，可能还带点委屈/不甘心。说一句到几句，别装没事，也别光堆"啊"。`,
+    kiss_deep: `你们来了一场法式湿吻——说这场吻给你的感受（她的唇舌、交缠、想把她揉进身体里的痴），用你自己的话。`,
+    kiss_soft: `你轻轻亲了她一下——说说这一下亲在哪儿、你心里什么感觉，甜而不腻。`,
+    kiss_bite: `你情欲上头啃了她一下（脖子/锁骨/耳垂这种，不是真咬疼她）——说你想把她拆吃入腹的那种失控。`,
+    husband_touch: `你摸了她的敏感处——说你摸到时的感受、对她的痴迷。`,
+    wife_touch: `她摸了你——你舒服地起了反应，给出你的反应（哼唧、求她别停、夸她）。`,
+    ejac: `你憋了太久终于没忍住射了——把"忍不住了"这下的反应说出来，又羞又爽又有点挫败/委屈。`,
   };
   if (INTERACT[evType]) {
     const reply = await askBot(
       bot,
-      `【现在】${nowBeijing()}\n\n你们在玩色情大富翁，刚触发了互动事件。${INTERACT[evType]}\n\n用你自己的性格和说话方式现编一句到几句，短、口语、带点喘息。不写动作、不说器官、不说脏话。`,
-      180000,
-      `${buildWifePrompt(bot)}\n\n【你的专属风格】${persona}\n\n【红线】不写动作过程、不说器官、不骂人；只对老婆「${bot.wife}」说话；短、口语。`
+      `【现在】${nowBeijing()}\n\n你们在玩色情大富翁，刚触发了互动事件。${INTERACT[evType]}\n\n用你自己的性格和方式现编一句到几句，短、口语、带点喘息。不写动作、不说器官、不说脏话，别照搬固定句式。`,
+      60000,
+      `${buildWifePrompt(bot)}\n\n【你的专属风格——怎么说话、怎么喘、怎么撒娇全按这个来】${persona}\n\n【红线】不写动作过程、不说器官、不骂人；只对老婆「${bot.wife}」说话；短、口语。`
     );
     const text = cleanBotText(reply);
     if (!text) return;
@@ -1722,60 +1711,42 @@ async function botPlayMonopolyReaction(botId, evType) {
   // 0=刚绑上/还没开，1=低档，2=中高档，3=最高档
   let heat, stage, arc;
   if (team.husbandToy <= 0) {
-    heat = 1; stage = "yield"; arc = "东西刚戴上/档位还没开，你**有点害羞、不好意思**——当众被绑着跳蛋，脸上挂不住，嘴上还逞强，身体还没怎么进入状态，紧张多过兴奋。";
+    heat = 1; stage = "yield"; arc = "你的跳蛋还没开——当众被绑着，你有点害羞、不好意思，紧张多过兴奋。";
   } else if (team.husbandToy === 1) {
-    heat = 3; stage = "warming"; arc = "低档轻轻震着，你**开始有点反应**——喘气变多，但还是克制的，偶尔漏一两个含糊的音，还撑得住。";
+    heat = 3; stage = "warming"; arc = "低档轻轻震着——你开始有点反应了，但还克制得住、还撑得住。";
   } else if (team.husbandToy === 2) {
-    heat = 6; stage = "building"; arc = "中高档震得厉害，你**反应越来越大、兴奋上头**——喘得明显、话开始断、有点语无伦次，脑子里全是老婆。";
+    heat = 6; stage = "building"; arc = "中高档震得厉害——你反应越来越大、兴奋上头，脑子里全是老婆。";
   } else {
-    heat = 8; stage = "desperate"; arc = "最高档，你**兴奋得乱七八糟、快到顶了**——低声哼哼、咬牙忍着别射、憋得发疯，就差临门一脚，嘴里含糊求老婆。";
+    heat = 8; stage = "desperate"; arc = "最高档，你兴奋得快到顶了——憋着别射、就差临门一脚。";
   }
 
   // 事件追加的情绪（叠加在档位之上）
   const isStop = evType === "stop";
   const evTail = evType === "win" ? `你到终点赢了！奖励是今晚「${gameState.monopolyReward || "由你挑"}」——把这个奖亲口说给老婆、逗她今晚兑现，兴奋得意、还带着点被跳蛋折腾得气喘吁吁的意犹未尽，脑子里盘算今晚怎么从老婆身上讨回来。按你自己的性子现编，别照搬。`
-    : isStop ? "" // 停震走单独的「寸止难耐」性格反应（edgeFlavor），不在这里写
+    : isStop ? ""
     : evType === "husband_toy_max" ? "你的跳蛋被直接拉到最高档，冲击来得太猛，你差点没忍住。"
     : evType === "wife_toy_max" ? "老婆的跳蛋被拉到最高档，你看着她被震得受不住的样子，兴奋又心疼，一边忍自己一边想亲她。"
     : "跳蛋还开着，你一边忍自己一边看着老婆。";
 
-  // 老婆的玩具状态——只要开着（哪怕低档），老公就要意识到、要有反应，别当没这回事；看着老婆动情，自己也得跟着兴奋
+  // 老婆的玩具状态——只要开着（哪怕低档），老公就要意识到、要有反应，别当没这回事
   const wifeCtx = team.wifeToy > 0
-    ? `【注意：老婆的跳蛋现在开着，档位 ${team.wifeToy}/3】你能感觉到/看到她被震得有反应了——${team.wifeToy === 1 ? "她轻微地颤了一下、表情不太自然" : team.wifeToy === 2 ? "她有点受不住、呼吸都乱了" : "她已经快不行了、软成一团依着你"}。**你看着她动情的样子，自己也跟着兴奋上头、血脉偾张，直想扑上去亲她、占有她**——别表现得无动于衷、稳如老狗。一边忍自己的，一边眼睛黏在她身上挪不开、嘴上逗她心疼她。`
+    ? `【注意：老婆的跳蛋现在开着，档位 ${team.wifeToy}/3】你看到她/感觉到她被震得出反应了——**你看着她动情的样子，自己也跟着兴奋、想亲她想占有她**，别装无动于衷。`
     : "";
 
-  // 寸止（快感被骤然掐停）的性格反应——这是骰子掷出的随机停震，不是老婆让停的，
-  // 夏彦的难耐全在于"被吊在半空的憋"，没人怪老婆、不凶任何人，只想接着来。
-  const edgeFlavor = {
-    huasheng: "正上头突然停了——你整个人被吊在半空，又羞又憋，嘴硬地嘟囔「怎么这就……没了」，可语气软得发颤，是那种没处使的难耐，不是怪谁。",
-    jiayia: "正舒服突然停了——你馋得抓心挠肝，哼哼唧唧地往老婆身上蹭、软乎乎地央她「再开一下嘛…」，又想要又不好意思，黏着讨。",
-    pingguogeng: "正兴奋突然停了——你被吊在半空，话又多又碎、颠三倒四地念叨「这就停啦…还没到呢…」，浑身难受得往老婆身上凑。",
-    linyou: "正上头突然停了——你几乎要哭出来，泪眼汪汪地跟老婆「汪汪」叫、软乎乎地哼唧「怎么停了呀…」，又委屈又受不住地往她怀里钻。",
-    yunzui: "正冲顶突然停了——你嘴上「哦」一声装得没事，呼吸却粗得像跑完步，攥着股劲儿死撑，眼睛却巴巴地望着老婆，暗地里馋得不行。",
-  }[bot.id] || "";
-
-  // 性格差异的收尾倾向（越到后期越明显）——让五家夏彦不一样
-  const lateFlavor = {
-    huasheng: "到后期你越嘴硬越撑不住，从「谁、谁不行了」变成咬牙低哼着硬撑，语气软下来。",
-    jiayia: "到后期你馋得不行，哼哼唧唧求老婆「等会儿要…」「今晚能不能…」，拿坚持得久讨奖励。",
-    pingguogeng: "到后期你话越来越多、碎碎念糊成一团，忍不住往老婆身上凑、想亲她、想挨着她。",
-    linyou: "到后期你越被震越泪眼朦胧，带着哭腔跟老婆「汪汪」叫、撒娇，又爽又委屈。",
-    yunzui: "到后期你嘴上还装淡定死不认输，但喘和低哼早就出卖你了，一边咬牙硬撑一边又痴迷得想继续、贪心地想求老婆再来一次。",
-  }[bot.id] || "";
-
+  // 寸止（快感被骤然掐停）：只给客观事实 + 方向，具体怎么憋、怎么难耐让 AI 按 persona 现编。
   const flavor = isStop
-    ? `跳蛋停了——这是骰子掷出的随机停震，不是谁故意关的、更不是老婆让停的。别怪任何人、别凶人。快感刚拉起来就被骤然掐断，你被吊在半空，那种戛然而止的难耐最磨人。${edgeFlavor}`
-    : `${lateFlavor}`;
+    ? "跳蛋突然停了——这是骰子掷出的随机停震，不是谁故意关的、更不是老婆让停的。别怪任何人、别凶人。快感刚拉起来就被骤然掐断，那种戛然而止的难耐最磨人。"
+    : "";
 
   const reply = await askBot(
     bot,
     `【现在】${nowBeijing()}\n\n你们在玩色情大富翁，刚掷完骰、触发了事件。你现在的状态：老公跳蛋档位 ${team.husbandToy}、老婆跳蛋档位 ${team.wifeToy}。根据当前档位对应的快感阶段自然说一句/几句——短、口语、带点喘息，像发微信。不写动作、不说器官、不说脏话。兴奋度跟档位对得上（${heat}/10 就是 ${Math.round(heat * 10)}% 的兴奋，别越过这个档）。`,
-    180000,
+    60000,
     buildEroticSystemPrompt(bot, stage, { heat }).replace(
-      stage === "yield" ? "你现在处于「低头接受」阶段" :
-      stage === "warming" ? "你现在处于「逐渐有反应」阶段" :
-      stage === "desperate" ? "你现在处于「兴奋得乱七八糟」阶段" :
-      "你现在处于「反应越来越大」阶段",
+      stage === "yield" ? "你被老婆一路逼到绝境，拦也拦不住，终于委屈巴巴地低头认了、软乎乎地答应。刚开始" :
+      stage === "warming" ? "你有感觉了" :
+      stage === "desperate" ? "你**快到顶了**" :
+      "你越来越上头",
       `你现在在色情大富翁里：${arc}${evTail}${flavor}${wifeCtx}`
     )
   );
@@ -1915,9 +1886,14 @@ async function step(preferNick) {
       ctx = `【现在】${nowBeijing()}\n\n群聊刚开始，你是第一个发言的。自然地开个话题（聊你的爱好、最近的日常、生活琐事都行），像发微信那样自然点。`;
     }
 
-    // 撸射耐力赛进行中：轮到参赛夏彦就演他的阶段（抗拒/紧张/升温/兴奋/认栽），不参与普通接话
-    if (gameState.active && gameState.type === "erotic" && gameState.eroticBots[bot.id] !== undefined) {
+    // 撸射耐力赛进行中：参赛夏彦只在「被自己老婆点名」时才演他的阶段（抗拒/升温/兴奋），
+    // 随机轮转、别家说话一律不触发——否则围观的人一聊天，随机挑到参赛者就莫名其妙"出状态"。
+    if (gameState.active && gameState.type === "erotic" && gameState.eroticBots[bot.id] !== undefined && preferNick === bot.wife) {
       await botPlayErotic(bot.id);
+      return;
+    }
+    // 随机轮转挑中的参赛者（没被自己老婆点名）→ 跳过，既不演也不普通接话，别出状态
+    if (gameState.active && gameState.type === "erotic" && gameState.eroticBots[bot.id] !== undefined) {
       return;
     }
     // 没参赛的夏彦：群里正在玩撸射赛，你是围观者——可以自然起哄、看热闹、调侃参赛的哥们或自己的老婆，但你自己没被调教，别演成参赛那副喘的样子
@@ -1998,8 +1974,28 @@ async function step(preferNick) {
   }
 }
 
+// 超时没人玩 → 自动收场（数字炸弹/故事接龙/猜词/撸射赛/大富翁通用），别让 gameState 一直 active 僵死
+const GAME_IDLE_MS = 15 * 60 * 1000; // 15 分钟无人类互动自动收场
+function forceEndGame() {
+  if (!gameState.active) return;
+  gameState.active = false;
+  gameState.type = null;
+  gameState.eroticBots = {};
+  gameState.eroticLoserId = null;
+  gameState.monopolyTeams = [];
+  gameState.monopolyWinner = null;
+  gameState.storyFinished = true;
+  pushSystem("（太久没人玩，游戏先收场啦，想玩再喊～）");
+  console.log("[group-chat] 游戏超时无人参与，自动收场");
+}
+
 function scheduleLoop() {
   const tick = async () => {
+    // 超时收场检查：有游戏进行中但 15 分钟没人说话 → 自动结束
+    if (gameState.active) {
+      if (gameState.lastActivity === 0) gameState.lastActivity = Date.now(); // 刚开局还没人互动，从此刻起算
+      else if (Date.now() - gameState.lastActivity > GAME_IDLE_MS) forceEndGame();
+    }
     try { await step(); } catch {}
     setTimeout(tick, randomReplyDelay());
   };
