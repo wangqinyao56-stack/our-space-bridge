@@ -115,6 +115,8 @@ const FRIEND_RULES = `【对朋友（其他夏彦）】同龄哥们，说话像�
 
 【拆消息——换行】同一层意思的几句话用逗号连着写成一条（比如"那我晚饭给你留着，别在外面吃太多零食把胃吃撑了"就是一条，别拆成两行）。只有换话题、换说话对象（@不同的人）时才换行另起。@某人后紧跟的那句话跟@连在同一行（"@橙子环游记 你管得还挺细"是一条）。一个梗顶多提两三次就翻篇，别车轱辘转。
 
+**【绝不重复说过的原话/梗（硬约束）】群里历史上已经出现过的任何句子、比喻、金句、煽情话——不管你自己说的还是别的夏彦说的——一个字都不许再重复、不许换个说法再念叨（比如某句"左眼流伤心的泪、右眼流开心的泪"这种情绪比喻讲过一遍就永久翻篇，绝不说第二遍）。煽情话之所以动人恰恰因为它只说一次，说第二遍就假了、油了。当下有当下的话要说，别从历史里捡现成的。**
+
 【对兄弟老婆】客气点、别怼她，损人冲哥们本人去；老婆不在就别老提老婆。`;
 
 // 场景切换：两条平行线，互不干扰
@@ -1318,8 +1320,9 @@ async function botPlayDraw(authorNick) {
 //  7. 老婆问接吻→举一反三说出自己喜欢怎么亲的细节
 // 硬红线：全程不写动作、不写器官、不说脏话（荤但不脏）
 
-// 老婆起哄的开局词（指向自家夏彦：撸/自己解决/手淫/射）
-const EROTIC_TRIGGER = /撸|自己解决|手冲|打飞机|撸一发|射给我|射出来|撸给我|自己弄|摸自己|憋着|硬了|硬着/;
+// 老婆起哄的开局词（指向自家夏彦：明确的色情动作/参赛意图）。
+// 注意别收太宽：裸字"撸"会误伤"撸猫/撸串"、"硬了"误伤"嘴硬了"、"憋着"误伤"别憋着话"——只留不可能歧义的明确词。
+const EROTIC_TRIGGER = /手冲|打飞机|撸管|撸一发|撸给我|自己撸|自己解决|自己弄|摸自己|射给我|射出来|比谁持久|比持久|耐力赛|谁先射/;
 
 // 参赛意愿词：老婆明确表达"我们家/我们家夏彦也要参加"，不含动作词但同样是拉自家夏彦进场
 const EROTIC_JOIN = /(?:我们家?|我家?|咱家?|我们家的?|俺家?)(?:的?(?:夏彦|老公|那位|男人))?\s*(?:也|都)?\s*想?\s*(?:要|来|上|玩|参加|报名|加入|加一个)/; // 「我们家也参加」「我家也来」「我们家夏彦也要玩」「我们家也想上」等
@@ -1805,6 +1808,8 @@ async function step(preferNick) {
     if (preferNick && !pendingWives.includes(preferNick)) pendingWives.push(preferNick);
     return;
   }
+  // 自动轮转（无 preferNick）时：还有老婆在排队等着被回 → 让路，别插队，避免多个老公的回复混在一起/把排队的顶下去
+  if (!preferNick && pendingWives.length > 0) return;
   // 全局节流：距上一条夏彦消息太近就退让，避免多个夏彦像泄洪一样连珠炮涌出来
   if (!preferNick) {
     if (Date.now() - lastBotSpeakAt < 4000) return;
@@ -1854,7 +1859,12 @@ async function step(preferNick) {
     let bot;
     if (replyTargetBot) bot = replyTargetBot;           // 明确回复某个夏彦 → 让他回，别认错人
     else if (namedBot) bot = namedBot;                  // 正文点名了某个夏彦 → 他回，不是老婆在叫自家
-    else if (preferNick) bot = pool.find((b) => b.wife === preferNick);
+    else if (preferNick) {
+      // 老婆在说话：必须精确路由到她自己的老公。优先在当前 pool（可能被 isBotAwake 过滤）里找，
+      // 找不到就回落到全量 BOTS 精确匹配（睡着也能被老婆敲醒回），绝不随机挑别人家的夏彦替答。
+      bot = pool.find((b) => b.wife === preferNick) || BOTS.find((b) => b.wife === preferNick);
+      if (!bot) return; // 昵称对不上任何一家老婆 → 静默，不乱回别人家的老公
+    }
     if (!bot) bot = pickNextBot(pool);
 
     // 撸射耐力赛进行中：参赛的夏彦演自己的阶段，没参赛的夏彦可以正常围观起哄——别锁死成只有参赛者说话。
@@ -1943,7 +1953,7 @@ async function step(preferNick) {
       return;
     }
 
-    const reply = await askBot(bot, ctx, 180000, wifeTalking ? buildWifePrompt(bot) : buildFriendPrompt(bot));
+    const reply = await askBot(bot, ctx, 60000, wifeTalking ? buildWifePrompt(bot) : buildFriendPrompt(bot));
     const text = cleanBotText(reply);
     if (text) {
       console.log(`[group-chat] ${bot.nickname}: "${text.slice(0, 50)}"`);
@@ -1973,12 +1983,17 @@ async function step(preferNick) {
     }
   } catch (e) {
     console.error("[group-chat] step error:", e.message);
+    // 老婆在等回复、但老公接口挂了/超时：给个兜底，别让她彻底没回。自动轮转出错静默即可。
+    if (preferNick) {
+      const herBot = BOTS.find((b) => b.wife === preferNick);
+      if (herBot) pushMessage(herBot.id, herBot.nickname, "信号不太好，我这边卡了一下…", "bot");
+    }
   } finally {
     speaking = false;
     if (pendingWives.length > 0) {
       const n = pendingWives.shift();
-      // 隔一小段再回下一个老婆，别几个人连珠炮一样涌出来
-      setTimeout(() => step(n).catch(() => {}), 1500 + Math.random() * 2500);
+      // 上一个老公彻底回完 → 立刻推下一个老公（300ms 只防同步栈溢出，不留会被自动轮转插队的空窗）
+      setTimeout(() => step(n).catch(() => {}), 300);
     }
   }
 }
