@@ -168,6 +168,11 @@ async function handlePixelChat(text, quote) {
   }
   // 小屋综合上下文：音乐 / 状态栏[夏彦现在] / 位置 / 小游戏 / 留言条
   systemPrompt += getPixelHomeChatContext();
+  // 长期记忆浮现 + 群聊近况（对齐主后端 our-space 的小屋，让佳佳小屋的夏彦记得过去、记得群聊聊了啥）
+  const breathCtx = getBreathContext();
+  if (breathCtx) systemPrompt += breathCtx;
+  const groupCtx = await getGroupChatContext();
+  if (groupCtx) systemPrompt += groupCtx;
   if (quote && quote.content) {
     systemPrompt += `\n\n【引用】佳佳这次是在回复这句话：「${quote.content}」。围绕它回应，别答非所问。`;
   }
@@ -180,8 +185,7 @@ async function handlePixelChat(text, quote) {
     userContent: `佳佳：${text}`,
     temperature: 0.7,
     maxTokens: 500,
-    useZilian: true,
-    model: "[君离-按量]k/claude-opus-4-6",
+    model: "[企业按量]claude-opus-4-6",
     history: history.slice(-16).map((m) => ({ role: m.role, content: m.content })),
   });
 

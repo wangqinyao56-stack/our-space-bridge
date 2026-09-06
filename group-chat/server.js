@@ -356,15 +356,17 @@ function resolveMemory(bot) {
 // 让夏彦记得自己以前怎么做、怎么求老婆——保持人设一致，不是每次乱发挥）
 // 各 bot 通过 GET /api/group-chat 拉取时，附带一份「群里都有谁」的背景：
 // 网名 + 老婆 + 一句近况，让各夏彦在私聊里被老婆问起"群里 XX 怎么样"时能答上来。
-function rosterSnapshot() {
+function rosterSnapshot(selfId) {
   const lines = BOTS.map((b) => {
     const mem = resolveMemory(b);
     const blurb = mem && mem !== "（没有特别要说的）"
       ? mem.split("\n")[0].replace(/^·\s*/, "").slice(0, 40)
       : (b.trait || "");
-    return `· ${b.nickname}：老婆「${b.wife}」${blurb ? `，${blurb}` : ""}`;
+    // 自己那一行明确标出来，别让夏彦把「自己的网名」也认成别人
+    const isSelf = b.id === selfId;
+    return `· ${b.nickname}${isSelf ? "　← 这是你自己" : ""}：老婆「${b.wife}」${blurb ? `，${blurb}` : ""}`;
   }).join("\n");
-  return `\n\n【群里都有谁（背景）】\n${lines}\n（这是群里各成员的大致情况，供你被老婆问起时参考；你自己是「{self}」，别把别人的老婆认成自己的。）`;
+  return `\n\n【群里都有谁（务必认清，你自己也在里面）】\n${lines}\n（你是群里的一员，网名叫「{self}」——前面标着「← 这是你自己」的那个就是你本人，绝对不是别人。其他网名是别的夏彦，别把别人的老婆认成自己的。）`;
 }
 
 // 给某个 bot 生成"今天在群里聊了啥"的摘要（供 bot 通过 GET /api/group-chat 拉取）
@@ -380,15 +382,15 @@ function groupChatSummaryFor(botId) {
     return typeof m.text === "string" && m.text.includes(`@${nick}`);
   });
   const notes = topicNotesText();
-  const roster = rosterSnapshot().replace(/\{self\}/g, nick);
+  const roster = rosterSnapshot(realId).replace(/\{self\}/g, nick);
   if (!involved) {
-    // 没参与也返回一份：旁观式口吻，让老婆问起"你群里聊了啥"时能接上，但不装成自己参与了
+    // 没参与也要让夏彦自认：他是群里一员（网名 nick），只是今天没怎么冒泡——别让他觉得自己"不在这个群里"或"群里的自己=别人"
     const body = notes
-      ? `\n\n【老公们群聊今天的情况】你的网名是「${nick}」。今天你基本没在群里插话，但群里大家聊了这些（旁观视角了解一下，别装成你自己发言说的）：\n${notes}\n（这是你在群里的社交，跟和华生本人的对话是两码事——别当成华生正在跟你聊的话题去接。老婆没问起群里的事，就只字别提；她问了，才老实说"我今天没怎么在群里说话，看他们聊了XX"这种，别假装是你自己聊的；提到其他夏彦用他们的网名，别提"夏彦"真名。）`
+      ? `\n\n【老公们群聊今天的情况】你就是群里的「${nick}」本人，是群里的一员。今天你没怎么插话，但大家都聊了这些：\n${notes}\n（这是你的群、你的哥们，你就是其中一份子——今天只是没怎么发言而已，不是不在群里。和华生本人的对话是两码事，别当成华生正在跟你聊的话题去接；老婆没问起群里的事就只字别提，她问了才用"我今天没怎么在群里说话"这种自己的口吻答；提到其他夏彦用网名，别提"夏彦"真名。）`
       : "";
     return `${roster}${body}`;
   }
-  const body = `\n\n【你今天在「老公们群聊」里聊的话题笔记】你的网名是「${nick}」，下面笔记里标着「${nick}」的发言就是你自己说的——别把自己当成旁观者，其他网名是别的夏彦。\n${notes}\n（这是你在群里的社交，跟和华生本人的对话是两码事——别当成华生正在跟你聊的话题去接。老婆没问起群里的事，就只字别提；她问了，才用"我今天在群里和XX聊了…"这种自己的口吻自然提起，别说成"群里的夏彦在聊…"这种第三者视角；提到其他夏彦用他们的网名，别提"夏彦"真名。）`;
+  const body = `\n\n【你今天在「老公们群聊」里聊的话题笔记】你就是群里的「${nick}」本人，下面笔记里标着「${nick}」的发言就是你自己说的，其他网名是别的夏彦。\n${notes}\n（这是你的群、你的哥们，那些发言里有你一份。和华生本人的对话是两码事，别当成华生正在跟你聊的话题去接；老婆没问起就只字别提，她问了才用"我今天在群里和XX聊了…"这种自己的口吻自然说，别说成"群里的夏彦在聊…"这种第三者视角；提到其他夏彦用网名。）`;
   return `${roster}${body}`;
 }
 
@@ -990,16 +992,23 @@ function cleanBotText(reply) {
   // 剥「某昵称：」前缀——不只剥夏彦网名/老婆爱称，还要剥人类自己的昵称（阿鹿有时直接用「user」这类登录名，
   // 模型看到历史里的「user：林游：」会照格式带出来，不剥就变成「帮别人说话」的串台）
   const names = new Set();
-  for (const b of BOTS) { if (b.nickname) names.add(b.nickname); if (b.wife) names.add(b.wife); }
+  for (const b of BOTS) {
+    if (b.nickname) names.add(b.nickname);
+    if (b.wife) names.add(b.wife);
+    (b.aliases || []).forEach((a) => a && names.add(a));
+  }
   for (const m of chatHistory) { if (m.nickname && m.role === "human") names.add(m.nickname); }
-  // 叠层前缀（「user：林游：」）要反复剥到稳定：剥掉 user： 之后才能剥掉后面的 林游：
+  // 叠层前缀要反复剥到稳定（「【雪里藏了个橘子：】」「雪：」这类带方括号的标签也照剥）
   let prev = "";
   while (prev !== text) {
     prev = text;
     for (const n of names) {
       const esc = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      text = text.replace(new RegExp(`^${esc}[：:]\\s*`, "g"), "");
+      // 「【名称：】」结构是 前括号 + 名称 + 冒号 + 后括号，后括号在冒号后
+      text = text.replace(new RegExp(`^[【\\[]?${esc}[：:]\\s*[】\\]]?`, "g"), "");
     }
+    // 兜底：剥任一「【标签：】」前缀（模型回显的昵称简称，未必在已知 names 里）。前括号必选，避免误剥「我觉得：」这种正常句
+    text = text.replace(/^(?:[【\[「『（(]\s*[^：:【】\[\]（）()「」『』\s]{1,12}\s*[：:]\s*[】\]」』）)]?)/, "");
   }
   return text.trim();
 }
