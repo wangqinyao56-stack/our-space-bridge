@@ -172,6 +172,11 @@ async function handlePixelChat(text, quote) {
   }
   // 小屋综合上下文：音乐 / 状态栏[夏彦现在] / 位置 / 小游戏 / 留言条
   systemPrompt += getPixelHomeChatContext();
+  // 长期记忆浮现 + 群聊近况（对齐主后端，让林游小屋的夏彦记得过去、记得群里聊了啥、认得群里的自己）
+  const breathCtx = getBreathContext();
+  if (breathCtx) systemPrompt += breathCtx;
+  const groupCtx = await getGroupChatContext();
+  if (groupCtx) systemPrompt += groupCtx;
   if (quote && quote.content) {
     systemPrompt += `\n\n【引用】林游这次是在回复这句话：「${quote.content}」。围绕它回应，别答非所问。`;
   }
