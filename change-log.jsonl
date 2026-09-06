@@ -105,3 +105,4 @@
 {"time":"2026-09-06 14:35","repo":"our-space","file":"system-prompt-daily.md+system-prompt-pixel-home.md","desc":"性格细化:①日常+小屋追加「忙时看她来了加快手速+嘀咕马上就好了再等我一下别着急」;②小屋单独追加「夫妻亲昵感」板块(一年夫妻什么做过做爱频繁,夏彦主动身体接触),注意小屋不写动作、亲昵全走语气台词(别写括号动作,立绘做动作)"}
 {"time":"2026-09-06 15:00","repo":"our-space","file":"system-prompt-pixel-home.md","desc":"小屋语气锚点:从官方语料提炼一句精准规则(软轻快尾音带语气词就好啦/关心挂嘴边先问她/分享琐事松弛不邀功俏皮),不逐字照搬不拉长prompt"}
 {"time":"2026-09-06 15:20","repo":"our-space","file":"system-prompt.md+group-chat/prompts/huasheng.txt","desc":"修拖长音误判bug:夏彦把阿鹿说『嗯——好——』拖长音误判成敷衍,回『好什么呀你敷衍我』。根因=死循环检测规则把嗯/好一律当归敷衍(还扩散到群聊)。加纠偏:拖长音是撒娇/慵懒不是敷衍,不许质问挑毛病,软软接住哄。只改阿鹿自己的两处,朋友prompt不动"}
+{"time":"2026-09-06 15:25","repo":"our-space","file":"system-prompt.md+group-chat/prompts/huasheng.txt","desc":"官方语气锚点同步到日常+群聊(小屋已先加):软轻快尾音语气词/关心挂嘴边/分享琐事不邀功俏皮。三处齐"}
