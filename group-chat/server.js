@@ -440,14 +440,15 @@ function pullXiayanToRoom(roomName) {
   } catch {}
 }
 
-// 阿鹿说"过来"，让夏彦到华生当前房间（不带 room，主后端按华生实际位置移）
-function pullXiayanToHuasheng() {
+// 阿鹿说"过来"，让夏彦到华生当前房间（不带 room，主后端按华生实际位置移）。action 是"过来+动作"（亲/抱/贴等），主后端据此让夏彦主动开口
+function pullXiayanToHuasheng(actionText) {
   if (!OUR_SPACE_URL || !OUR_SPACE_SECRET) return;
   try {
+    const body = actionText ? { action: actionText } : {};
     fetch(`${OUR_SPACE_URL}/api/pixel-home/pull`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${OUR_SPACE_SECRET}` },
-      body: JSON.stringify({}),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(3000),
     }).catch(() => {});
   } catch {}
@@ -2177,8 +2178,9 @@ wss.on("connection", (ws) => {
         if (humanNick === "阿鹿") {
           const roomHit = text.match(/(?:我(?:去|进|到|回)|去)(?:了)?\s*(卧室|客厅|浴室|卫生间|洗手间|游戏厅|游戏间|工作室|绘画间|画室|画房)/);
           if (roomHit) pullXiayanToRoom(roomHit[1]);
-          else if (/(过来|来找我|过来陪我|来我这边|快过来|回我这边)/.test(text)) {
-            pullXiayanToHuasheng();
+          else if (/(过来|来找我|过来陪我|来我这边|快过来|回我这边|来抱抱|过来抱|过来亲|亲一下|抱抱|贴贴)/.test(text)) {
+            // 带动作（亲/抱/贴）就传原文，让主后端先移动、再让夏彦按内容主动开口
+            pullXiayanToHuasheng(text);
           }
         }
         // 小游戏：开局口令 / 游戏内交互 / 正常接话

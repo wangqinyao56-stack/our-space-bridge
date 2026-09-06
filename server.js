@@ -19,6 +19,7 @@ import {
   handleAffectionHomeMessage,
   handleAffectionDateMessage,
   handlePixelHomeMessage,
+  handlePixelHomeProactive,
   handleVoiceMessage,
   getChatHistory,
   getChatHistoryMessages,
@@ -1011,7 +1012,7 @@ const server = http.createServer(async (req, res) => {
     }
     const body = await readBody(req);
     try {
-      const { room } = JSON.parse(body || "{}");
+      const { room, action } = JSON.parse(body || "{}");
       const roomId = room ? resolveRoomId(String(room).trim()) : null;
       let moved = false;
       if (roomId) {
@@ -1021,6 +1022,17 @@ const server = http.createServer(async (req, res) => {
       } else {
         // 阿鹿只说"过来" → 让夏彦到华生当前房间
         moved = pullXiayanToHuasheng();
+      }
+      // 群聊联动：带了话（过来亲/抱/贴）→ 夏彦移动后主动开口说一句贴她的话
+      if (action && String(action).trim()) {
+        handlePixelHomeProactive(String(action).trim())
+          .then((reply) => {
+            if (reply) {
+              recordBotReply(reply, "text", { channel: "pixel_home", proactive: true });
+              broadcast(JSON.stringify({ type: "reply", channel: "pixel_home", text: reply, proactive: true }));
+            }
+          })
+          .catch(() => {});
       }
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ ok: true, moved, room: roomId }));
