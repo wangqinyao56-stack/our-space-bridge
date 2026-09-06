@@ -98,3 +98,5 @@
 {"time":"2026-09-05 18:00","repo":"our-space","file":"weixin-bot/jiayia-chat-server.js+lib/pixel-home.js+lib/audio-assets.js+system-prompt-pixel-home.txt","desc":"佳佳后端小屋接入:复制pixel-home.js/audio-assets.js并参数化WIFE_NAME+改5房间(卧室/客厅/浴室/书房/工作间),jiayia-chat-server加HTTP素材端点+WS pixel_home全套(状态/切房/聊天/留言/小游戏/打招呼/end),小屋聊天handler handlePixelChat"}
 {"time":"2026-09-05 18:19","repo":"our-space","file":"system-prompt-pixel-home.md","desc":"小屋prompt补厨艺(只会热/蒸煮/番茄炒蛋,其余黑暗料理)+对抗路嘴硬心软性格(改被逗就倔/对了吧的毛病)"}
 {"time":"2026-09-05 18:19","repo":"our-space","file":"weixin-bot/system-prompt-pixel-home.txt","desc":"佳佳小屋prompt补大馋狗性格+厨艺(只会番茄炒蛋,打下手不掌勺)"}
+{"time":"2026-09-06 13:10","repo":"our-space","file":"lib/ai.js+lib/message-router.js","desc":"换熊猫模型:熊猫-A-29-claude-opus-4.6→熊猫-按量-官Pro号-claude-opus-4-6。askXiongmao默认值+亲密空间显式传model+小屋两处askZhailian→askXiongmao(去ZHAILIAN_KEY)。治情色内容偶发522+表现差。日记走askXiongmao默认自动跟随"}
+{"time":"2026-09-06 13:15","repo":"our-space","file":"lib/message-router.js","desc":"日常聊天也切熊猫新模型:askZhailian→askXiongmao(熊猫-按量-官Pro号-claude-opus-4-6),去ZHAILIAN_KEY。至此亲密/小屋/日记/日常四路全走熊猫按量官Pro号。清掉askZhailian+ZHAILIAN_KEY未用import"}
