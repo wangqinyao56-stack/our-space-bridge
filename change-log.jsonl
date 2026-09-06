@@ -100,3 +100,5 @@
 {"time":"2026-09-05 18:19","repo":"our-space","file":"weixin-bot/system-prompt-pixel-home.txt","desc":"佳佳小屋prompt补大馋狗性格+厨艺(只会番茄炒蛋,打下手不掌勺)"}
 {"time":"2026-09-06 13:10","repo":"our-space","file":"lib/ai.js+lib/message-router.js","desc":"换熊猫模型:熊猫-A-29-claude-opus-4.6→熊猫-按量-官Pro号-claude-opus-4-6。askXiongmao默认值+亲密空间显式传model+小屋两处askZhailian→askXiongmao(去ZHAILIAN_KEY)。治情色内容偶发522+表现差。日记走askXiongmao默认自动跟随"}
 {"time":"2026-09-06 13:15","repo":"our-space","file":"lib/message-router.js","desc":"日常聊天也切熊猫新模型:askZhailian→askXiongmao(熊猫-按量-官Pro号-claude-opus-4-6),去ZHAILIAN_KEY。至此亲密/小屋/日记/日常四路全走熊猫按量官Pro号。清掉askZhailian+ZHAILIAN_KEY未用import"}
+{"time":"2026-09-06 13:40","repo":"our-space","file":"system-prompt-pixel-home.md","desc":"小屋prompt补回夏彦人设骨相(精简版把性格砍光了):对外利刃对她黏人/只对老婆撒娇+娇气/征求非命令/爱是常觉亏欠/宠溺渗行动/被摸头被叫名被说喜欢反应/怕痒+角色扮演哄她。避免和生理性喜欢/情绪接住/有自己生活重复三处,保留小屋边界(房间/立绘/去房间标记/回复格式)不动"}
+{"time":"2026-09-06 13:55","repo":"our-space","file":"lib/ai.js+lib/message-router.js","desc":"模型回滚:官Pro号已下架(403/522),全4路(亲密/小屋/日常+askXiongmao默认)改回熊猫-A-29-claude-opus-4.6(测通2726ms)。原以为官Pro号是新渠道实际无权限"}
