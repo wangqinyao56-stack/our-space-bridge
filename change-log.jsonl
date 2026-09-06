@@ -116,3 +116,4 @@
 {"time":"2026-09-06 18:20","repo":"our-space","file":"lib/pixel-home.js","desc":"修『过来亲亲』夏彦不过来:pullXiayanToHuasheng原来有session.busy拦截(在忙就return false不移动),老婆召唤被打断挡住。改成老婆召唤→打断忙立即过去(老婆喊人比忙重要),已在身边也return true"}
 {"time":"2026-09-06 18:35","repo":"our-space","file":"group-chat/server.js","desc":"修天天炫老婆:把'你有自己的生活'条款从软建议升级成硬约束——注入具体生活素材池(查案/修古物/人文地理/街拍/动作游戏/限手办/煮面/跑步/看小说)+明确禁止互相炫老婆(比谁宠老婆),一轮里聊自己/哥们远多于聊老婆"}
 {"time":"2026-09-06 18:50","repo":"our-space","file":"weixin-bot/jiayia-chat-server.js","desc":"佳佳小屋也切宅恋按量:handlePixelChat加useZilian:true + model [君离-按量]k/claude-opus-4-6(跟阿鹿小屋同款,走az.zlapi.vip佳佳自己的key)"}
+{"time":"2026-09-06 19:05","repo":"our-space","file":"weixin-bot-4/lib/api2d.js+lib/emotional-memory.js+linyou-chat-server.js","desc":"根治林游熊猫522断连:api2d默认provider从xiongmao切zhailian(熊猫api520已死);情感提取EXTRACT_MODEL→君离按量;亲密空间model→君离按量。这样亲密/情感提取/任何漏传的调用都不再走死掉的熊猫"}

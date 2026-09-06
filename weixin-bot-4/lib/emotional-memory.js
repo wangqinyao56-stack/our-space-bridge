@@ -38,7 +38,7 @@ const SCORE_FEEL = 50.0;
 const PINNED_CAP = 20;
 
 const EXTRACT_INTERVAL = 15;
-const EXTRACT_MODEL = "熊猫-A-29-claude-opus-4.6"; // 提取/做梦用主模型(和阿鹿家同款claude)
+const EXTRACT_MODEL = "[君离-按量]k/claude-opus-4-6"; // 提取/做梦用主模型（宅恋按量，熊猫api520已死）
 
 let memories = [];
 let archive = [];

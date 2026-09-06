@@ -138,7 +138,7 @@ export async function askClaude(opts = {}) {
     timeoutMs = 180000,
     imageBase64,
     imageMime,
-    provider = "xiongmao",
+    provider = "zhailian",
   } = opts;
 
   const isZhailian = provider === "zhailian";
