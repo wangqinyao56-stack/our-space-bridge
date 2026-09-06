@@ -542,6 +542,21 @@ function todayFestivalHint() {
   return "";
 }
 
+// 消息正文里点名了哪个夏彦的网名/别名（"@渡鸦"或直接写「渡鸦」都算）。
+// 用于路由：谁被点名就让谁回，避免老婆调侃别的夏彦时，自家夏彦误以为在说自己（对号入座）。
+// 网名都是 2-4 字的独立称谓、彼此不互为子串，直接全文包含即可，无需复杂词边界。
+function botNamedInText(text) {
+  if (!text || typeof text !== "string") return null;
+  for (const b of BOTS) {
+    const names = [b.nickname, ...(b.aliases || [])];
+    for (const n of names) {
+      if (!n) continue;
+      if (text.includes(n)) return b;
+    }
+  }
+  return null;
+}
+
 // 这个夏彦是不是刚发过言（避免自己回自己）
 function botJustSpoke(bot) {
   const last = chatHistory[chatHistory.length - 1];
@@ -969,12 +984,19 @@ function cleanBotText(reply) {
   text = text.replace(/（[^（）]{0,24}）/g, "");
   // 剥「回复/回 XXX：」明确的引用前缀
   text = text.replace(/^(?:回复|回)\s*[^：:\n]{1,16}[：:]\s*/g, "");
-  // 剥「某网名/老婆爱称：」前缀（只认群里已知的称呼，不误伤"我觉得：xxx"这类正常句）
+  // 剥「某昵称：」前缀——不只剥夏彦网名/老婆爱称，还要剥人类自己的昵称（阿鹿有时直接用「user」这类登录名，
+  // 模型看到历史里的「user：林游：」会照格式带出来，不剥就变成「帮别人说话」的串台）
   const names = new Set();
   for (const b of BOTS) { if (b.nickname) names.add(b.nickname); if (b.wife) names.add(b.wife); }
-  for (const n of names) {
-    const esc = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    text = text.replace(new RegExp(`^${esc}[：:]\\s*`, "g"), "");
+  for (const m of chatHistory) { if (m.nickname && m.role === "human") names.add(m.nickname); }
+  // 叠层前缀（「user：林游：」）要反复剥到稳定：剥掉 user： 之后才能剥掉后面的 林游：
+  let prev = "";
+  while (prev !== text) {
+    prev = text;
+    for (const n of names) {
+      const esc = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      text = text.replace(new RegExp(`^${esc}[：:]\\s*`, "g"), "");
+    }
   }
   return text.trim();
 }
@@ -1826,9 +1848,12 @@ async function step(preferNick) {
     const replyTargetBot = lastMsg?.replyTo?.nickname
       ? BOTS.find((b) => b.nickname === lastMsg.replyTo.nickname || (b.aliases || []).includes(lastMsg.replyTo.nickname))
       : null;
+    // 正文点名：老婆/人调侃某个具体夏彦（"渡鸦""心月"这类）→ 让被点名的那个回，别让自家夏彦对号入座
+    const namedBot = botNamedInText(lastMsg?.text);
 
     let bot;
     if (replyTargetBot) bot = replyTargetBot;           // 明确回复某个夏彦 → 让他回，别认错人
+    else if (namedBot) bot = namedBot;                  // 正文点名了某个夏彦 → 他回，不是老婆在叫自家
     else if (preferNick) bot = pool.find((b) => b.wife === preferNick);
     if (!bot) bot = pickNextBot(pool);
 
