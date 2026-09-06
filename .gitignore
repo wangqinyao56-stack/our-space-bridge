@@ -7,6 +7,12 @@ pc-web/profile/
 # Data files — contain personal info, not for git
 data/
 !data/audio/
+!weixin-bot/data/
+!weixin-bot/data/pixel-home/
+!weixin-bot/data/pixel-home/greet/
+!weixin-bot-4/data/
+!weixin-bot-4/data/pixel-home/
+!weixin-bot-4/data/pixel-home/greet/
 discover-data/
 gift-data.json
 gift-log.json

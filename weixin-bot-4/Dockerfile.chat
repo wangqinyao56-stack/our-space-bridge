@@ -9,6 +9,8 @@ COPY lib/ ./lib/
 COPY linyou-chat-server.js .
 COPY system-prompt-daily.txt .
 COPY system-prompt-intimate.txt .
+COPY system-prompt-pixel-home.txt .
+COPY data/ ./data/
 
 ENV DISABLE_PROXY=true
 ENV MEMORY_DIR=/data2
