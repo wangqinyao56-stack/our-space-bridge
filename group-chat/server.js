@@ -2075,6 +2075,16 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // 小屋后端查询：某 bot 的老婆最近是否在群里说过话（活跃 → 小屋立绘保持醒着，不睡）
+  if (pathname === "/api/wife-active" && req.method === "GET") {
+    const botId = query.get("bot") || "";
+    const bot = BOTS.find((b) => b.id === botId || b.nickname === botId);
+    const active = bot ? isWifeActiveInGroup(bot) : false;
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ active, windowMs: AWAKE_WINDOW_MS }));
+    return;
+  }
+
   // 小屋状态推送：our-space 后端在小屋状态变化（换房间/忙/睡）时推，群聊据此实时回答"夏彦在干嘛"
   if (pathname === "/api/pixel-home-state" && req.method === "POST") {
     let raw = "";
