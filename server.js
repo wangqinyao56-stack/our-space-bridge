@@ -2049,6 +2049,7 @@ wss.on("connection", (ws, req) => {
       try {
         notifyUserActivity();
         resetPixelProactiveTimer();
+        companionNoteUserReply(); // 小屋说话也算"华生有回应"，重置番茄钟 follow-up，别让她明明在跟我聊还被反复催"起来休息"
         handleRestReminder(msg.content);
         detectHuashengAway(msg.content);
         noteHuashengSpoke();
