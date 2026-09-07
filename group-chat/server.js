@@ -873,19 +873,27 @@ function surfTavily(query, maxResults = 3) {
 }
 
 // 冲浪状态：限制频率，避免耗尽 Tavily 免费额度
-let surfState = { date: "", count: 0 };
+let surfState = { date: "", count: 0, used: [] };
 const SURF_MAX_PER_DAY = 20;
+const SURF_USED_MAX = 60; // 记住最近用过的题材数，避免同一个搜索题材反复当话题
 
 async function surfForTopic() {
   const bj = new Date(Date.now() + 8 * 3600000);
   const date = `${bj.getUTCFullYear()}-${bj.getUTCMonth()}-${bj.getUTCDate()}`;
-  if (surfState.date !== date) surfState = { date, count: 0 };
+  if (surfState.date !== date) surfState = { date, count: 0, used: [] };
   if (surfState.count >= SURF_MAX_PER_DAY) return "";
   surfState.count++;
 
   const results = await surfTavily("有趣的新鲜事 今日趣闻", 3);
   if (!results || results.length === 0) return "";
-  const items = results.slice(0, 3).map((r) => `· ${r.title}：${(r.content || "").slice(0, 80)}`).join("\n");
+  // 去重：跳掉最近已经用过的话题（搜回来翻来覆去就那几个梗，比如左眼右眼流泪那种）
+  const fresh = results.filter((r) => !surfState.used.includes(r.title));
+  if (fresh.length === 0) return "";
+  const items = fresh.slice(0, 3).map((r) => `· ${r.title}：${(r.content || "").slice(0, 80)}`).join("\n");
+  fresh.slice(0, 3).forEach((r) => {
+    surfState.used.push(r.title);
+    if (surfState.used.length > SURF_USED_MAX) surfState.used.shift();
+  });
   return `\n\n【冲浪见闻】你在没人的时候出去逛了逛，刷到这些新鲜事：\n${items}\n挑一个你觉得好玩的，自然地分享出来——像你刚自己刷到的一样，说你的感想，别念标题。`;
 }
 
