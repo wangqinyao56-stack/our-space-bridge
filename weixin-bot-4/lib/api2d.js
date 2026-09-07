@@ -15,7 +15,7 @@ const JIUSHI_MODEL = "熊猫-A-29-claude-opus-4.6";
 // 宅恋（林游日常）——az.zlapi.vip + 林游自己的 key，和阿鹿家同款模型名
 const ZHAILIAN_KEY = "sk-PuPG6Jrbk1Xj1j6Wt5AbLHzxkjiYa1dKGY7ibERnXY7WHpuc";
 const ZHAILIAN_HOST = "az.zlapi.vip";
-const ZHAILIAN_MODEL = "[君离-按量]k/claude-opus-4-6";
+const ZHAILIAN_MODEL = "[0.06]报用鹿/claude-opus-4.6";
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
 const DISABLE_PROXY = process.env.DISABLE_PROXY === "true";

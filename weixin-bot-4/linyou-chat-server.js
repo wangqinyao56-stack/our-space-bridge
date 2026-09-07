@@ -155,6 +155,7 @@ async function chatReply(channel, userText, history) {
     opts.model = "[0.06]报用鹿/claude-opus-4.6";
   } else {
     opts.provider = "zhailian"; // 日常走宅恋(az.zlapi.vip + 林游自己的key + 阿鹿同款模型名)
+    opts.model = "[0.06]报用鹿/claude-opus-4.6";
   }
   if (history.length > 0) opts.history = history;
   return await askClaude(opts);
