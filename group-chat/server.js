@@ -530,17 +530,27 @@ const SOLAR_TERM_HINTS = {
   "清明": "清明了，语气可以沉一点，或提一句踏青",
   "秋分": "秋分了，提一句昼夜平分、天气转凉",
   "惊蛰": "惊蛰了，提一句春天虫子都要醒了（可以带点芝麻/动物的俏皮）",
+  "白露": "白露了，早晚露水重、天转凉，自然地关心一句老婆晚上盖好被子/别贪凉。注意：这是你自己对老婆的关心，绝不要写成「华生让我盖被子」这种把老婆当传声筒的话，更不要替她复述别人说过什么",
 };
-// 今天是什么节/节气（撞上才返回，否则空）
+// 今天是什么节/节气（撞上才返回，否则空）。同一天只让第一个触发的夏彦提一次，
+// 避免五个夏彦轮流刷同一个节气、或把「我让她盖被子」这种传声筒话叠着冒出来。
+let festUsed = { date: "", name: "" };
 function todayFestivalHint() {
   const d = new Date(Date.now() + 8 * 3600000);
+  const date = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
   const mo = d.getUTCMonth() + 1;
   const da = d.getUTCDate();
   for (const f of FESTIVALS) {
-    if (f.m === mo && f.d === da) return `\n【今天过节】今天是${f.name}。${f.hint}。只在自然的话头里带一句，别生硬、别群发式全体复制同句。`;
+    if (f.m === mo && f.d === da) {
+      if (festUsed.date === date && festUsed.name === f.name) return "";
+      festUsed = { date, name: f.name };
+      return `\n【今天过节】今天是${f.name}。${f.hint}。只在自然的话头里带一句，别生硬、别群发式全体复制同句。`;
+    }
   }
   for (const s of SOLAR_TERMS) {
     if (s.m === mo && s.d === da) {
+      if (festUsed.date === date && festUsed.name === s.name) return "";
+      festUsed = { date, name: s.name };
       const hint = SOLAR_TERM_HINTS[s.name] || `今天是${s.name}，自然提一句这个节气`;
       return `\n【今天节气】今天是${s.name}。${hint}。只在自然的话头里带一句，别硬凑。`;
     }
