@@ -40,15 +40,15 @@ export const PIXEL_EVENTS = {
     { text: "夏彦在收拾洗漱用品，把毛巾叠好", greeting: "", busy: [5, 8], visits: [1, 1] },
   ],
   study: [
-    { text: "夏彦在书房看书，一本很厚的文献摊在桌上", greeting: "", busy: [8, 12], visits: [1, 1] },
-    { text: "夏彦在书房整理资料，一摞摞码整齐", greeting: "回来啦？我在整理文献呢，一会儿就过去陪你。", busy: [10, 20], visits: [1, 2] },
+    { text: "夏彦在书房看书，一本侦探小说摊在桌上", greeting: "", busy: [8, 12], visits: [1, 1] },
+    { text: "夏彦在书房整理案卷，一摞摞码整齐", greeting: "回来啦？我在整理资料呢，一会儿就过去陪你。", busy: [10, 20], visits: [1, 2] },
   ],
   workroom: [
-    { text: "夏彦在工作间对着实验数据皱眉，笔记本摊了一桌", greeting: "", busy: [30, 60], visits: [2, 4] },
+    { text: "夏彦在工作间对着一个案子皱眉，笔记本摊了一桌", greeting: "", busy: [30, 60], visits: [2, 4] },
     { text: "夏彦在工作间做小手工，零件摆得整整齐齐", greeting: "", busy: [15, 30], visits: [1, 2] },
-    { text: "夏彦在工作间写实验报告，写得很投入", greeting: "", busy: [20, 40], visits: [1, 3] },
-    { text: "夏彦在帮你整理实验器材和试剂管", greeting: "", busy: [5, 8], visits: [1, 1] },
-    { text: "夏彦站在工作间看你上次的实验记录，看得很认真", greeting: "", busy: [10, 15], visits: [1, 2] },
+    { text: "夏彦在工作间写案件笔记，写得很投入", greeting: "", busy: [20, 40], visits: [1, 3] },
+    { text: "夏彦在工作间帮你整理颜料和画具", greeting: "", busy: [5, 8], visits: [1, 1] },
+    { text: "夏彦站在画架前看你上次的画，看得很认真", greeting: "", busy: [10, 15], visits: [1, 2] },
   ],
 };
 
