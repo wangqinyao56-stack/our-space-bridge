@@ -1840,12 +1840,10 @@ async function step(preferNick) {
     if (replyTargetBot) bot = replyTargetBot;           // 明确回复某个夏彦 → 让他回，别认错人
     else if (namedBot) bot = namedBot;                  // 正文点名了某个夏彦 → 他回，不是老婆在叫自家
     else if (preferNick) {
-      // 老婆在说话：必须精确路由到她自己的老公。优先在当前 pool（可能被 isBotAwake 过滤）里找，
-      // 找不到就回落到全量 BOTS 精确匹配（睡着也能被老婆敲醒回），绝不随机挑别人家的夏彦替答。
+      // 老婆在说话：优先精确路由到她自己的老公（pool 可能被 isBotAwake/whereIsBot 过滤，回落到全量 BOTS 兜底）
       bot = pool.find((b) => b.wife === preferNick) || BOTS.find((b) => b.wife === preferNick);
-      if (!bot) return; // 昵称对不上任何一家老婆 → 静默，不乱回别人家的老公
     }
-    if (!bot) bot = pickNextBot(pool);
+    if (!bot) bot = pickNextBot(pool); // 匹配不到（路人/昵称没对上）→ 回落到普通轮转，至少有人接，别静默不回
 
     // 撸射耐力赛进行中：参赛的夏彦演自己的阶段，没参赛的夏彦可以正常围观起哄——别锁死成只有参赛者说话。
     // 优先被老婆刚点名的那个（无论参赛还是围观），否则从「参赛者 + 围观者」混合池里随机挑一个还没刚说过的。
