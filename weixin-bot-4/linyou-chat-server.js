@@ -152,7 +152,7 @@ async function chatReply(channel, userText, history) {
     maxTokens: 800,
   };
   if (channel === "intimate") {
-    opts.model = "[君离-按量]k/claude-opus-4-6"; // 亲密走宅恋按量（熊猫api520已死；gemini对情色超时522）
+    opts.model = "[0.06]报用鹿/claude-opus-4.6";
   } else {
     opts.provider = "zhailian"; // 日常走宅恋(az.zlapi.vip + 林游自己的key + 阿鹿同款模型名)
   }
