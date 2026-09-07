@@ -1869,6 +1869,9 @@ async function step(preferNick) {
       const surf = await surfForTopic();
       if (surf) coldHint += surf;
     }
+    // 老婆在说话，且不是回复别的夏彦（她回复别人时，是在跟别人说，不是跟我）
+    const wifeTalking = lastMsg && lastMsg.nickname === bot.wife &&
+      (!lastMsg.replyTo || lastMsg.replyTo.nickname === bot.nickname);
     // 过节/节气：冷场开话题、或老婆在说话时，优先自然带一句节日/节气的话
     const festHint = todayFestivalHint();
     if (festHint && (coldHint || wifeTalking)) {
@@ -1876,9 +1879,6 @@ async function step(preferNick) {
     }
     forceTopic = false;
 
-    // 老婆在说话，且不是回复别的夏彦（她回复别人时，是在跟别人说，不是跟我）
-    const wifeTalking = lastMsg && lastMsg.nickname === bot.wife &&
-      (!lastMsg.replyTo || lastMsg.replyTo.nickname === bot.nickname);
     const where = whereIsBot(bot);
     const whereHint = where === "做爱中" ? "你正跟老婆私聊做爱中，群里说话就含糊带过，别展开，也别在群里催她理你。"
       : where === "在一起" ? "你正跟老婆在一起（私聊互动中），她在哪你就在哪。群里不用一直喊她、催她理你——你们已经在一起了，安静点、偶尔搭一句就行。"
