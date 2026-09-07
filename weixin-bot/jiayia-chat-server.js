@@ -150,8 +150,11 @@ async function chatReply(channel, userText, history) {
     temperature: 0.65,
     maxTokens: 800,
   };
-  // 亲密空间走逆系列，日常仍走玖时默认
-  if (channel === "intimate") opts.model = "[逆]claude-opus-4-6";
+  // 亲密空间走宅恋报用鹿（[逆]已死；小屋也用报用鹿，保持一致）
+  if (channel === "intimate") {
+    opts.useZilian = true;
+    opts.model = "[0.06]报用鹿/claude-opus-4.6";
+  }
   if (history.length > 0) opts.history = history;
   return await askClaude(opts);
 }
