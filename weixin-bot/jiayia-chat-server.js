@@ -185,7 +185,8 @@ async function handlePixelChat(text, quote) {
     userContent: `佳佳：${text}`,
     temperature: 0.7,
     maxTokens: 500,
-    model: "[企业按量]claude-opus-4-6",
+    useZilian: true,
+    model: "[0.06]报用鹿/claude-opus-4.6",
     history: history.slice(-16).map((m) => ({ role: m.role, content: m.content })),
   });
 

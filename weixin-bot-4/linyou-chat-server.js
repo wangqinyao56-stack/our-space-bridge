@@ -190,6 +190,7 @@ async function handlePixelChat(text, quote) {
     temperature: 0.7,
     maxTokens: 500,
     provider: "zhailian",
+    model: "[0.06]报用鹿/claude-opus-4.6",
     history: history.slice(-16).map((m) => ({ role: m.role, content: m.content })),
   });
 
