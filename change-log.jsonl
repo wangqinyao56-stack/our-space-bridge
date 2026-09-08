@@ -132,3 +132,4 @@
 {"time":"2026-09-08 15:30","repo":"our-space","file":"lib/message-router.js","desc":"像素小屋3处model(1260 handlePixelHomeMessage流式/普通+1458 handlePixelHomeProactive)从[0.06]报用鹿切到[顾里]按量/claude-opus-4-6;亲密空间保持报用鹿不动"}
 {"time":"2026-09-08 15:45","repo":"our-space","file":"lib/pixel-home.js,server.js","desc":"修小屋状态机刷屏:状态机(探望/忙完/去忙)主动消息加huashengInHome门槛,华生没进小屋就不发不写历史(之前只拦了30-60min空闲搭话,状态机5-30min定时器漏拦)"}
 {"time":"2026-09-08 16:00","repo":"our-space","file":"lib/message-router.js,lib/ai.js","desc":"修小屋顾里503:顾里=按量模组须用ZHAILIAN_KEY_2(按量key),之前没传apiKey默认按次key导致分组不匹配。小屋3处askZhailian加apiKey:ZHAILIAN_KEY_2"}
+{"time":"2026-09-08 16:20","repo":"our-space","file":"lib/message-router.js","desc":"小屋切回玖时按量:3处顾里(宅恋按量key)改回askJiushi+[企业按量]claude-opus-4.6。顾里是Kiro模组不是宅恋的,txt抄错站了"}
