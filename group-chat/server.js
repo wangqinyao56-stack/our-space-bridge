@@ -771,7 +771,7 @@ function askBot(bot, userContent, timeoutMs = 180000, systemPrompt) {
   const apiPath = `${basePath}/v1/chat/completions`;            // 完整路径
   const body = JSON.stringify({
     model: bot.model || "[企业按量]claude-opus-4-6",
-    max_tokens: 300,
+    max_tokens: 500,
     temperature: 0.65,
     messages: [
       { role: "system", content: systemPrompt || buildFriendPrompt(bot) },
