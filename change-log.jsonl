@@ -129,3 +129,4 @@
 {"time":"2026-09-08 02:30","repo":"our-space","file":"group-chat/server.js","desc":"修节庆关怀方向颠倒+自我脑补:白露补hint(禁'华生让我盖被子'传声筒);WIFE_RULES补'别把关怀方向搞反别脑补她的话'铁律(夏彦永远主动关怀老婆,不因老婆接暖话反转成她照顾我,不虚构老婆没说过的话);恢复被误删的害羞规则"}
 {"time":"2026-09-08 02:30","repo":"our-space","file":"group-chat/server.js","desc":"群聊生日庆祝新功能:birthdayHint+WIFE_BIRTHDAYS,夏彦12/5+各老婆生日撞上当天,自家老公起头祝福别家跟着道贺;撤销之前'节气只让一个人说'的错误改法(恢复全员可提,过节大家一起热闹)"}
 {"time":"2026-09-08 03:00","repo":"our-space","file":"weixin-bot/jiayia-chat-server.js","desc":"佳佳亲密空间切报用鹿[0.06]报用鹿/claude-opus-4.6:原残留[逆]claude-opus-4-6是旧值(报用鹿更好用),改成useZilian:true+显式model,跟小屋一致"}
+{"time":"2026-09-08 15:30","repo":"our-space","file":"lib/message-router.js","desc":"像素小屋3处model(1260 handlePixelHomeMessage流式/普通+1458 handlePixelHomeProactive)从[0.06]报用鹿切到[顾里]按量/claude-opus-4-6;亲密空间保持报用鹿不动"}
