@@ -134,3 +134,6 @@
 {"time":"2026-09-08 16:00","repo":"our-space","file":"lib/message-router.js,lib/ai.js","desc":"修小屋顾里503:顾里=按量模组须用ZHAILIAN_KEY_2(按量key),之前没传apiKey默认按次key导致分组不匹配。小屋3处askZhailian加apiKey:ZHAILIAN_KEY_2"}
 {"time":"2026-09-08 16:20","repo":"our-space","file":"lib/message-router.js","desc":"小屋切回玖时按量:3处顾里(宅恋按量key)改回askJiushi+[企业按量]claude-opus-4.6。顾里是Kiro模组不是宅恋的,txt抄错站了"}
 {"time":"2026-09-08 17:00","repo":"our-space","file":"lib/message-router.js","desc":"小屋切回报用鹿:3处askJiushi+企業按量改回askZhailian+[0.06]报用鹿/claude-opus-4.6(报用鹿活了)"}
+{"time":"2026-09-08 18:00","repo":"our-space","file":"group-chat/bots.js","desc":"群聊华生(猎鹿人)切宅恋按量[君离-按量]k/claude-opus-4-7:host改az.zlapi.vip+按量key。其他4夏彦不动"}
+{"time":"2026-09-08 18:40","repo":"our-space","file":"system-prompt-intimate.md","desc":"亲密空间做爱时:①多写夏彦自己的喘/呻吟/真实反应(舒服直说、她被含时脑子不转)②别堆爱称、她想听他的喘不是一遍遍喊名字③做爱单独加自查禁止复述她的动作"}
+{"time":"2026-09-08 18:40","repo":"our-space","file":"group-chat/bots.js","desc":"群聊华生(猎鹿人)切回玖时[企业按量]claude-opus-4-6:去掉host az.zlapi.vip+key换sk-gEbf6uNMq(新key实测200通)"}
