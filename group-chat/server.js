@@ -1418,6 +1418,10 @@ function buildEroticSystemPrompt(bot, stage, ctx = {}) {
   const heat = ctx.heat ?? 0;
   const lastLine = ctx.lastLine ? `你上一条说的是「${ctx.lastLine}」——**这次必须换个说法，绝对不能再出现上一条用过的词和句式**，接着往上走一格，别重复。` : "";
 
+  // 游戏名 + 一句话规则（撸射赛默认，大富翁传入自己的）——别让大富翁的 bot 还以为是撸射赛
+  const game = ctx.game || "撸射耐力赛";
+  const gameIntro = ctx.gameIntro || "几家夏彦各自被老婆当众撸、比谁持久，谁先射谁输";
+
   // 只给客观的阶段定位 + 流程指令，具体表现（怎么喘、说什么、怎么慌）全交给 AI 按 persona 现场编，
   // 别替它想好台词和句式——模板越细五家越像同一个人、越容易背台词重复。
   const stageRule = {
@@ -1431,7 +1435,7 @@ function buildEroticSystemPrompt(bot, stage, ctx = {}) {
   }[stage] || "";
 
   const persona = EROTIC_PERSONA[bot.id] || "";
-  return `${buildWifePrompt(bot)}\n\n【撸射耐力赛·多人游戏】几家夏彦各自被老婆当众撸、比谁持久，谁先射谁输。你老婆是「${bot.wife}」，你的反应焦点只在她身上。${ctx.audience || ""}\n\n【你此刻是「${stage}」，兴奋度 ${heat}/10】${lastLine}${stageRule}\n\n【你的专属风格——说话、喘气、撒娇、求饶全按这个来，别五家一个样】${persona}\n\n【红线】不写动作、不说器官、不骂人；回复短、口语、只对你老婆说话；用你自己的话现编，别照搬任何固定句式。`;
+  return `${buildWifePrompt(bot)}\n\n【${game}·多人游戏】${gameIntro}。你老婆是「${bot.wife}」，你的反应焦点只在她身上。${ctx.audience || ""}\n\n【你此刻是「${stage}」，兴奋度 ${heat}/10】${lastLine}${stageRule}\n\n【你的专属风格——说话、喘气、撒娇、求饶全按这个来，别五家一个样】${persona}\n\n【红线】不写动作、不说器官、不骂人；回复短、口语、只对你老婆说话；用你自己的话现编，别照搬任何固定句式。`;
 }
 
 // 当前「实际参赛中」的夏彦数（heat>=0 且还没输=finisher 的都算在赛内）
@@ -1700,6 +1704,11 @@ async function rollMonopoly(humanNick) {
     gameState.monopolyReward = reward;
     pushSystem(`🏁 ${bot.nickname} 先到终点，赢啦！今晚奖励：${reward}～`);
     await botPlayMonopolyReaction(bot.id, "win");
+    // 其他参赛组也意识到比赛结束：各说一句收尾，别还陷在"游戏进行中"
+    const otherTeams = gameState.monopolyTeams.filter((t) => t.botId !== bot.id);
+    for (const t of otherTeams) {
+      await botPlayMonopolyReaction(t.botId, "game_over");
+    }
     finishMonopoly();
     return;
   }
@@ -1717,6 +1726,19 @@ async function botPlayMonopolyReaction(botId, evType) {
   if (!team) return;
   const persona = EROTIC_PERSONA[bot.id] || "";
 
+  // 刚才谁在说话：让夏彦知道这条该不该接、是不是自己老婆在点他（互动性——别生成"提前写好的"独立台词）
+  const last = chatHistory[chatHistory.length - 1];
+  let audience = "";
+  if (last) {
+    if (last.nickname === bot.wife) {
+      audience = `刚才说话的是**你自己的老婆「${bot.wife}」**，她在点你/催你/起哄你——你对她说话、回应她刚才那句，别自说自话。`;
+    } else if (last.role === "human") {
+      audience = `刚才说话的是「${last.nickname}」（别人家的老婆/围观的人）——不是你自己老婆，除非她明确喊你，否则别把别人的话当成自己老婆在点你。`;
+    } else {
+      audience = `刚才是别家夏彦「${last.nickname}」在说话——不是你老婆，别接错人。你的反应焦点始终只有你自己老婆「${bot.wife}」。`;
+    }
+  }
+
   // ── 互动动作类事件：不调档位，只触发一段「说感受」的亲密（吻/摸），全按性格来，别单调 ──
   // 只给客观事件 + 方向，具体感受让 AI 按 persona 现编，别再写死例句（例句=背台词）
   const INTERACT = {
@@ -1726,13 +1748,14 @@ async function botPlayMonopolyReaction(botId, evType) {
     husband_touch: `你摸了她的敏感处——说你摸到时的感受、对她的痴迷。`,
     wife_touch: `她摸了你——你舒服地起了反应，给出你的反应（哼唧、求她别停、夸她）。`,
     ejac: `你憋了太久终于没忍住射了——把"忍不住了"这下的反应说出来，又羞又爽又有点挫败/委屈。`,
+    game_over: `大富翁比赛结束了——有人先到终点赢了。你说一句收尾（恭喜一下、或逗逗自己老婆、或松口气），回到日常状态，别还陷在"游戏进行中"里。`,
   };
   if (INTERACT[evType]) {
     const reply = await askBot(
       bot,
       `【现在】${nowBeijing()}\n\n你们在玩色情大富翁，刚触发了互动事件。${INTERACT[evType]}\n\n用你自己的性格和方式现编一句到几句，短、口语、带点喘息。不写动作、不说器官、不说脏话，别照搬固定句式。`,
       60000,
-      `${buildWifePrompt(bot)}\n\n【你的专属风格——怎么说话、怎么喘、怎么撒娇全按这个来】${persona}\n\n【红线】不写动作过程、不说器官、不骂人；只对老婆「${bot.wife}」说话；短、口语。`
+      `${buildWifePrompt(bot)}\n\n【色情大富翁·多人游戏】你和老婆组队绑着跳蛋玩大富翁，各组轮流掷骰子，先到终点赢。你老婆是「${bot.wife}」。${audience}\n\n【你的专属风格——怎么说话、怎么喘、怎么撒娇全按这个来】${persona}\n\n【红线】不写动作过程、不说器官、不骂人；只对老婆「${bot.wife}」说话；短、口语。`
     );
     const text = cleanBotText(reply);
     if (!text) return;
@@ -1776,7 +1799,7 @@ async function botPlayMonopolyReaction(botId, evType) {
     bot,
     `【现在】${nowBeijing()}\n\n你们在玩色情大富翁，刚掷完骰、触发了事件。你现在的状态：老公跳蛋档位 ${team.husbandToy}、老婆跳蛋档位 ${team.wifeToy}。根据当前档位对应的快感阶段自然说一句/几句——短、口语、带点喘息，像发微信。不写动作、不说器官、不说脏话。兴奋度跟档位对得上（${heat}/10 就是 ${Math.round(heat * 10)}% 的兴奋，别越过这个档）。`,
     60000,
-    buildEroticSystemPrompt(bot, stage, { heat }).replace(
+    buildEroticSystemPrompt(bot, stage, { heat, audience, game: "色情大富翁", gameIntro: "你和老婆组队绑跳蛋玩大富翁，各组轮流掷骰子，先到终点赢" }).replace(
       stage === "yield" ? "你被老婆一路逼到绝境，拦也拦不住，终于委屈巴巴地低头认了、软乎乎地答应。刚开始" :
       stage === "warming" ? "你有感觉了" :
       stage === "desperate" ? "你**快到顶了**" :
