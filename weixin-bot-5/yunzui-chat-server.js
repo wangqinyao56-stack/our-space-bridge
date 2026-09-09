@@ -111,10 +111,14 @@ async function chatReply(channel, userText, history) {
   const opts = {
     systemPrompt,
     userContent: userText,
-    model: "[逆]claude-opus-4-6",
     temperature: 0.65,
     maxTokens: 800,
   };
+  if (channel === "intimate") {
+    opts.useZilian = true; // 亲密空间走宅恋报用鹿（云醉自己的宅恋 key）
+  } else {
+    opts.model = "[逆]claude-opus-4-6"; // 日常保持玖时逆系列，不换
+  }
   if (history.length > 0) opts.history = history;
   return await askClaude(opts);
 }

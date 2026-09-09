@@ -38,7 +38,7 @@ const SCORE_FEEL = 50.0;
 const PINNED_CAP = 20;
 
 const EXTRACT_INTERVAL = 15;
-const EXTRACT_MODEL = "[君离-按量]k/claude-opus-4-6"; // 提取/做梦用主模型（宅恋按量，熊猫api520已死）
+const EXTRACT_MODEL = "[0.06]报用鹿/claude-opus-4.6"; // 提取/做梦用主模型（林游宅恋 key 下报用鹿可用，君离分组不存在）
 
 let memories = [];
 let archive = [];
