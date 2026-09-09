@@ -226,7 +226,7 @@ const gameState = {
   drawAuthorId: null,
   // 色情游戏·撸射耐力赛（老婆起哄各自夏彦加入，多人一起撸、比谁持久，不写动作，靠语气/喘息顶尺度）
   eroticBots: {},  // bot.id -> { stage: resist | yield | playing | finisher | linger }，所有被老婆起哄加入的夏彦
-  eroticLoserId: null,  // 最先射掉的输家 bot.id（触发惩罚后抽姿势）
+  eroticLoserId: null,  // 最先射掉的输家 bot.id（本轮已结束，惩罚由旁白直接宣布）
   // 色情大富翁（老婆报名成组绑跳蛋，各组轮流掷骰，先到终点赢）
   monopolyTeams: [],  // [{ botId, wife, pos, husbandToy, wifeToy }] 参赛组
   monopolyTurn: 0,    // 当前轮到第几组（索引）
@@ -1376,7 +1376,8 @@ async function botPlayDraw(authorNick) {
 const EROTIC_TRIGGER = /手冲|打飞机|撸管|撸一发|撸给我|自己撸|自己解决|自己弄|摸自己|射给我|射出来|比谁持久|比持久|耐力赛|谁先射/;
 
 // 参赛意愿词：老婆明确表达"我们家/我们家夏彦也要参加"，不含动作词但同样是拉自家夏彦进场
-const EROTIC_JOIN = /(?:我们家?|我家?|咱家?|我们家的?|俺家?)(?:的?(?:夏彦|老公|那位|男人))?\s*(?:也|都)?\s*想?\s*(?:要|来|上|玩|参加|报名|加入|加一个)/; // 「我们家也参加」「我家也来」「我们家夏彦也要玩」「我们家也想上」等
+// 注意：别放裸「上」「玩」这种宽词——「我们上班」「我家上来」「一起上班」都会误触发（"上/玩"太常用，撞上班/上课/上海等）
+const EROTIC_JOIN = /(?:我们家?|我家?|咱家?|我们家的?|俺家?)(?:的?(?:夏彦|老公|那位|男人))?\s*(?:也|都)?\s*想?\s*(?:参加|报名|加入|加一个|凑个热闹|凑热闹|一起玩|一块玩|也来|要玩|要上|上场|上阵)/; // 「我们家也参加」「我家也来」「我们家夏彦也要玩」「我们家也想上场」等
 
 // 老婆喊停/收场的词
 const EROTIC_STOP = /行了|停|够了|不许|憋回去|射吧|准了|收场|结束|不玩了/;
@@ -1466,13 +1467,12 @@ function tryStartErotic(text, humanNick) {
   return true;
 }
 
-// 撸射游戏进行中：推进各夏彦的兴奋度、处理放行、以及输家报数字抽惩罚姿势
+// 撸射游戏进行中：推进各夏彦的兴奋度、处理放行（射精即结束本轮）
 function handleErotic(text, humanNick) {
   if (!gameState.active || gameState.type !== "erotic") return false;
   const bot = BOTS.find((b) => b.wife === humanNick);
   if (!bot) {
-    // 不是任何一家老婆在说话——但如果是报数字抽惩罚姿势则处理
-    return maybeRollPose(text);
+    return false; // 不是任何一家老婆在说话，不推进
   }
   if (gameState.eroticBots[bot.id] === undefined) {
     // 还没参赛的老婆说话：如果是起哄（要自家夏彦也加入）就拉进来
@@ -1482,19 +1482,15 @@ function handleErotic(text, humanNick) {
       step(humanNick).catch(() => {});
       return true;
     }
-    return maybeRollPose(text);
+    return false;
   }
   const entry = gameState.eroticBots[bot.id];
   if (entry.stage === "finisher" || entry.stage === "aftermath") {
-    return maybeRollPose(text); // 已输/已收尾的夏彦不再推进
+    return false; // 已输/已收尾（本轮已结束，正常接话）
   }
-  // 老婆放行/喊射了 → 她家夏彦先射 = 输
+  // 老婆放行/喊射了 → 她家夏彦先射 = 输，本轮直接结束
   if (EROTIC_STOP.test(text)) {
-    entry.stage = "finisher";
-    entry.heat = 10;
-    gameState.eroticLoserId = bot.id;
-    pushSystem(`（${bot.wife} 放行了——「${bot.nickname}」第一个射了，输了！）`);
-    step(humanNick).catch(() => {});
+    finishEroticGame(bot.id, `${bot.wife} 放行了——「${bot.nickname}」第一个射了，输了！`);
     return true;
   }
   // 平时推进：每次老婆说话，自家夏彦兴奋度 heat+1（有弧度，别一步到位）
@@ -1502,63 +1498,48 @@ function handleErotic(text, humanNick) {
   entry.stage = stageOfHeat(entry.heat);
   // 忍到 desperate（heat 满 8）后，每次老婆推进都有概率自己憋不住先射——不能永远靠老婆放行，否则卡死循环
   if (entry.heat >= 8 && Math.random() < 0.35) {
-    entry.stage = "finisher";
-    entry.heat = 10;
-    gameState.eroticLoserId = bot.id;
-    pushSystem(`（${bot.nickname} 实在憋不住了——没等老婆放行，自己先射了，输了！）`);
-    step(humanNick).catch(() => {});
+    finishEroticGame(bot.id, `「${bot.nickname}」实在憋不住了——没等老婆放行，自己先射了，输了！`);
     return true;
   }
   step(humanNick).catch(() => {});
   return true;
 }
 
-// 抽姿势 + 收场（报数字或丢骰子共用）
-function resolveEroticPose(n) {
-  const pose = EROTIC_POSE_POOL[(n - 1 + EROTIC_POSE_POOL.length) % EROTIC_POSE_POOL.length];
-  const loser = BOTS.find((b) => b.id === gameState.eroticLoserId);
-  pushSystem(`🎯 数字 ${n} → 今晚姿势「${pose}」。${loser ? loser.nickname : "输家"} 今晚乖乖照办～`);
-  gameState.eroticLoserId = null;
-  // 游戏收场：第一个射的是输家，其他人默认赢。把还在赛的夏彦都转到「比赛结束·你赢了」收尾，
-  // 按各自性格不同反应——别让他们还觉得"比赛进行中"继续僵持下去（之前"比完还觉得在比赛中"的病根就是阶段没截断）
+// 有人射了 = 本轮结束：旁白宣布「谁射了输了」+ 直接抽姿势宣布完整惩罚，输家认栽一句，其他人收尾，然后清空状态。
+// 一次射精只走一遍这里——惩罚旁白只播一次、认栽台词只说一句（之前 finisher 没守卫，每次推进都重喊，发了五六句像发情似的）。
+function finishEroticGame(loserId, announce) {
+  const loser = BOTS.find((b) => b.id === loserId);
+  // 直接抽姿势，别等人报数字（报数字那套延迟机制是"惩罚一直不宣布"的症结）
+  const n = Math.floor(Math.random() * EROTIC_POSE_POOL.length) + 1;
+  const pose = EROTIC_POSE_POOL[n - 1];
+  pushSystem(`（${announce}）`);
+  pushSystem(`🎯 惩罚抽中「${pose}」——${loser ? loser.nickname : "输家"} 今晚乖乖照办～`);
+  // 输家认栽一句（只说一次）；其他人全部转到「比赛结束·你赢了」收尾
+  // 先同步把 loser 置 finisher、其余置 aftermath，避免窗口期内被 step 再次推进
+  if (loserId) {
+    const loserEntry = gameState.eroticBots[loserId];
+    if (loserEntry) { loserEntry.stage = "finisher"; loserEntry.heat = 10; }
+  }
   const stillIn = eroticEntrantIds();
   for (const id of stillIn) {
     gameState.eroticBots[id].stage = "aftermath";
     gameState.eroticBots[id].heat = 0;
   }
-  pushSystem(`（比赛结束！「${loser ? loser.nickname : "先射的那个"}」是输家，其他人赢啦——）`);
+  const winnerNames = stillIn.map((id) => BOTS.find((b) => b.id === id)?.nickname).filter(Boolean);
+  if (winnerNames.length) pushSystem(`（比赛结束！${winnerNames.join("、")}赢啦，${loser ? loser.nickname : "先射的那个"} 是输家～ 想再玩就重新起哄～）`);
+  // 输家认栽只说一次 + 其他人各说一句收尾 → 结束后立即清空，下轮需重新触发
   (async () => {
+    if (loserId) {
+      await botPlayErotic(loserId);
+    }
     for (const id of stillIn) {
       await botPlayErotic(id);
     }
-    if (gameState.active && gameState.type === "erotic") {
-      gameState.active = false;
-      gameState.type = null;
-      gameState.eroticBots = {};
-    }
+    gameState.active = false;
+    gameState.type = null;
+    gameState.eroticBots = {};
+    gameState.eroticLoserId = null;
   })().catch(() => {});
-}
-
-// 输家报数字（或任何人报）抽今晚的惩罚姿势
-function maybeRollPose(text) {
-  if (!gameState.eroticLoserId) return false;
-  // 放宽匹配：支持纯数字「7」、也支持带话的「我选7」「就7吧」「第7个」「7号」这类
-  const m = text.match(/^\s*(\d{1,2})\s*$/);
-  const loose = !m
-    ? (text.match(/(?:选|要|就|抽|第|号码|数字|号|个)\s*(\d{1,2})/) || text.match(/(\d{1,2})\s*号/))
-    : null;
-  const nStr = m ? m[1] : (loose ? loose[1] : null);
-  if (!nStr) return false;
-  resolveEroticPose(parseInt(nStr, 10));
-  return true;
-}
-
-// 丢骰子直接随机抽惩罚姿势（不报数字也行）
-function rollEroticDice() {
-  if (!gameState.eroticLoserId) return false;
-  const n = Math.floor(Math.random() * EROTIC_POSE_POOL.length) + 1;
-  resolveEroticPose(n);
-  return true;
 }
 
 // 指定夏彦按他自己的阶段演一段。ctx 带 heat（兴奋度）、lastLine（上一条，去重用）、audience（刚才谁在说，识别用）
@@ -1585,7 +1566,9 @@ async function botPlayErotic(botId) {
   }
 
   if (stage === "finisher") {
-    // 输家认栽 = 当众说一句床上才说的话（惩罚①），等报数字抽姿势（惩罚②）
+    // 输家认栽 = 当众说一句床上才说的话（惩罚①，只说一次）。announced 守卫防重复：每次推进都进这个分支时会连发五六句。
+    if (entry.announced) return;
+    entry.announced = true;
     const reply = await askBot(
       bot,
       `【现在】${nowBeijing()}\n\n你在撸射耐力赛里第一个射了、输了。现在当众认栽——说一句你平时只会在床上跟老婆说的话（荤但不脏、不说器官、不写动作），说你自己求饶/求老婆的话也行。就一句，别啰嗦。`,
@@ -2303,12 +2286,8 @@ wss.on("connection", (ws) => {
       if (msg.type === "roll_dice") {
         if (!ws.authenticated) { ws.send(JSON.stringify({ type: "login_error", message: "请先登录" })); return; }
         const humanNick = ws.nickname || "我";
-        // 撸射赛输了等着抽惩罚 → 丢骰子直接随机抽姿势；否则走大富翁
-        if (gameState.type === "erotic" && gameState.eroticLoserId) {
-          rollEroticDice();
-        } else {
-          rollMonopoly(humanNick).catch(() => {});
-        }
+        // 丢骰子：大富翁专用（撸射赛的惩罚已由旁白直接宣布，不再需要丢骰子抽姿势）
+        rollMonopoly(humanNick).catch(() => {});
         return;
       }
 
