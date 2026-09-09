@@ -836,15 +836,17 @@ function askBot(bot, userContent, timeoutMs = 180000, systemPrompt) {
     conn.end();
   });
 
-  // 429 限流退避重试：玖时提示「Too many pending requests / quota reset 1s」，撞上限流停一下再试基本就过
+  // 429 限流 / 500 上游抖动 退避重试：玖时提示「Too many pending requests / quota reset 1s」或「upstream error do request failed」
+  // 都是偶发抖动，停一下重试基本就过。body/model 已在上面写死，重试只重发同一个请求，绝不改变模型/不会落到别的模型上。
   const attempt = () => (DISABLE_PROXY ? doDirect() : doProxy());
   return (async () => {
     for (let i = 0; i < 3; i++) {
       try {
         return await attempt();
       } catch (e) {
-        const is429 = /429/.test(String(e && e.message || e));
-        if (!is429 || i === 2) throw e;
+        const msg = String(e && e.message || e);
+        const retryable = /429/.test(msg) || /500/.test(msg); // 429 限流 + 500 上游抖动都可重试
+        if (!retryable || i === 2) throw e;
         await new Promise((r) => setTimeout(r, 1200 + i * 800));
       }
     }
