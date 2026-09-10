@@ -38,7 +38,7 @@ const SCORE_FEEL = 50.0;
 const PINNED_CAP = 20;
 
 const EXTRACT_INTERVAL = 15;
-const EXTRACT_MODEL = "[企业按量]claude-opus-4-6"; // 提取/做梦改用主模型(玖时已无 gpt-5.4 渠道)
+const EXTRACT_MODEL = "[0.06]报用鹿/claude-opus-4.6"; // 玖时渠道已下架，提取/做梦改宅恋报用鹿
 
 let memories = [];
 let archive = [];
@@ -242,6 +242,7 @@ export async function runExtraction(historyText = "") {
       systemPrompt: EXTRACT_PROMPT,
       userContent: `最近对话：\n\n${historyText.slice(-3500)}\n\n请提炼情感记忆。`,
       model: EXTRACT_MODEL,
+      useZilian: true,
       maxTokens: 800,
       temperature: 0.3,
     });
@@ -324,6 +325,7 @@ export async function runDream() {
       systemPrompt: DREAM_PROMPT,
       userContent: `最近记住的事：\n\n${list}`,
       model: EXTRACT_MODEL,
+      useZilian: true,
       maxTokens: 300,
       temperature: 0.2,
     });
