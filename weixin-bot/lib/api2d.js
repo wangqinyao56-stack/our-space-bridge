@@ -12,10 +12,10 @@ const JIUSHI_KEY = "sk-3kKBpaPX3Fmxw89UfVrWw4o8BE8EnkzzRlQrnUwZuEQtSbm9";
 const JIUSHI_HOST = "api.jiushi.xin";
 const JIUSHI_MODEL = "[企业按量]claude-opus-4-6";
 
-// 宅恋中转（az.zlapi.vip）——佳佳亲密空间专用，日常仍走玖时
+// 宅恋中转（az.zlapi.vip）——佳佳亲密/日常/小屋专用（玖时企业按量已下架）
 const ZILIAN_HOST = "az.zlapi.vip";
 const ZILIAN_KEY = "sk-dK9NfGM74MzxlarngZe03AuixlUvPu5g1NFJQ5YVm6YcRJoV";
-const ZILIAN_MODEL = "[0.07]k茶/claude-sonnet-4-6";
+const ZILIAN_MODEL = "[0.06]报用鹿/claude-opus-4.6";
 
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);
@@ -40,7 +40,7 @@ function directRequest({ body, timeoutMs, host, key }) {
       res.on("end", () => {
         if (res.statusCode !== 200) {
           const errBody = Buffer.concat(chunks).toString().slice(0, 300);
-          reject(new Error(`jiushi ${res.statusCode}: ${errBody}`));
+          reject(new Error(`${host} ${res.statusCode}: ${errBody}`));
           return;
         }
         try {
@@ -90,7 +90,7 @@ function proxyRequest({ body, timeoutMs, host, key }) {
         resp.on("end", () => {
           if (resp.statusCode !== 200) {
             const errBody = Buffer.concat(chunks).toString().slice(0, 300);
-            reject(new Error(`jiushi ${resp.statusCode}: ${errBody}`));
+            reject(new Error(`${host} ${resp.statusCode}: ${errBody}`));
             return;
           }
           try {
