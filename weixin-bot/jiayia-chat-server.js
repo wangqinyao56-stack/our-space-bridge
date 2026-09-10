@@ -150,8 +150,11 @@ async function chatReply(channel, userText, history) {
     temperature: 0.65,
     maxTokens: 800,
   };
-  // 玖时渠道已下架，日常/亲密都走宅恋报用鹿（小屋也用报用鹿，保持一致）
-  if (channel === "intimate" || channel === "daily") {
+  // 玖时渠道已下架，走宅恋；亲密 200KB 大 prompt 用 sonnet（6s 稳），日常用小 prompt 用报用鹿 opus
+  if (channel === "intimate") {
+    opts.useZilian = true;
+    opts.model = "[0.15]k茶/claude-sonnet-4-6";
+  } else if (channel === "daily") {
     opts.useZilian = true;
     opts.model = "[0.06]报用鹿/claude-opus-4.6";
   }
