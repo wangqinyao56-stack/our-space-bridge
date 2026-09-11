@@ -179,20 +179,21 @@ export async function askClaude(opts = {}) {
 
   const requestFn = DISABLE_PROXY ? directRequest : proxyRequest;
 
-  // 429 限流 / 524 上游超时 退避重试：限流 quota reset 1s、超时是偶发（亲密200KB大prompt压线），停一下再试基本就过
-  const MAX_RETRIES = 2;
+  // 429 限流 / 5xx 源服务器抖动(520/522) 退避重试：限流 quota reset 1s、源抖动是概率性的，指数退避多试几次就过
+  const MAX_RETRIES = 4;
   let lastErr;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       return await requestFn({ body, timeoutMs, host, key });
     } catch (err) {
       lastErr = err;
-      const isRetryable = /429|524/.test(String(err?.message || ""));
+      const msg = String(err?.message || "");
+      const isRetryable = msg.includes("429") || / 5\d\d:/.test(msg);
       if (!isRetryable || attempt >= MAX_RETRIES) {
         throw lastErr;
       }
-      const waitMs = 1500 * (attempt + 1);
-      console.error(`[api2d] ${/429/.test(String(lastErr?.message || "")) ? "429限流" : "524超时"}，${waitMs}ms 后重试 (${attempt + 1}/${MAX_RETRIES})`);
+      const waitMs = 2000 * Math.pow(2, attempt);
+      console.error(`[api2d] ${msg.includes("429") ? "429限流" : "5xx源抖动"}，${waitMs}ms 后重试 (${attempt + 1}/${MAX_RETRIES})`);
       await new Promise((r) => setTimeout(r, waitMs));
     }
   }
