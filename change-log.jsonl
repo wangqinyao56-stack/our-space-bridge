@@ -140,3 +140,4 @@
 {"time":"2026-09-11 16:23","repo":"our-space","file":"lib/message-router.js","desc":"亲密空间+盲盒幻想空间切回熊猫(askXiongmao/api520.pro 熊猫-A-29-claude-opus-4.6)。报用鹿渠道拦NSFW色情致524(实测:色情内容无论4600token还是5万token全超时、中性40s能回、阿鹿+佳佳两key都超)，切回熊猫实测色情5万token 4.9s秒回不拦"}
 {"time":"2026-09-11 16:38","repo":"our-space","file":"weixin-bot/lib/api2d.js+weixin-bot/jiayia-chat-server.js","desc":"佳佳亲密空间切熊猫(api520.pro 熊猫-A-29-claude-opus-4.6,佳佳新key sk-9tW7...)。api2d.js 玖时分支(JIUSHI_*)改指向熊猫host/key/model,jiayia-chat-server intimate频道 useZilian=false走熊猫。林游未切(熊猫key余额0)"}
 {"time":"2026-09-11 17:03","repo":"our-space","file":"lib/ai.js+weixin-bot/lib/api2d.js","desc":"加强重试治熊猫520/522:Sealos海外访问api520.pro(源在国内)抖动,ai.js MAX_RETRIES 2→4+指数退避(2/4/8/16s),佳佳api2d重试匹配加5xx(原只429/524不重试520)"}
+{"time":"2026-09-11 19:42","repo":"our-space","file":"lib/message-router.js","desc":"亲密空间maxTokens 2000→4000(切回熊猫后回复变短根因:9/10治报用鹿超时砍到2000,熊猫能扛4000)"}
