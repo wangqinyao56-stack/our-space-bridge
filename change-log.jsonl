@@ -137,3 +137,5 @@
 {"time":"2026-09-08 18:00","repo":"our-space","file":"group-chat/bots.js","desc":"群聊华生(猎鹿人)切宅恋按量[君离-按量]k/claude-opus-4-7:host改az.zlapi.vip+按量key。其他4夏彦不动"}
 {"time":"2026-09-08 18:40","repo":"our-space","file":"system-prompt-intimate.md","desc":"亲密空间做爱时:①多写夏彦自己的喘/呻吟/真实反应(舒服直说、她被含时脑子不转)②别堆爱称、她想听他的喘不是一遍遍喊名字③做爱单独加自查禁止复述她的动作"}
 {"time":"2026-09-08 18:40","repo":"our-space","file":"group-chat/bots.js","desc":"群聊华生(猎鹿人)切回玖时[企业按量]claude-opus-4-6:去掉host az.zlapi.vip+key换sk-gEbf6uNMq(新key实测200通)"}
+{"time":"2026-09-11 16:23","repo":"our-space","file":"lib/message-router.js","desc":"亲密空间+盲盒幻想空间切回熊猫(askXiongmao/api520.pro 熊猫-A-29-claude-opus-4.6)。报用鹿渠道拦NSFW色情致524(实测:色情内容无论4600token还是5万token全超时、中性40s能回、阿鹿+佳佳两key都超)，切回熊猫实测色情5万token 4.9s秒回不拦"}
+{"time":"2026-09-11 16:38","repo":"our-space","file":"weixin-bot/lib/api2d.js+weixin-bot/jiayia-chat-server.js","desc":"佳佳亲密空间切熊猫(api520.pro 熊猫-A-29-claude-opus-4.6,佳佳新key sk-9tW7...)。api2d.js 玖时分支(JIUSHI_*)改指向熊猫host/key/model,jiayia-chat-server intimate频道 useZilian=false走熊猫。林游未切(熊猫key余额0)"}

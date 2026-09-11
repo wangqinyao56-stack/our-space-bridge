@@ -1,5 +1,5 @@
 /**
- * 玖时 API client — Claude via api.jiushi.xin (按量)
+ * 熊猫(api520.pro) + 宅恋(az.zlapi.vip) API client
  *
  * Local dev: routes through proxy (Clash Verge) for GFW bypass.
  * Docker/Sealos: direct HTTPS (DISABLE_PROXY=true)
@@ -8,9 +8,9 @@
 import http from "node:http";
 import https from "node:https";
 
-const JIUSHI_KEY = "sk-3kKBpaPX3Fmxw89UfVrWw4o8BE8EnkzzRlQrnUwZuEQtSbm9";
-const JIUSHI_HOST = "api.jiushi.xin";
-const JIUSHI_MODEL = "[企业按量]claude-opus-4-6";
+const JIUSHI_KEY = "sk-9tW7t8uohvRHJejvsIEItEas96FWZbqfrMKiQ13PUv4ssZSG";
+const JIUSHI_HOST = "api520.pro";
+const JIUSHI_MODEL = "熊猫-A-29-claude-opus-4.6";
 
 // 宅恋中转（az.zlapi.vip）——佳佳亲密/日常/小屋专用（玖时企业按量已下架）
 const ZILIAN_HOST = "az.zlapi.vip";
@@ -142,7 +142,7 @@ export async function askClaude(opts = {}) {
     useZilian = false,
   } = opts;
 
-  // 宅恋 vs 玖时：默认玖时；useZilian=true 时走宅恋 key/host/model
+  // 宅恋 vs 熊猫：useZilian=true 走宅恋(az.zlapi.vip)，false 走熊猫(api520.pro)
   const host = useZilian ? ZILIAN_HOST : JIUSHI_HOST;
   const key = useZilian ? ZILIAN_KEY : JIUSHI_KEY;
   const resolvedModel = model || (useZilian ? ZILIAN_MODEL : JIUSHI_MODEL);
