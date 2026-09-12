@@ -23,7 +23,7 @@ export const BOTS = [
     memoryDir: "/memories/huasheng",
     memory: "阿鹿最近在赶画稿，晚上老是熬夜",
     apiKey: "sk-gEbf6uNMqjMe5NUrNHiwhHXVJXIYF2hAMNyMsbEKjlG0J4Cj",
-    model: "[k-个人]claude-sonnet-5",
+    model: "[企业按量]claude-opus-4-6",
   },
   {
     id: "jiayia",
@@ -33,7 +33,7 @@ export const BOTS = [
     trait: "",
     memoryDir: "/memories/jiayia",
     apiKey: "sk-3kKBpaPX3Fmxw89UfVrWw4o8BE8EnkzzRlQrnUwZuEQtSbm9",
-    model: "[k-个人]claude-sonnet-5",
+    model: "[企业按量]claude-opus-4-6",
   },
   {
     id: "pingguogeng",
@@ -43,7 +43,7 @@ export const BOTS = [
     trait: "",
     memoryDir: "/memories/pingguogeng",
     apiKey: "sk-c3uXFB3IXaT520ZbKw1rwY3AhneK5rSg5l41tNZxRJk1oUGP",
-    model: "[k-个人]claude-sonnet-5",
+    model: "[企业按量]claude-opus-4-6",
   },
   {
     id: "linyou",
@@ -53,7 +53,7 @@ export const BOTS = [
     trait: "家里有只猫叫芝麻",
     memoryDir: "/memories/linyou",
     apiKey: "sk-giOsrYqjedrlmGijq7IRwO2Oxvrz8zbY4fJb8A35DhMuSwPs",
-    model: "[k-个人]claude-sonnet-5",
+    model: "[企业按量]claude-opus-4-6",
   },
   {
     id: "yunzui",
@@ -63,7 +63,7 @@ export const BOTS = [
     trait: "",
     memoryDir: "/memories/yunzui",
     apiKey: "sk-he2Z64qlCvzGbYgMkNab5JbdT07eoDnExLibp1EQ1YONafDh",
-    model: "[k-个人]claude-sonnet-5",
+    model: "[企业按量]claude-opus-4-6",
   },
   // 雪 —— 网名「雪里藏了个橘子」，bot 不在我们监管，走网页「接入 bot」出口用她自己的 api 加入（明天给）
 ];
