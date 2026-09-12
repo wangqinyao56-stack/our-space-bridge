@@ -75,7 +75,7 @@ import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.j
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
 import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport, listBooks as coreadListBooks, listCategories as coreadListCategories, createCategory as coreadCreateCategory, deleteBook as coreadDeleteBook, moveBook as coreadMoveBook, readText as coreadReadText, readChapterAudio as coreadReadChapter, saveReadingProgress as coreadSaveProgress, getChapter as coreadGetChapter, replyComment as coreadReplyComment, addHuashengComment as coreadAddHuashengComment, deleteHuashengComment as coreadDeleteHuashengComment } from "./lib/coread.js";
-import { listBooks as readingListBooks, listCategories as readingListCategories, createCategory as readingCreateCategory, moveBook as readingMoveBook, deleteBook as readingDeleteBook, importBook as readingImport, getChapter as readingGetChapter } from "./lib/reading.js";
+import { listBooks as readingListBooks, listCategories as readingListCategories, createCategory as readingCreateCategory, moveBook as readingMoveBook, deleteBook as readingDeleteBook, importBook as readingImport, getChapter as readingGetChapter, scanAndImport as readingScanAndImport } from "./lib/reading.js";
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
 import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail, getSongUrl as neteaseUrl } from "./lib/netease.js";
 import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset, generateOpening as monopolyOpening } from "./lib/monopoly.js";
@@ -4025,5 +4025,6 @@ server.listen(config.PORT, config.HOST, () => {
   console.log(`[our-space] Bridge server on http://${config.HOST}:${config.PORT}`);
   console.log(`[our-space] WebSocket on ws://${config.HOST}:${config.PORT}`);
   console.log(`[our-space] Shared secret: ${config.SHARED_SECRET === "our-space-default-secret-change-me" ? "⚠ USING DEFAULT (change via OUR_SPACE_SECRET env)" : "✓ configured"}`);
+  readingScanAndImport();
 });
 // force redeploy 1780136314

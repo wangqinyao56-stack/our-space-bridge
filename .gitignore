@@ -5,8 +5,9 @@ diaries
 pc-web/profile/
 
 # Data files — contain personal info, not for git
-data/
+data/*
 !data/audio/
+!data/reading-txt/
 !weixin-bot/data/
 !weixin-bot/data/pixel-home/
 !weixin-bot/data/pixel-home/greet/

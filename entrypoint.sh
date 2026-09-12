@@ -22,4 +22,19 @@ if [ -d "$APP_ASSET_DIR" ]; then
   echo "[entrypoint] Audio assets synced to $ASSET_DIR"
 fi
 
+# Copy reading txt books (打镜像的阅读书库) to persistent volume
+READING_SRC="/app/data/reading-txt"
+READING_DST="/data/reading-txt"
+if [ -d "$READING_SRC" ]; then
+  mkdir -p "$READING_DST"
+  for f in "$READING_SRC"/*.txt; do
+    [ -f "$f" ] || continue
+    fn=$(basename "$f")
+    if [ ! -f "$READING_DST/$fn" ]; then
+      cp "$f" "$READING_DST/"
+    fi
+  done
+  echo "[entrypoint] Reading txt books synced to $READING_DST"
+fi
+
 exec node server.js
