@@ -75,6 +75,7 @@ import { updateSteps, getStepContext, getDeviceState } from "./lib/device-data.j
 import { getCurrentTheme, tryRedecorate, getDecorContext, getAllThemes } from "./lib/home-decor.js";
 import { getAll as inspirationGetAll, create as inspirationCreate, updateStatus as inspirationUpdateStatus, updateText as inspirationUpdateText, remove as inspirationDelete, addComment as inspirationAddComment, get as inspirationGet } from "./lib/inspiration.js";
 import { getState as coreadGetState, startReading as coreadStart, continueReading as coreadContinue, discuss as coreadDiscuss, pickBook as coreadPickBook, importBook as coreadImport, listBooks as coreadListBooks, listCategories as coreadListCategories, createCategory as coreadCreateCategory, deleteBook as coreadDeleteBook, moveBook as coreadMoveBook, readText as coreadReadText, readChapterAudio as coreadReadChapter, saveReadingProgress as coreadSaveProgress, getChapter as coreadGetChapter, replyComment as coreadReplyComment, addHuashengComment as coreadAddHuashengComment, deleteHuashengComment as coreadDeleteHuashengComment } from "./lib/coread.js";
+import { listBooks as readingListBooks, listCategories as readingListCategories, createCategory as readingCreateCategory, moveBook as readingMoveBook, deleteBook as readingDeleteBook, importBook as readingImport, getChapter as readingGetChapter } from "./lib/reading.js";
 import { getState as duettoGetState, shareSong as duettoShare, discuss as duettoDiscuss, getSongContext as duettoSongContext } from "./lib/duetto.js";
 import { searchSongs as neteaseSearch, getLyricText as neteaseLyric, getSongDetail as neteaseDetail, getSongUrl as neteaseUrl } from "./lib/netease.js";
 import { getGameState as monopolyGetState, handleRoll as monopolyRoll, resetGame as monopolyReset, generateOpening as monopolyOpening } from "./lib/monopoly.js";
@@ -2828,6 +2829,56 @@ wss.on("connection", (ws, req) => {
       const r = coreadDeleteHuashengComment(msg.bookId, msg.commentId);
       if (r.error) { ws.send(JSON.stringify({ type: "coread_error", message: r.error })); return; }
       ws.send(JSON.stringify({ type: "coread_huasheng_comment_deleted", commentId: msg.commentId }));
+      return;
+    }
+
+    // ── 阅读 reading（纯文字阅读器，独立书库，不调 AI）──
+    if (msg.type === "reading_list") {
+      ws.send(JSON.stringify({ type: "reading_books", books: readingListBooks(), categories: readingListCategories() }));
+      return;
+    }
+
+    if (msg.type === "reading_import") {
+      let text = msg.text;
+      if (!text && msg.base64) text = decodeTxtBase64(msg.base64);
+      if (!text?.trim()) return;
+      try {
+        const r = readingImport(msg.title, text);
+        if (r.error) { ws.send(JSON.stringify({ type: "reading_error", message: r.error })); return; }
+        ws.send(JSON.stringify({ type: "reading_books", books: readingListBooks(), categories: readingListCategories(), imported: msg.title, totalChapters: r.totalChapters }));
+      } catch (e) {
+        console.error("[reading] import failed:", e.message);
+        ws.send(JSON.stringify({ type: "reading_error", message: "导入失败，稍后再试" }));
+      }
+      return;
+    }
+
+    if (msg.type === "reading_get_chapter") {
+      if (!msg.bookId) { ws.send(JSON.stringify({ type: "reading_error", message: "缺少 bookId" })); return; }
+      const r = readingGetChapter(msg.bookId, msg.chapterIdx ?? 0);
+      if (r.error) { ws.send(JSON.stringify({ type: "reading_error", message: r.error })); return; }
+      ws.send(JSON.stringify({ type: "reading_chapter", ...r }));
+      return;
+    }
+
+    if (msg.type === "reading_create_category") {
+      const r = readingCreateCategory(msg.name);
+      if (r.error) { ws.send(JSON.stringify({ type: "reading_error", message: r.error })); return; }
+      ws.send(JSON.stringify({ type: "reading_categories", categories: r.categories }));
+      return;
+    }
+
+    if (msg.type === "reading_move_book") {
+      const r = readingMoveBook(msg.bookId, msg.category);
+      if (r.error) { ws.send(JSON.stringify({ type: "reading_error", message: r.error })); return; }
+      ws.send(JSON.stringify({ type: "reading_books", books: r.books, categories: readingListCategories() }));
+      return;
+    }
+
+    if (msg.type === "reading_delete_book") {
+      const r = readingDeleteBook(msg.bookId);
+      if (r.error) { ws.send(JSON.stringify({ type: "reading_error", message: r.error })); return; }
+      ws.send(JSON.stringify({ type: "reading_books", books: r.books, categories: readingListCategories() }));
       return;
     }
 
