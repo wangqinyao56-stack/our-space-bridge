@@ -147,3 +147,4 @@
 {"time":"2026-09-22 03:29","repo":"our-space","file":"lib/ai.js","desc":"聚梦候选去官逆1(海外IP色情软限制只写65字)加4-7/4-8排前(本地实测带人设色情404/412字质量好,5拒)。待服务器探测4-7/4-8海外IP能不能连"}
 {"time":"2026-09-22 03:44","repo":"our-space","file":"Dockerfile+entrypoint.sh+lib/ai.js+mihomo-config.yaml","desc":"配代理让聚梦在Sealos上可用:聚梦网逆渠道对Sealos海外IP整体503。镜像加mihomo(clash内核v1.19.31)加载机场节点(香港anytls/日新美trojan)起本地代理7890,ai.js聚梦probe+调用走https-proxy-agent经机场出口IP(聚梦放行,本地Clash验证过)"}
 {"time":"2026-09-22 03:57","repo":"our-space","file":"lib/ai.js","desc":"聚梦候选去按量贵模型(J3按量/J2缓存按量,0.3元/次)。候选改4-6个人优先(K2-个人/k-个人/网逆),探测逻辑改按优先级选第一个输出>=300字的,不再选输出最长(会选中贵按量)"}
+{"time":"2026-09-22 04:01","repo":"our-space","file":"lib/ai.js","desc":"聚梦固定模型[网逆]claude-opus-4-8,砍掉整套探测逻辑(探测每轮发5-6次请求烧流量费)。askJumengai直接固定模型,省每次启动/首次调用的探测开销"}
