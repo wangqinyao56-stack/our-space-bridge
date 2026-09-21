@@ -1,0 +1,59 @@
+mixed-port: 7890
+allow-lan: false
+bind-address: 127.0.0.1
+mode: global
+log-level: warning
+ipv6: false
+
+proxies:
+  - name: 香港HK-15001
+    type: anytls
+    server: v2vnm5njdt-qnk5.152362.xyz
+    port: 15001
+    password: fea1ca6c-0c28-32d6-bebd-cbcea577877b
+    udp: true
+    sni: hkbn-sd3.b45rw76t.xyz
+
+  - name: 日本JP-38001
+    type: trojan
+    server: jp-mx0813-a1.kw1030v8.xyz
+    port: 38001
+    password: fea1ca6c-0c28-32d6-bebd-cbcea577877b
+    udp: true
+    skip-cert-verify: false
+    client-fingerprint: chrome
+    network: tcp
+
+  - name: 新加坡SG-38003
+    type: trojan
+    server: sg-xc0813-a1.kw1030v8.xyz
+    port: 38003
+    password: fea1ca6c-0c28-32d6-bebd-cbcea577877b
+    udp: true
+    skip-cert-verify: false
+    client-fingerprint: chrome
+    network: tcp
+
+  - name: 美国US-38011
+    type: trojan
+    server: us-mx0911-a1.kw1030v8.xyz
+    port: 38011
+    password: fea1ca6c-0c28-32d6-bebd-cbcea577877b
+    udp: true
+    skip-cert-verify: true
+    client-fingerprint: chrome
+    network: tcp
+
+proxy-groups:
+  - name: PROXY
+    type: fallback
+    proxies:
+      - 香港HK-15001
+      - 日本JP-38001
+      - 新加坡SG-38003
+      - 美国US-38011
+    url: http://www.gstatic.com/generate_204
+    interval: 300
+
+rules:
+  - MATCH,PROXY

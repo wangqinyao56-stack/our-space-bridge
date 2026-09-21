@@ -1,4 +1,9 @@
 #!/bin/sh
+# 启动 mihomo 旁路代理（聚梦请求走机场出口 IP，绕开 Sealos 海外 IP 被聚梦风控）
+mkdir -p /tmp/mihomo
+mihomo -d /tmp/mihomo -f /app/mihomo-config.yaml &
+sleep 2
+
 # Copy static assets to persistent data volume (only if not already present)
 # This ensures audio/video files survive container restarts while the volume persists
 

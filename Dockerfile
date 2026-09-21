@@ -2,6 +2,14 @@ FROM node:22-alpine
 
 WORKDIR /app
 
+# mihomo (clash meta 内核) 作为旁路代理，供聚梦请求走机场出口 IP
+RUN apk add --no-cache wget && \
+    wget -q "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.31/mihomo-linux-amd64-compatible-v1.19.31.gz" -O /tmp/mihomo.gz && \
+    gunzip /tmp/mihomo.gz && \
+    mv /tmp/mihomo /usr/local/bin/mihomo && \
+    chmod +x /usr/local/bin/mihomo && \
+    apk del wget
+
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
