@@ -144,3 +144,4 @@
 {"time":"2026-09-22 01:55","repo":"our-space","file":"lib/ai.js+lib/message-router.js","desc":"亲密空间切聚梦为主+熊猫兜底:报用鹿渠道级拦NSFW无解,实测聚梦api.jumengai.net([网逆]claude-opus-4.6)带人设跑色情6/6稳(17-22s/轮)。ai.js加askJumengai,message-router handleIntimateMessage改askJumengai失败自动回退askXiongmao(熊猫-A-29,兜底防Sealos直连聚梦不通断线)"}
 {"time":"2026-09-22 02:58","repo":"our-space","file":"lib/ai.js+lib/message-router.js","desc":"亲密空间切聚梦自动探测:报用鹿拦NSFW无解,聚梦[网逆]claude-opus-4-6在Sealos海外IP下503 no available channel(本地Clash能通=IP路由差异,本地直连ECONNRESET被墙)。askJumengai改成首次调用探测6个opus-4-6候选模型名(官逆优先),选第一个200的缓存,全失败回退熊猫"}
 {"time":"2026-09-22 03:13","repo":"our-space","file":"lib/ai.js","desc":"聚梦探测改测输出长度:官逆1在Sealos上200但25s只出65字(thinking行为吃输出)。probeJumengai改成发200字描写prompt测回复长度,detectJumengaiModel遍历6候选选输出最长的模型"}
+{"time":"2026-09-22 03:29","repo":"our-space","file":"lib/ai.js","desc":"聚梦候选去官逆1(海外IP色情软限制只写65字)加4-7/4-8排前(本地实测带人设色情404/412字质量好,5拒)。待服务器探测4-7/4-8海外IP能不能连"}
