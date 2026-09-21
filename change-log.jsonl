@@ -142,3 +142,4 @@
 {"time":"2026-09-11 17:03","repo":"our-space","file":"lib/ai.js+weixin-bot/lib/api2d.js","desc":"加强重试治熊猫520/522:Sealos海外访问api520.pro(源在国内)抖动,ai.js MAX_RETRIES 2→4+指数退避(2/4/8/16s),佳佳api2d重试匹配加5xx(原只429/524不重试520)"}
 {"time":"2026-09-11 19:42","repo":"our-space","file":"lib/message-router.js","desc":"亲密空间maxTokens 2000→4000(切回熊猫后回复变短根因:9/10治报用鹿超时砍到2000,熊猫能扛4000)"}
 {"time":"2026-09-22 01:55","repo":"our-space","file":"lib/ai.js+lib/message-router.js","desc":"亲密空间切聚梦为主+熊猫兜底:报用鹿渠道级拦NSFW无解,实测聚梦api.jumengai.net([网逆]claude-opus-4.6)带人设跑色情6/6稳(17-22s/轮)。ai.js加askJumengai,message-router handleIntimateMessage改askJumengai失败自动回退askXiongmao(熊猫-A-29,兜底防Sealos直连聚梦不通断线)"}
+{"time":"2026-09-22 02:58","repo":"our-space","file":"lib/ai.js+lib/message-router.js","desc":"亲密空间切聚梦自动探测:报用鹿拦NSFW无解,聚梦[网逆]claude-opus-4-6在Sealos海外IP下503 no available channel(本地Clash能通=IP路由差异,本地直连ECONNRESET被墙)。askJumengai改成首次调用探测6个opus-4-6候选模型名(官逆优先),选第一个200的缓存,全失败回退熊猫"}
