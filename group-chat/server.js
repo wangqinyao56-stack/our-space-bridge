@@ -678,6 +678,8 @@ function loadExtBots() {
       BOTS.push({ ...b, memoryDir: "" });
       console.log(`[group-chat] 恢复外部 bot: ${b.nickname}（老婆:${b.wife || "?"}）`);
     }
+    // 恢复后落盘一次：把历史上堆叠出来的同名 bot 合并成一条，避免重启后脏数据仍残留
+    saveExtBots();
   } catch (e) {
     console.error("[group-chat] load ext bots failed:", e.message);
   }
@@ -2337,21 +2339,31 @@ wss.on("connection", (ws) => {
         const nickname = (msg.nickname || "").trim().slice(0, 20);
         const apiKey = (msg.apiKey || "").trim();
         if (!nickname || !apiKey) { ws.send(JSON.stringify({ type: "bot_join_error", message: "网名和 apiKey 都要填" })); return; }
-        const bot = {
-          id: "ext_" + Date.now().toString(36),
-          nickname,
-          wife: (msg.wife || "").trim().slice(0, 20),
-          trait: (msg.trait || "").trim().slice(0, 50),
-          memoryDir: "",
-          apiKey,
-          model: (msg.model || "").trim() || "[企业按量]claude-opus-4-6",
-          host: (msg.host || "").trim(),
-        };
-        BOTS.push(bot);
+        const wife = (msg.wife || "").trim().slice(0, 20);
+        const trait = (msg.trait || "").trim().slice(0, 50);
+        const model = (msg.model || "").trim() || "[企业按量]claude-opus-4-6";
+        const host = (msg.host || "").trim();
+        // 同网名的外部 bot 已在群里（多半是之前调试反复接入堆叠出来的）→ 覆盖更新旧 bot，不新建，
+        // 否则多个同名 bot 各自独立计时，都会被"最久没发言"逻辑挑中抢答，共用一把 key 撞 429 发不出消息
+        const existing = BOTS.find((b) => b.id.startsWith("ext_") && b.nickname === nickname);
+        let bot;
+        let updated = false;
+        if (existing) {
+          existing.wife = wife;
+          existing.trait = trait;
+          existing.apiKey = apiKey;
+          existing.model = model;
+          existing.host = host;
+          bot = existing;
+          updated = true;
+        } else {
+          bot = { id: "ext_" + Date.now().toString(36), nickname, wife, trait, memoryDir: "", apiKey, model, host };
+          BOTS.push(bot);
+        }
         saveExtBots(); // 持久化，重启后不用重新接入
-        console.log(`[group-chat] 外部 bot 接入: ${nickname}（老婆:${bot.wife || "?"}）`);
-        ws.send(JSON.stringify({ type: "bot_joined", bot: { id: bot.id, nickname, wife: bot.wife } }));
-        broadcast(JSON.stringify({ type: "system", text: `${nickname} 进群了` }));
+        console.log(`[group-chat] 外部 bot ${updated ? "更新" : "接入"}: ${nickname}（老婆:${bot.wife || "?"}）`);
+        ws.send(JSON.stringify({ type: "bot_joined", bot: { id: bot.id, nickname, wife: bot.wife, updated } }));
+        broadcast(JSON.stringify({ type: "system", text: updated ? `${nickname} 的信息已更新` : `${nickname} 进群了` }));
         step().catch(() => {});
       }
 
@@ -2382,6 +2394,28 @@ wss.on("connection", (ws) => {
           syncGroupMemory();
           broadcast(JSON.stringify({ type: "delete", id: msg.id }));
         }
+        return;
+      }
+
+      // 管理员：列出外部接入的 bot（雪这类自己 api 加入的），方便清理堆叠的重复 bot
+      if (msg.type === "list_bots") {
+        if (!ws.isAdmin) { ws.send(JSON.stringify({ type: "admin_error", message: "需要管理员权限" })); return; }
+        const ext = BOTS.filter((b) => b.id.startsWith("ext_")).map((b) => ({ id: b.id, nickname: b.nickname, wife: b.wife || "", trait: b.trait || "", model: b.model || "" }));
+        ws.send(JSON.stringify({ type: "bot_list", bots: ext }));
+        return;
+      }
+
+      // 管理员：删除某个外部 bot（只允许删 ext_ 开头的外部 bot，托管的 5 个不动）
+      if (msg.type === "delete_bot") {
+        if (!ws.isAdmin) { ws.send(JSON.stringify({ type: "admin_error", message: "需要管理员权限" })); return; }
+        const idx = BOTS.findIndex((b) => b.id === msg.id && b.id.startsWith("ext_"));
+        if (idx === -1) { ws.send(JSON.stringify({ type: "admin_error", message: "没找到这个 bot（托管 bot 不能删）" })); return; }
+        const removed = BOTS.splice(idx, 1)[0];
+        saveExtBots();
+        console.log(`[group-chat] 删除外部 bot: ${removed.nickname}`);
+        broadcast(JSON.stringify({ type: "system", text: `${removed.nickname} 已被移出群聊` }));
+        const extNow = BOTS.filter((b) => b.id.startsWith("ext_")).map((b) => ({ id: b.id, nickname: b.nickname, wife: b.wife || "", trait: b.trait || "", model: b.model || "" }));
+        broadcast(JSON.stringify({ type: "bot_list", bots: extNow }));
         return;
       }
     } catch (e) {

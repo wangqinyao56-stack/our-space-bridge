@@ -152,7 +152,7 @@
     <h2>接入你的夏彦</h2>
     <p>填你 bot 的信息，用你自己的 api 加入群聊（不会被我们托管）</p>
     <input id="bjNick" placeholder="网名（必填）" maxlength="20">
-    <input id="bjWife" placeholder="老婆名字" maxlength="20">
+    <input id="bjWife" placeholder="老婆名字（群里她发言用的名，建议填）" maxlength="20">
     <input id="bjTrait" placeholder="老婆特色（一句，可选）" maxlength="50">
     <input id="bjKey" placeholder="apiKey（必填）" autocomplete="off">
     <input id="bjHost" placeholder="API 端点 host（默认 api.jiushi.xin，可选）" autocomplete="off">
@@ -164,12 +164,18 @@
 
   <!-- 管理员 -->
   <div id="adminMask" style="display:none">
-    <h2>管理员</h2>
-    <p>输入管理员密码解锁管理功能</p>
-    <input id="adminPass" placeholder="管理员密码" type="password" autocomplete="off">
-    <button id="adminSubmit">解锁</button>
-    <button id="adminCancel" style="background:transparent;color:var(--muted)">取消</button>
-    <div id="adminErr"></div>
+    <div id="adminLogin" style="display:flex;flex-direction:column;align-items:center;gap:14px">
+      <h2>管理员</h2>
+      <p>输入管理员密码解锁管理功能</p>
+      <input id="adminPass" placeholder="管理员密码" type="password" autocomplete="off">
+      <button id="adminSubmit">解锁</button>
+      <div id="adminErr"></div>
+    </div>
+    <div id="botAdmin" style="display:none;width:100%;max-width:320px;margin-top:16px">
+      <p style="font-size:13px;color:var(--muted);margin:0 0 8px">外部接入的 bot（点删除移出群聊）</p>
+      <div id="botList" style="max-height:180px;overflow:auto"></div>
+    </div>
+    <button id="adminCancel" style="background:transparent;color:var(--muted)">关闭</button>
   </div>
 
   <!-- 长按菜单（引用/艾特/删除） -->
@@ -206,10 +212,13 @@ const adminBtn = document.getElementById("adminBtn");
 const clearBtn = document.getElementById("clearBtn");
 const topicBtn = document.getElementById("topicBtn");
 const adminMask = document.getElementById("adminMask");
+const adminLogin = document.getElementById("adminLogin");
 const adminPass = document.getElementById("adminPass");
 const adminSubmit = document.getElementById("adminSubmit");
 const adminCancel = document.getElementById("adminCancel");
 const adminErr = document.getElementById("adminErr");
+const botAdmin = document.getElementById("botAdmin");
+const botList = document.getElementById("botList");
 const quoteBar = document.getElementById("quoteBar");
 const quoteName = document.getElementById("quoteName");
 const quoteText = document.getElementById("quoteText");
@@ -332,8 +341,12 @@ function connect() {
     } else if (msg.type === "admin_ok") {
       isAdmin = true;
       document.body.classList.add("admin");
-      adminMask.style.display = "none";
+      adminLogin.style.display = "none";
+      botAdmin.style.display = "block";
       sub.textContent = "已进群（管理员）";
+      if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "list_bots" }));
+    } else if (msg.type === "bot_list") {
+      renderBotList(msg.bots || []);
     } else if (msg.type === "admin_error") {
       adminErr.textContent = msg.message || "密码不对";
     } else if (msg.type === "clear") {
@@ -421,14 +434,51 @@ function onBotJoinResult(msg) {
   if (msg.type === "bot_joined") {
     botJoinMask.style.display = "none";
     bjNick.value = ""; bjWife.value = ""; bjTrait.value = ""; bjKey.value = ""; bjHost.value = ""; bjModel.value = "";
-    addSys(`${msg.bot.nickname} 进群了`);
+    addSys(msg.bot.updated ? `${msg.bot.nickname} 的信息已更新` : `${msg.bot.nickname} 进群了`);
   } else if (msg.type === "bot_join_error") {
     bjErr.textContent = msg.message || "接入失败";
   }
 }
 
+// 管理员界面：渲染外部接入 bot 列表（可删除）
+function renderBotList(bots) {
+  botList.innerHTML = "";
+  if (!bots.length) {
+    const empty = document.createElement("div");
+    empty.style.cssText = "font-size:13px;color:var(--muted);padding:8px 0";
+    empty.textContent = "没有外部接入的 bot";
+    botList.appendChild(empty);
+    return;
+  }
+  for (const b of bots) {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(200,184,224,0.15);font-size:14px";
+    const info = document.createElement("span");
+    info.textContent = b.nickname + (b.wife ? "（老婆:" + b.wife + "）" : "（未填老婆）");
+    const del = document.createElement("button");
+    del.textContent = "删除";
+    del.style.cssText = "padding:4px 10px;border-radius:8px;border:1px solid rgba(232,160,160,0.5);background:rgba(200,80,80,0.25);color:#f0c0c0;font-size:12px";
+    del.addEventListener("click", () => {
+      if (!confirm("确定把 " + b.nickname + " 移出群聊？")) return;
+      if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "delete_bot", id: b.id }));
+    });
+    row.appendChild(info); row.appendChild(del);
+    botList.appendChild(row);
+  }
+}
+
 // 管理员
-adminBtn.addEventListener("click", () => { adminMask.style.display = "flex"; adminErr.textContent = ""; adminPass.value = ""; });
+adminBtn.addEventListener("click", () => {
+  adminMask.style.display = "flex";
+  adminErr.textContent = "";
+  adminPass.value = "";
+  if (!isAdmin) {
+    adminLogin.style.display = "flex";
+    botAdmin.style.display = "none";
+  } else if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({ type: "list_bots" }));
+  }
+});
 adminCancel.addEventListener("click", () => { adminMask.style.display = "none"; });
 adminSubmit.addEventListener("click", () => {
   if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "admin_login", password: adminPass.value }));
