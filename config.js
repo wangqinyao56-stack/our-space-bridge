@@ -17,7 +17,7 @@ export default {
   HINDSIGHT_URL: process.env.HINDSIGHT_URL || "",
   SYSTEM_PROMPT_PATH: join(__dirname, "system-prompt.md"),
   DAILY_PROMPT_PATH: join(__dirname, "system-prompt-daily.md"),
-  INTIMATE_PROMPT_PATH: join(__dirname, "system-prompt-intimate.md"),
+  INTIMATE_PROMPT_PATH: join(__dirname, "system-prompt-intimate-slim.md"),
   TRAVEL_PROMPT_PATH: join(__dirname, "system-prompt-travel.md"),
   TRAVEL_INTIMATE_PROMPT_PATH: join(__dirname, "system-prompt-travel-intimate.md"),
   HUASHENG_TRAVEL_PROMPT_PATH: join(__dirname, "system-prompt-huasheng-travel.md"),
