@@ -149,3 +149,5 @@
 {"time":"2026-09-22 03:57","repo":"our-space","file":"lib/ai.js","desc":"聚梦候选去按量贵模型(J3按量/J2缓存按量,0.3元/次)。候选改4-6个人优先(K2-个人/k-个人/网逆),探测逻辑改按优先级选第一个输出>=300字的,不再选输出最长(会选中贵按量)"}
 {"time":"2026-09-22 04:01","repo":"our-space","file":"lib/ai.js","desc":"聚梦固定模型[网逆]claude-opus-4-8,砍掉整套探测逻辑(探测每轮发5-6次请求烧流量费)。askJumengai直接固定模型,省每次启动/首次调用的探测开销"}
 {"time":"2026-10-06 02:47","repo":"our-space","file":"config.js+lib/message-router.js","desc":"亲密空间切回报用鹿+精简版人设:实测报用鹿带人设能跑露骨(裸发才被渠道拦,色情放system人设里就放行),玖时企业按量也带人设能跑。渠道从聚梦([网逆]4-8,模型拒演露骨)改askZhailian([0.06]报用鹿/claude-opus-4.6),失败仍回退熊猫。INTIMATE_PROMPT_PATH改system-prompt-intimate-slim.md(精简版,完整版5万token在报用鹿上77s太慢易超时)"}
+{"time":"2026-10-06 17:55","repo":"our-space","file":"lib/ai.js","desc":"玖时key替换:旧共享key sk-sKe3...(401失效)换新key sk-gEbf6uNMq...(实测200通),两处落点DEEPSEEK_KEY+JIUSHI_KEY全换,修发现/日常/实时语音/记忆提取等玖时线全部恢复"}
+{"time":"2026-10-07 01:40","repo":"our-space","file":"lib/message-router.js","desc":"修亲密空间串设定:handleIntimateMessage注入幻想剧场(盲盒)时无channel守卫,_currentBlindBox全局残留(blindbox-state.json持久化)导致channel=intimate也被塞幻想剧场设定。加channel===blindbox守卫,亲密空间与幻想剧场隔离"}
