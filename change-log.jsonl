@@ -152,3 +152,4 @@
 {"time":"2026-10-06 17:55","repo":"our-space","file":"lib/ai.js","desc":"玖时key替换:旧共享key sk-sKe3...(401失效)换新key sk-gEbf6uNMq...(实测200通),两处落点DEEPSEEK_KEY+JIUSHI_KEY全换,修发现/日常/实时语音/记忆提取等玖时线全部恢复"}
 {"time":"2026-10-07 01:40","repo":"our-space","file":"lib/message-router.js","desc":"修亲密空间串设定:handleIntimateMessage注入幻想剧场(盲盒)时无channel守卫,_currentBlindBox全局残留(blindbox-state.json持久化)导致channel=intimate也被塞幻想剧场设定。加channel===blindbox守卫,亲密空间与幻想剧场隔离"}
 {"time":"2026-10-16 01:33","repo":"our-space","file":"system-prompt-intimate-slim.md+system-prompt-intimate.md+lib/message-router.js","desc":"修亲密空间夏彦误判华生出门:精简版人设缺默认在家设定(华生是画手每天在家画画,出门会提前说没提前说就没出门),夏彦凭空假设她出门/不在家。三处补设定:slim版+完整版同步+message-router timeNote强化默认在家"}
+{"time":"2026-10-16 02:10","repo":"our-space","file":"system-prompt-intimate-slim.md","desc":"亲密空间slim版补做爱玩法素材:完整版被砍的做爱玩法库(10个小游戏)+射哪里具体场景+手指技巧6种+她完全主导+情话方向补回slim,治做爱单调/动作单薄。slim从149行涨到180行"}
