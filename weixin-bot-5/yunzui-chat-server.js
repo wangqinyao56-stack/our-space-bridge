@@ -115,7 +115,7 @@ async function chatReply(channel, userText, history) {
     maxTokens: 800,
   };
   if (channel === "intimate") {
-    opts.useZilian = true; // 亲密空间走宅恋报用鹿（云醉自己的宅恋 key）
+    opts.useZilian = true; // 亲密空间走宅恋s平（云醉自己的宅恋 key）
   } else {
     opts.model = "[逆]claude-opus-4-6"; // 日常保持玖时逆系列，不换
   }

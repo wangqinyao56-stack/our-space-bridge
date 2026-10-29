@@ -150,13 +150,13 @@ async function chatReply(channel, userText, history) {
     temperature: 0.65,
     maxTokens: 800,
   };
-  // 亲密走熊猫(api520.pro，不拦NSFW)；日常走宅恋报用鹿
+  // 亲密走熊猫(api520.pro，不拦NSFW)；日常走宅恋s平
   if (channel === "intimate") {
     opts.useZilian = false;
     opts.model = "熊猫-A-29-claude-opus-4.6";
   } else if (channel === "daily") {
     opts.useZilian = true;
-    opts.model = "[0.06]报用鹿/claude-opus-4.6";
+    opts.model = "[0.08]s平/claude-sonnet-4-6";
   }
   if (history.length > 0) opts.history = history;
   return await askClaude(opts);
@@ -192,7 +192,7 @@ async function handlePixelChat(text, quote) {
     temperature: 0.7,
     maxTokens: 500,
     useZilian: true,
-    model: "[0.06]报用鹿/claude-opus-4.6",
+    model: "[0.08]s平/claude-sonnet-4-6",
     history: history.slice(-16).map((m) => ({ role: m.role, content: m.content })),
   });
 
