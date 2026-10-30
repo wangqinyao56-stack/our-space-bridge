@@ -15,7 +15,7 @@ const JIUSHI_MODEL = "熊猫-A-29-claude-opus-4.6";
 // 宅恋中转（az.zlapi.vip）——佳佳亲密/日常/小屋专用（玖时企业按量已下架）
 const ZILIAN_HOST = "az.zlapi.vip";
 const ZILIAN_KEY = "sk-dK9NfGM74MzxlarngZe03AuixlUvPu5g1NFJQ5YVm6YcRJoV";
-const ZILIAN_MODEL = "[0.08]s平/claude-sonnet-4-6";
+const ZILIAN_MODEL = "[0.07]报用鹿/claude-opus-4.6";
 
 const PROXY_HOST = process.env.PROXY_HOST || "127.0.0.1";
 const PROXY_PORT = parseInt(process.env.PROXY_PORT || "7897", 10);

@@ -38,7 +38,7 @@ const SCORE_FEEL = 50.0;
 const PINNED_CAP = 20;
 
 const EXTRACT_INTERVAL = 15;
-const EXTRACT_MODEL = "[0.08]s平/claude-sonnet-4-6"; // 玖时渠道已下架，提取/做梦改宅恋s平
+const EXTRACT_MODEL = "[0.07]报用鹿/claude-opus-4.6"; // 玖时渠道已下架，提取/做梦改宅恋报用鹿
 
 let memories = [];
 let archive = [];

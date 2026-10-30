@@ -112,7 +112,7 @@ async function chatReply(channel, userText, history) {
     maxTokens: 800,
   };
   if (channel === "intimate") {
-    opts.useZilian = true; // 亲密空间走宅恋s平（苹果梗自己的宅恋 key）
+    opts.useZilian = true; // 亲密空间走宅恋报用鹿（苹果梗自己的宅恋 key）
   }
   if (history.length > 0) opts.history = history;
   return await askClaude(opts);

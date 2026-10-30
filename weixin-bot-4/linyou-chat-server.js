@@ -152,10 +152,10 @@ async function chatReply(channel, userText, history) {
     maxTokens: 800,
   };
   if (channel === "intimate") {
-    opts.model = "[0.08]s平/claude-sonnet-4-6";
+    opts.model = "[0.07]报用鹿/claude-opus-4.6";
   } else {
     opts.provider = "zhailian"; // 日常走宅恋(az.zlapi.vip + 林游自己的key + 阿鹿同款模型名)
-    opts.model = "[0.08]s平/claude-sonnet-4-6";
+    opts.model = "[0.07]报用鹿/claude-opus-4.6";
   }
   if (history.length > 0) opts.history = history;
   return await askClaude(opts);
@@ -191,7 +191,7 @@ async function handlePixelChat(text, quote) {
     temperature: 0.7,
     maxTokens: 500,
     provider: "zhailian",
-    model: "[0.08]s平/claude-sonnet-4-6",
+    model: "[0.07]报用鹿/claude-opus-4.6",
     history: history.slice(-16).map((m) => ({ role: m.role, content: m.content })),
   });
 
