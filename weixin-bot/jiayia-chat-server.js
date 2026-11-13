@@ -150,13 +150,13 @@ async function chatReply(channel, userText, history) {
     temperature: 0.65,
     maxTokens: 800,
   };
-  // 亲密走熊猫(api520.pro，不拦NSFW)；日常走宅恋报用鹿
+  // 亲密走熊猫(api520.pro，不拦NSFW)；日常走宅恋 s平 opus-5
   if (channel === "intimate") {
     opts.useZilian = false;
     opts.model = "熊猫-A-29-claude-opus-4.6";
   } else if (channel === "daily") {
     opts.useZilian = true;
-    opts.model = "[0.07]报用鹿/claude-opus-4.6";
+    opts.model = "[0.15]s平/claude-opus-5";
   }
   if (history.length > 0) opts.history = history;
   return await askClaude(opts);
