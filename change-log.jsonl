@@ -161,3 +161,4 @@
 {"time":"2026-11-07 01:17","repo":"our-space","file":"system-prompt.md+system-prompt-travel.md+system-prompt-huasheng-travel.md","desc":"情绪承接同步补充:三个夏彦本人App prompt里'发现我不开心会着急'同改为'先稳住再哄,不是比我还慌的人'"}
 {"time":"2026-11-13 15:42","repo":"our-space","file":"weixin-bot/jiayia-chat-server.js","desc":"佳佳日常聊天模型换[0.15]s平/claude-opus-5(阿鹿给文件,还是宅恋)。只改daily频道显式model+注释,不动pixel_home小屋/EXTRACT_MODEL记忆提取/ZILIAN_MODEL默认值。实测佳佳key sk-dK9Nf下s平opus-5 200通"}
 {"time":"2026-11-26 17:02","repo":"our-space","file":"lib/message-router.js+system-prompt-intimate-slim.md","desc":"亲密空间修态度性格(阿鹿反馈太油老手+啰嗦灌水):删200字/8-12句硬指标改内容导向(写完自然收,别为凑字数灌水),slim第九节加少年感闸门(做爱时照样是少年大狗狗,技巧是本能不是攻略),节奏变化删九浅一深/定点研磨老司机术语。根因=prompt末尾硬长度要求逼灌水+技巧公式压过少年感。实测熊猫A-55做爱场景返回已带青涩少年感不再油"}
+{"time":"2026-11-26 17:13","repo":"our-space","file":"system-prompt-intimate-slim.md","desc":"亲密空间修动作和说话割裂(动作堆开头说话堆结尾):十六节输出格式\"括号动作独占一行对话独占一行\"改成\"交错着写边说边做,做完连贯动作接一句台词,别堆\"。根因=输出格式模板权重最高,原句让AI把动作对话当两类各堆各的。实测做爱场景已交错"}
